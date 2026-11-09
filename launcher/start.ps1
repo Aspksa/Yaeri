@@ -67,10 +67,18 @@ try {
     }
 
     while ($true) {
+        # Pending() и короткая пауза вместо блокирующего AcceptTcpClient():
+        # так Ctrl+C срабатывает сразу, а не при следующем запросе.
+        if (-not $listener.Pending()) {
+            Start-Sleep -Milliseconds 100
+            continue
+        }
         $client = $listener.AcceptTcpClient()
         $reader = $null
         try {
-            $client.ReceiveTimeout = 5000
+            # Браузеры открывают «запасные» пустые соединения; короткий таймаут
+            # не даёт им надолго задерживать загрузку страницы.
+            $client.ReceiveTimeout = 1000
             $client.SendTimeout = 5000
             $stream = $client.GetStream()
             $reader = [System.IO.StreamReader]::new(
@@ -98,13 +106,20 @@ try {
             $pathPart = ($target -split '\?', 2)[0]
             $decoded = [System.Uri]::UnescapeDataString($pathPart)
             if ($decoded -eq '/') { $decoded = '/index.html' }
+            $headOnly = ($method -eq 'HEAD')
             $relative = $decoded.TrimStart([char]47).Replace([char]47, [char]92)
-            $file = [System.IO.Path]::GetFullPath((Join-Path $siteRoot $relative))
+            try {
+                $file = [System.IO.Path]::GetFullPath((Join-Path $siteRoot $relative))
+            } catch {
+                # Недопустимые символы в пути (например, «:» или «|»).
+                $body = $utf8.GetBytes('Некорректный адрес.')
+                Send-HttpResponse $stream 400 'Bad Request' $body 'text/plain; charset=utf-8' $headOnly
+                continue
+            }
             $allowedPrefix = $siteRoot.TrimEnd([char]92) + [System.IO.Path]::DirectorySeparatorChar
             $isAllowed = $file.StartsWith(
                 $allowedPrefix, [System.StringComparison]::OrdinalIgnoreCase
             )
-            $headOnly = ($method -eq 'HEAD')
 
             if (-not $isAllowed) {
                 $body = $utf8.GetBytes('Доступ запрещён.')
@@ -131,6 +146,8 @@ try {
             }
             $body = [System.IO.File]::ReadAllBytes($file)
             Send-HttpResponse $stream 200 'OK' $body $type $headOnly
+        } catch [System.IO.IOException] {
+            # Таймаут или обрыв соединения (пустое «запасное» соединение браузера).
         } catch {
             Write-Host ('Ошибка запроса: ' + $_.Exception.Message) -ForegroundColor Yellow
         } finally {
