@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 124" width="128" height="124" role="img" aria-label="Яэри">
+<defs>
+<linearGradient id="yTailA" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#3f2767"/><stop offset="0.45" stop-color="#8859d8"/><stop offset="0.8" stop-color="#ab85ea"/><stop offset="1" stop-color="#efe6ff"/></linearGradient>
+<linearGradient id="yTailB" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#3f2767"/><stop offset="0.6" stop-color="#3f2767"/><stop offset="0.85" stop-color="#8859d8"/><stop offset="1" stop-color="#ab85ea"/></linearGradient>
+<linearGradient id="yHead" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fdf8ee"/><stop offset="1" stop-color="#e6d9c6"/></linearGradient>
+<radialGradient id="yPearl"><stop offset="0" stop-color="#efe6ff"/><stop offset="0.45" stop-color="#ab85ea"/><stop offset="1" stop-color="#ab85ea" stop-opacity="0"/></radialGradient>
+</defs>
+<g class="tails">
+<g transform="rotate(-70 64 84)"><g class="tail" style="--a:-70;--i:0"><path d="M64 84 C49 72 44 46 63 20 C66 20 69 26 72 34 C80 52 78 72 64 84Z" fill="url(#yTailA)" stroke="#12101f" stroke-width="1.4" stroke-linejoin="round"/></g></g>
+<g transform="rotate(-50 64 84)"><g class="tail" style="--a:-50;--i:1"><path d="M64 84 C49 72 44 46 63 20 C66 20 69 26 72 34 C80 52 78 72 64 84Z" fill="url(#yTailB)" stroke="#12101f" stroke-width="1.4" stroke-linejoin="round"/></g></g>
+<g transform="rotate(-30 64 84)"><g class="tail" style="--a:-30;--i:2"><path d="M64 84 C49 72 44 46 63 20 C66 20 69 26 72 34 C80 52 78 72 64 84Z" fill="url(#yTailA)" stroke="#12101f" stroke-width="1.4" stroke-linejoin="round"/></g></g>
+<g transform="rotate(-10 64 84)"><g class="tail" style="--a:-10;--i:3"><path d="M64 84 C49 72 44 46 63 20 C66 20 69 26 72 34 C80 52 78 72 64 84Z" fill="url(#yTailB)" stroke="#12101f" stroke-width="1.4" stroke-linejoin="round"/></g></g>
+<g transform="rotate(10 64 84)"><g class="tail" style="--a:10;--i:4"><path d="M64 84 C49 72 44 46 63 20 C66 20 69 26 72 34 C80 52 78 72 64 84Z" fill="url(#yTailA)" stroke="#12101f" stroke-width="1.4" stroke-linejoin="round"/></g></g>
+<g transform="rotate(30 64 84)"><g class="tail" style="--a:30;--i:5"><path d="M64 84 C49 72 44 46 63 20 C66 20 69 26 72 34 C80 52 78 72 64 84Z" fill="url(#yTailB)" stroke="#12101f" stroke-width="1.4" stroke-linejoin="round"/></g></g>
+<g transform="rotate(50 64 84)"><g class="tail" style="--a:50;--i:6"><path d="M64 84 C49 72 44 46 63 20 C66 20 69 26 72 34 C80 52 78 72 64 84Z" fill="url(#yTailA)" stroke="#12101f" stroke-width="1.4" stroke-linejoin="round"/></g></g>
+<g transform="rotate(70 64 84)"><g class="tail" style="--a:70;--i:7"><path d="M64 84 C49 72 44 46 63 20 C66 20 69 26 72 34 C80 52 78 72 64 84Z" fill="url(#yTailB)" stroke="#12101f" stroke-width="1.4" stroke-linejoin="round"/></g></g>
+</g>
+<g class="head">
+<path d="M42 66 L56 78 Q64 73.5 72 78 L86 66 L89 92 C89 104 77 114 64 116 C51 114 39 104 39 92 Z" fill="url(#yHead)" stroke="#12101f" stroke-width="2" stroke-linejoin="round"/>
+<path d="M45 72 L54 78 L44 85Z" fill="#1b1530"/>
+<path d="M83 72 L74 78 L84 85Z" fill="#1b1530"/>
+<path d="M64 116 C53 114 45 106 43 96 C51 99 58 95 64 97 C70 95 77 99 85 96 C83 106 75 114 64 116 Z" fill="#f3e9d8"/>
+<path d="M47.5 91.5 Q53 86.5 58.5 91.5 Q53 94.2 47.5 91.5Z" fill="#1b1530"/>
+<path d="M69.5 91.5 Q75 86.5 80.5 91.5 Q75 94.2 69.5 91.5Z" fill="#1b1530"/>
+<path d="M46.5 95 Q43 97 41.5 101" stroke="#ab85ea" fill="none" stroke-width="2.2" stroke-linecap="round"/>
+<path d="M81.5 95 Q85 97 86.5 101" stroke="#ab85ea" fill="none" stroke-width="2.2" stroke-linecap="round"/>
+<path d="M61 103.5 Q64 102 67 103.5 Q65.5 106.5 64 107 Q62.5 106.5 61 103.5Z" fill="#1b1530"/>
+<circle cx="64" cy="83" r="6.5" fill="url(#yPearl)"/>
+<circle cx="64" cy="83" r="2.3" fill="#efe6ff"/>
+</g>
+</svg>
