@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#14101f">
+  <title>Яэри — восьмихвостая лисица</title>
+  <style>
+    :root { color-scheme: dark; font-family: "Segoe UI", Arial, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: radial-gradient(ellipse at 75% 0%, #342246 0%, #161020 45%, #0c0a11 100%); color: #f6eefc; }
+    .app { max-width: 930px; min-height: 100vh; padding: 26px 18px; margin: auto; display: flex; flex-direction: column; gap: 20px; }
+    .top { display: flex; gap: 15px; align-items: center; padding: 10px 0; }
+    .fox { display: grid; place-items: center; width: 68px; height: 68px; flex: 0 0 68px; border: 1px solid #9d6ec0; border-radius: 22px; background: linear-gradient(140deg, #52356c, #251631); font-size: 38px; box-shadow: 0 12px 38px #9b60cb28; }
+    h1 { margin: 0 0 4px; font-size: 29px; letter-spacing: .3px; }
+    .subtitle { color: #c7b5d2; font-size: 14px; }
+    .status { margin-left: auto; border: 1px solid #63466e; color: #e5bee9; background: #33233c; border-radius: 999px; padding: 8px 12px; font-size: 12px; white-space: nowrap; }
+    .panel { background: #171320d9; border: 1px solid #4d365f; border-radius: 22px; box-shadow: 0 24px 70px #0005; flex: 1; min-height: 520px; display: flex; flex-direction: column; overflow: hidden; }
+    .panel-head { padding: 17px 22px; border-bottom: 1px solid #3b2b48; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .panel-head strong { font-size: 15px; }
+    .hint { font-size: 12px; color: #aa99b5; }
+    .chat { flex: 1; padding: 26px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; min-height: 320px; }
+    .bubble { max-width: min(80%, 600px); padding: 14px 17px; border-radius: 17px; line-height: 1.55; font-size: 15px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .bubble.assistant { align-self: flex-start; background: #31223f; border: 1px solid #593967; border-bottom-left-radius: 5px; }
+    .bubble.user { align-self: flex-end; background: #69438a; border: 1px solid #9461ad; border-bottom-right-radius: 5px; }
+    form { border-top: 1px solid #3b2b48; padding: 17px; display: flex; gap: 12px; align-items: end; }
+    textarea { flex: 1; min-width: 0; height: 70px; resize: vertical; max-height: 180px; background: #251d2f; border: 1px solid #614772; border-radius: 13px; outline: none; color: white; font: inherit; padding: 13px; }
+    textarea:focus { border-color: #c78de8; box-shadow: 0 0 0 3px #c78de819; }
+    button { font: inherit; border-radius: 12px; padding: 13px 17px; border: 0; cursor: pointer; }
+    .send { background: #b989dc; color: #180e22; font-weight: 700; min-height: 49px; }
+    .send:hover { background: #cca4e7; }
+    .clear { background: transparent; color: #c5adc9; border: 1px solid #56405d; font-size: 12px; padding: 8px 12px; }
+    .clear:hover { color: white; border-color: #a97dc5; }
+    .footer { text-align: center; color: #b4a1c0; font-size: 12px; line-height: 1.6; }
+    @media (max-width: 580px) {
+      .app { padding: 12px; gap: 12px; }
+      .fox { width: 54px; height: 54px; flex-basis: 54px; font-size: 30px; border-radius: 17px; }
+      h1 { font-size: 24px; }
+      .top { gap: 10px; }
+      .status { font-size: 10px; padding: 7px; }
+      .panel { min-height: 72vh; border-radius: 16px; }
+      .chat { padding: 16px 12px; }
+      .bubble { max-width: 92%; }
+      form { padding: 10px; gap: 8px; }
+      .send { padding: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="top">
+      <div class="fox" role="img" aria-label="Лисица">🦊</div>
+      <div>
+        <h1>Яэри</h1>
+        <div class="subtitle">Мифическая восьмихвостая лисица · твоя помощница</div>
+      </div>
+      <span class="status" title="Подключение к AI ещё не настроено">● Демо-режим</span>
+    </header>
+
+    <section class="panel" aria-label="Чат с Яэри">
+      <div class="panel-head">
+        <div>
+          <strong>Разговор с Яэри</strong>
+          <div class="hint">Локальный сайт · интерфейс для будущего AI</div>
+        </div>
+        <button class="clear" type="button" id="clear">Очистить чат</button>
+      </div>
+      <div class="chat" id="chat" role="log" aria-live="polite" aria-relevant="additions"></div>
+      <form id="message-form">
+        <textarea id="message" name="message" aria-label="Ваше сообщение" placeholder="Напишите что-нибудь, Хозяин..." maxlength="4000" required></textarea>
+        <button class="send" type="submit">Отправить</button>
+      </form>
+    </section>
+    <div class="footer">Сайт работает локально, без Python и без интернета. AI-модель пока не подключена. Сообщения этого демо хранятся только в браузере.</div>
+  </main>
+  <script>
+    (function () {
+      'use strict';
+      var KEY = 'yaeri_demo_chat_v1';
+      var chat = document.getElementById('chat');
+      var form = document.getElementById('message-form');
+      var input = document.getElementById('message');
+      var clear = document.getElementById('clear');
+      var history = [];
+
+      function save() {
+        try { localStorage.setItem(KEY, JSON.stringify(history.slice(-100))); }
+        catch (error) { /* Хранение может быть недоступно. */ }
+      }
+      function bubble(role, text) {
+        var node = document.createElement('div');
+        node.className = 'bubble ' + (role === 'user' ? 'user' : 'assistant');
+        node.textContent = text;
+        chat.appendChild(node);
+        chat.scrollTop = chat.scrollHeight;
+      }
+      function add(role, text) {
+        history.push({ role: role, text: text });
+        bubble(role, text);
+        save();
+      }
+      function greet() {
+        add('assistant', 'С возвращением, Хозяин! Я Яэри — ваша восьмихвостая лисица. Сейчас мой чат работает в демонстрационном режиме. Я уже могу принимать сообщения, а настоящий AI мы подключим на следующем этапе. 🌙');
+      }
+      try {
+        var saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+        if (Array.isArray(saved)) {
+          history = saved.filter(function (m) {
+            return m && (m.role === 'user' || m.role === 'assistant') && typeof m.text === 'string';
+          }).slice(-100);
+        }
+      } catch (error) { history = []; }
+
+      if (history.length) {
+        history.forEach(function (m) { bubble(m.role, m.text); });
+      } else { greet(); }
+
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        var message = input.value.trim();
+        if (!message) return;
+        add('user', message);
+        input.value = '';
+        add('assistant', 'Хозяин, я получила ваше сообщение. Пока AI-модель не подключена, я не могу отвечать на вопросы по-настоящему. Но интерфейс и локальный запуск уже работают.');
+        input.focus();
+      });
+      input.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+          event.preventDefault();
+          if (typeof form.requestSubmit === 'function') form.requestSubmit();
+          else form.querySelector('button[type="submit"]').click();
+        }
+      });
+      clear.addEventListener('click', function () {
+        history = [];
+        chat.textContent = '';
+        save();
+        greet();
+        input.focus();
+      });
+    }());
+  </script>
+</body>
+</html>
