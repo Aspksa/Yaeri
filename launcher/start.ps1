@@ -98,9 +98,9 @@ try {
             $pathPart = ($target -split '\?', 2)[0]
             $decoded = [System.Uri]::UnescapeDataString($pathPart)
             if ($decoded -eq '/') { $decoded = '/index.html' }
-            $relative = $decoded.TrimStart('/').Replace('/', '\')
+            $relative = $decoded.TrimStart([char]47).Replace([char]47, [char]92)
             $file = [System.IO.Path]::GetFullPath((Join-Path $siteRoot $relative))
-            $allowedPrefix = $siteRoot.TrimEnd('\') + [System.IO.Path]::DirectorySeparatorChar
+            $allowedPrefix = $siteRoot.TrimEnd([char]92) + [System.IO.Path]::DirectorySeparatorChar
             $isAllowed = $file.StartsWith(
                 $allowedPrefix, [System.StringComparison]::OrdinalIgnoreCase
             )
