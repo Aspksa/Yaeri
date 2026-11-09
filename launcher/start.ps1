@@ -3,14 +3,14 @@
 $ErrorActionPreference = 'Stop'
 
 try {
-    [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+    [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 } catch {
     # Кодировка консоли не мешает работе сервера.
 }
 
 $siteRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\site'))
 $indexFile = Join-Path $siteRoot 'index.html'
-$utf8 = New-Object System.Text.UTF8Encoding($false)
+$utf8 = [System.Text.UTF8Encoding]::new($false)
 
 function Send-HttpResponse {
     param(
