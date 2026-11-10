@@ -1031,6 +1031,7 @@ function Invoke-YApi([string]$Method, [string]$Path, [string]$BodyText) {
     switch ($route) {
         'GET /api/status'          { return Get-YStatus }
         'GET /api/models'          { return Get-YModelList }
+        'POST /api/models/refresh' { $script:ModelsCache = $null; return Get-YModelList }
         'GET /api/history'         { return Get-YHistoryPage }
         'POST /api/chat'           { return Invoke-YChat $req }
         'POST /api/history/clear'  { return Clear-YHistory }

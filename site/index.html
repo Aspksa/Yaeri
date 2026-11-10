@@ -1212,6 +1212,7 @@
           </div>
           <div class="actions">
             <button class="primary-btn" type="submit" id="key-save">Сохранить и подключить</button>
+            <button class="ghost" type="button" id="key-models">Загрузить модели</button>
             <button class="ghost" type="button" id="key-test" hidden>Проверить связь</button>
             <button class="ghost danger" type="button" id="key-remove" hidden>Удалить ключ</button>
           </div>
@@ -1624,7 +1625,7 @@
         if (st.configured && !wasOnline) return startOnline();
         if (!st.configured && wasOnline) { startDemo(); return Promise.resolve(); }
         applyMode();
-        if (st.configured) loadModels();
+        if (st.configured) loadModels().catch(function () {});
         return Promise.resolve();
       }
       function busyKey(on) {
@@ -1644,7 +1645,10 @@
           $('key-eye').setAttribute('aria-pressed', 'false');
           var check = st.check || {};
           return applyConfig(st).then(function () {
-            if (check.ok) keyMsg('Готово: ключ сохранён, Cloud.ru ответил (' + check.models + ' ' + plural(check.models, 'модель', 'модели', 'моделей') + ').', 'ok');
+            if (check.ok) {
+              keyMsg('Готово: ключ сохранён, Cloud.ru ответил (' + check.models + ' ' + plural(check.models, 'модель', 'модели', 'моделей') + '). Выберите модель ниже.', 'ok');
+              showModelPick();
+            }
             else keyMsg('Ключ сохранён, но Cloud.ru его не принял: ' + (check.error || 'нет ответа') + '. Проверьте ключ и сохраните ещё раз.', 'err');
           });
         }).catch(function (error) { keyMsg(error.message, 'err'); })
@@ -2353,14 +2357,39 @@
         syncModel();
         renderConn();
       }
-      function loadModels() {
-        fillModels([serverStatus.chatModel], serverStatus.chatModel);
-        api('models').then(function (data) {
+      function loadModels(fresh) {
+        if (!modelSelect.options.length) fillModels([serverStatus.chatModel], serverStatus.chatModel);
+        return (fresh ? api('models/refresh', {}) : api('models')).then(function (data) {
           var list = Array.isArray(data.models) && data.models.length ? data.models : [serverStatus.chatModel];
           fillModels(list, settings.model || data.default);
-          $('model-note').textContent = data.error ? 'Полный список моделей не загрузился: ' + data.error : 'Список приходит из Cloud.ru. Выбор сохраняется на этом компьютере.';
-        }).catch(function () { /* Остаётся модель по умолчанию. */ });
+          $('model-note').textContent = data.error
+            ? 'Полный список моделей не загрузился: ' + data.error
+            : 'Загружено из Cloud.ru: ' + list.length + ' ' + plural(list.length, 'модель', 'модели', 'моделей') + '. Выбор сохраняется на этом компьютере.';
+          return data;
+        }).catch(function (error) {
+          $('model-note').textContent = 'Список моделей не загрузился: ' + error.message;
+          throw error;
+        });
       }
+      function showModelPick() {
+        var pick = drawer.querySelector('.model-pick');
+        if (!pick || pick.hidden || !isOpen()) return;
+        pick.scrollIntoView({ block: 'nearest', behavior: settings.motion ? 'smooth' : 'auto' });
+      }
+      // «Загрузить модели»: с новым ключом в поле сначала сохраняет его, иначе обновляет список текущим ключом.
+      $('key-models').addEventListener('click', function () {
+        if (keyBusy) return;
+        if (keyField.value.trim()) { keyForm.requestSubmit ? keyForm.requestSubmit() : $('key-save').click(); return; }
+        if (!online) { keyMsg('Сначала вставьте ключ Cloud.ru в поле выше.', 'err'); keyField.focus(); return; }
+        busyKey(true);
+        keyMsg('Загружаю список моделей из Cloud.ru…');
+        loadModels(true).then(function (data) {
+          var n = (data.models || []).length;
+          if (data.error) keyMsg('Cloud.ru не отдал список: ' + data.error, 'err');
+          else { keyMsg('Загружено ' + n + ' ' + plural(n, 'модель', 'модели', 'моделей') + '. Выберите модель ниже.', 'ok'); showModelPick(); modelSelect.focus({ preventScroll: true }); }
+        }).catch(function (error) { keyMsg(error.message, 'err'); })
+          .then(function () { busyKey(false); });
+      });
       modelSelect.addEventListener('change', function () {
         settings.model = modelSelect.value;
         changed();
@@ -3204,7 +3233,7 @@
         online = true;
         applyMode();
         if (!settings.soul) api('soul/evolution', { enabled: false }).catch(function () {});
-        loadModels();
+        loadModels().catch(function () {});
         loadDocs();
         return api('history').then(function (data) {
           resetView();
