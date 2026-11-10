@@ -108,22 +108,9 @@ try {
 
     Write-Host ''
     if (-not (Test-YConfigured)) {
-        Write-Host 'API-ключ Cloud.ru пока не задан.' -ForegroundColor Yellow
-        Write-Host 'Ключ сохранится только на этом компьютере: config\yaeri.config.json (в git не попадает).'
-        Write-Host 'Вставьте ключ (Ctrl+V или правый клик) и нажмите Enter. Пустой Enter — демо-режим без AI.'
-        $secure = Read-Host 'API-ключ Cloud.ru' -AsSecureString
-        $ptr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
-        try {
-            $plain = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
-        } finally {
-            [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)
-        }
-        if (-not [string]::IsNullOrWhiteSpace($plain)) {
-            Save-YApiKey $plain.Trim()
-            Import-YConfig
-            Write-Host 'Ключ сохранён.' -ForegroundColor Green
-        }
-        $plain = $null
+        # Ключ вводится на сайте: ⚙ Настройки → Подключение. Он сохранится в config\yaeri.config.json.
+        Write-Host 'API-ключ Cloud.ru пока не задан: Яэри откроется в демо-режиме.' -ForegroundColor Yellow
+        Write-Host 'Вставьте ключ на сайте: шестерёнка «Настройки» → «Подключение». Перезапуск не нужен.'
     }
 
     # 127.0.0.1: только текущий компьютер. Порт 0 выбирается системой.
