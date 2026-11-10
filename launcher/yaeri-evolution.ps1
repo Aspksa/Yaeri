@@ -362,43 +362,4 @@ function Clear-YEvolution {
     Save-YEvolution
     return Get-YEvolutionView
 }
-function Invoke-YEvolutionTick {
-    if (-not $script:Evo.enabled -or -not (Test-YConfigured)) { return }
-    $now = Get-YNow
-    if ($now -lt [long]$script:Evo.retryAfter -or $now - [long]$script:Evo.lastAction -lt $script:EvoMinInterval) { return }
-    $task = ''
-    try {
-        if ($script:Evo.queue.Count -gt 0) {
-            $task = 'study'
-            [void](Invoke-YEvolutionStudy)
-        } elseif ($now - [long]$script:Evo.lastMaintenance -ge $script:EvoReviewInterval -and $script:Evo.facts.Count + $script:Evo.episodes.Count -gt 0) {
-            $task = 'maintenance'
-            Invoke-YEvolutionMaintenance
-        } elseif ($now - [long]$script:Evo.lastReview -ge $script:EvoReviewInterval -and $script:Evo.lastStudy -gt 0) {
-            $task = 'opinions'
-            Invoke-YEvolutionOpinions
-            $script:Evo.lastReview = Get-YNow
-        } elseif ([long]$script:Soul.exchanges -gt 0 -and $now - [long]$script:Soul.lastSleep -ge $script:SoulSleepAfterMs -and $now - [long]$script:Soul.lastSeen -ge 15 * 60000) {
-            $task = 'sleep'
-            [void](Invoke-YSoulSleep @{ mode = 'auto' })
-            $script:Evo.lastSleep = Get-YNow
-            Add-YEvolutionEvent 'sleep' 'Ночью Яэри пересобрала воспоминания.'
-        } elseif ([long]$script:Soul.exchanges -gt 0 -and $now - [long]$script:Evo.lastReflect -ge $script:EvoReflectInterval) {
-            $task = 'reflection'
-            [void](Invoke-YEvolutionReflect @{ mode = 'auto' })
-            $script:Evo.lastReflect = Get-YNow
-        } else {
-            return
-        }
-        $script:Evo.lastTask = $task
-        $script:Evo.lastAction = Get-YNow
-        $script:Evo.lastError = ''
-        $script:Evo.retryAfter = 0L
-        Save-YEvolution
-    } catch {
-        $script:Evo.lastError = (Get-YEvoText $_.Exception.Message 350)
-        $script:Evo.retryAfter = (Get-YNow) + 30 * 60000
-        Add-YEvolutionEvent 'error' ('Фоновая задача ' + $task + ': ' + $script:Evo.lastError)
-        Save-YEvolution
-    }
-}
+# Планировщик фоновых задач (Invoke-YEvolutionTick) теперь живёт в yaeri-curiosity.ps1.

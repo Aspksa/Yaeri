@@ -552,12 +552,6 @@
 
 
     /* ---------- Душа ---------- */
-    .soul-view {
-      display: grid; gap: 10px; padding: 10px;
-      grid-template-columns: minmax(280px, 340px) minmax(0, 1fr) minmax(280px, 360px);
-    }
-    .soul-view .col > .card:not(.grow) { flex: none; }
-    .soul-view .card.grow, .soul-core { flex: 1; }
     .card-body.grow { flex: 1; }
     .tails-box { display: block; }
     .tails-box svg { display: block; width: 100%; height: auto; overflow: visible; }
@@ -623,9 +617,6 @@
     .trait { display: grid; grid-template-columns: 7.5em 1fr 2.2em; align-items: center; gap: 8px; font-size: .8rem; }
     .trait output { color: var(--muted); font: 600 .72rem/1 var(--mono); text-align: right; }
     .trait input[type="range"] { width: 100%; accent-color: var(--a); }
-    .soul-view { overflow-y: auto; align-items: start; scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
-    .soul-view .col, .soul-view .card { min-height: auto; }
-    .soul-view .card-body.grow { max-height: 70vh; }
     .soul-gap { margin-top: 14px; }
     .soul-sad { color: hsl(338 80% 75%); }
     .mood-strip { display: grid; grid-template-columns: repeat(30, 1fr); gap: 2px; align-items: end; height: 54px; }
@@ -719,17 +710,181 @@
       animation: none !important; transition: none !important; scroll-behavior: auto !important;
     }
 
+    /* ---------- Душа: герой, подвкладки, рост ---------- */
+    .soul-view { display: flex; flex-direction: column; gap: 12px; padding: 12px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
+    .soul-view > * { width: 100%; max-width: 1440px; margin-inline: auto; }
+    .soul-hero {
+      --tone-h: var(--h); position: relative; flex: none; display: grid; align-items: center; overflow: hidden;
+      grid-template-columns: minmax(190px, 250px) minmax(0, 1fr) auto; gap: 10px 32px; padding: 20px 26px;
+      border-color: hsl(var(--tone-h) 40% 26% / .9);
+      background: radial-gradient(110% 150% at 10% 0%, hsl(var(--tone-h) 60% 28% / .42), transparent 58%), var(--surface);
+      transition: border-color .8s, background .8s;
+    }
+    .soul-hero[data-tone="joy"] { --tone-h: 44; }
+    .soul-hero[data-tone="sad"] { --tone-h: 338; }
+    .soul-hero[data-tone="sleepy"] { --tone-h: 232; }
+    .soul-hero[data-tone="think"] { --tone-h: 262; }
+    .hero-art { position: relative; width: 100%; max-width: 250px; margin-inline: auto; padding-bottom: 6px; }
+    .hero-aura { position: absolute; inset: -14% -10% -6%; background: radial-gradient(closest-side, hsl(var(--tone-h) 90% 60% / .3), transparent 72%); pointer-events: none; }
+    html[data-motion="on"] .hero-aura { animation: aura 5.5s ease-in-out infinite alternate; }
+    @keyframes aura { from { opacity: .55; transform: scale(.94); } to { opacity: 1; transform: scale(1.04); } }
+    .soul-hero .tails-box.big { position: relative; width: 100%; margin: 0; }
+    .hero-face {
+      position: absolute; left: 50%; bottom: 0; width: 76px; height: 76px; transform: translateX(-50%); object-fit: cover;
+      border: 2px solid hsl(var(--tone-h) 70% 66% / .75); border-radius: 50%; background: var(--surface-solid);
+      box-shadow: 0 0 26px hsl(var(--tone-h) 90% 60% / .5);
+    }
+    .hero-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .hero-line { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+    .hero-kicker, .hero-age { color: var(--faint); font: 600 .64rem/1.2 var(--mono); letter-spacing: .16em; text-transform: uppercase; }
+    .hero-main .soul-stage { align-items: flex-start; text-align: left; margin: 2px 0 0; }
+    .hero-main .soul-stage b { font-size: clamp(1.6rem, 3.2vw, 2.4rem); line-height: 1.1; }
+    .hero-main .soul-xp { height: 9px; margin: 10px 0 6px; }
+    .hero-main .soul-xp-note { text-align: left; }
+    .hero-pills { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin-top: 12px; }
+    .pill { padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: hsl(var(--h) 24% 6% / .55); }
+    .pill .soul-small { margin-top: 5px; }
+    .hero-stats { display: grid; grid-template-columns: repeat(3, minmax(68px, 1fr)); gap: 8px; align-self: center; }
+    .hero-stats .stat { padding: 12px 8px; background: hsl(var(--h) 24% 6% / .55); }
+    .hero-stats .stat b { font-size: 1.5rem; }
+
+    .soul-tabs {
+      position: sticky; top: -12px; z-index: 4; flex: none; display: flex; gap: 6px; margin-top: 2px; padding: 8px 0;
+      overflow-x: auto; scrollbar-width: none; background: linear-gradient(var(--bg) 70%, transparent);
+    }
+    .soul-tabs::-webkit-scrollbar { display: none; }
+    .stab {
+      flex: none; padding: 9px 18px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface);
+      color: var(--muted); font: 600 .72rem/1 var(--mono); letter-spacing: .14em; text-transform: uppercase;
+      transition: color .2s, border-color .2s, background .2s;
+    }
+    .stab:hover { color: var(--ink); border-color: var(--line-2); }
+    .stab[aria-selected="true"] { color: var(--a-glow); border-color: hsl(var(--h) 55% 45% / .8); background: var(--a-soft); box-shadow: 0 0 18px hsl(var(--h) 80% 50% / .18); }
+    .stab:focus-visible { outline: 2px solid var(--a); outline-offset: 2px; }
+
+    .sp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 12px; align-items: start; }
+    .sp-grid[hidden] { display: none; }
+    .sp-grid > .wide, .sp-grid > .soul-thought { grid-column: 1 / -1; }
+    .sp-grid .card-body.grow { max-height: 70vh; }
+    .sp-grid > .soul-thought { margin: 0; padding: 14px 18px; }
+    .sp-grid > .soul-thought p { font-size: 1.05rem; }
+    .soul-simple { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: .84rem; line-height: 1.45; }
+    .soul-simple li { padding: 7px 10px; border-left: 2px solid var(--a); border-radius: 0 8px 8px 0; background: var(--surface-2); overflow-wrap: anywhere; }
+    .soul-simple li.empty, .feed li.empty { border: 0; background: none; padding-left: 0; color: var(--faint); }
+
+    /* Ступени */
+    .ladder { --p: 0; position: relative; display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); margin: 0; padding: 4px 0 0; list-style: none; }
+    .ladder::before, .ladder::after { content: ""; position: absolute; top: 19px; left: calc(100% / 18); height: 3px; border-radius: 2px; }
+    .ladder::before { right: calc(100% / 18); background: var(--surface-2); }
+    .ladder::after { width: calc((100% - 100% / 9) * var(--p)); background: linear-gradient(90deg, var(--a-deep), var(--a), var(--a-glow)); box-shadow: 0 0 10px var(--a); transition: width .9s; }
+    .ladder li { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; text-align: center; }
+    .ladder .dot {
+      width: 32px; height: 32px; display: grid; place-items: center; border: 2px solid var(--line-2); border-radius: 50%;
+      background: var(--surface-solid); color: var(--faint); font: 700 .74rem/1 var(--mono); transition: all .4s;
+    }
+    .ladder li.done .dot { border-color: var(--a-glow); background: var(--a); color: var(--on-a); box-shadow: 0 0 14px hsl(var(--h) 90% 60% / .6); }
+    .ladder li.cur .dot { border-color: var(--a-glow); color: var(--a-glow); box-shadow: 0 0 0 4px var(--a-soft), 0 0 20px var(--a); }
+    html[data-motion="on"] .ladder li.cur .dot { animation: ring 2.4s ease-in-out infinite; }
+    @keyframes ring { 50% { box-shadow: 0 0 0 7px hsl(var(--h) 70% 50% / .08), 0 0 26px var(--a); } }
+    .ladder .lt { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+    .ladder b { color: var(--muted); font: 600 .8rem/1.2 var(--serif); overflow-wrap: anywhere; }
+    .ladder li.done b, .ladder li.cur b { color: var(--ink); }
+    .ladder small { color: var(--faint); font: 500 .6rem/1.3 var(--mono); letter-spacing: .06em; }
+
+    /* Графики */
+    .chart { position: relative; }
+    .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+    .chart .grid { stroke: var(--line); stroke-width: 1; }
+    .chart .thr { stroke: var(--line-2); stroke-width: 1; stroke-dasharray: 3 4; }
+    .chart text { fill: var(--faint); font: 500 10px var(--mono); }
+    .chart text.thr-l { fill: var(--muted); }
+    .chart .ln { fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+    .chart .guide { stroke: var(--a); stroke-opacity: .55; stroke-width: 1; }
+    .chart .pt { stroke: var(--surface-solid); stroke-width: 1.5; }
+    .chart .bar { transition: opacity .2s; }
+    .chart .bar:hover { opacity: .75; }
+    .chart .rd-g { fill: none; stroke: var(--line); }
+    .chart .rd-now { fill: hsl(var(--h) 70% 55% / .28); stroke: var(--a); stroke-width: 2; stroke-linejoin: round; }
+    .chart .rd-old { fill: none; stroke: var(--muted); stroke-width: 1.4; stroke-dasharray: 4 3; stroke-linejoin: round; }
+    .chart.radar svg { max-width: 330px; margin-inline: auto; }
+    .chart-empty { padding: 26px 10px; border: 1px dashed var(--line-2); border-radius: 10px; color: var(--faint); font-size: .8rem; line-height: 1.45; text-align: center; }
+    .c-tip {
+      position: absolute; z-index: 3; padding: 7px 9px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--surface-solid);
+      box-shadow: 0 8px 22px hsl(0 0% 0% / .5); font: 500 .72rem/1.45 var(--sans); white-space: nowrap; pointer-events: none; transform: translate(-50%, -112%);
+    }
+    .c-tip b { display: block; margin-bottom: 2px; color: var(--muted); font: 600 .62rem/1.2 var(--mono); letter-spacing: .1em; }
+    .c-tip i { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; }
+
+    /* Учебные цели */
+    .goals { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 10px; }
+    .goals > li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; align-items: center; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
+    .goals > li.done { opacity: .72; }
+    .ring { --v: 0; position: relative; width: 56px; height: 56px; display: grid; place-items: center; border-radius: 50%; background: conic-gradient(var(--a) calc(var(--v) * 1%), var(--surface-solid) 0); font: 700 .78rem/1 var(--mono); }
+    .ring::before { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: var(--surface-2); }
+    .ring span { position: relative; }
+    .goal-t b { display: block; font-size: .9rem; line-height: 1.35; }
+    .goal-t span { color: var(--muted); font-size: .76rem; line-height: 1.4; }
+    .goals .steps { grid-column: 1 / -1; margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 3px; }
+    .goals .steps li { display: flex; gap: 7px; color: var(--muted); font-size: .78rem; line-height: 1.4; }
+    .goals .steps li::before { content: "○"; color: var(--faint); }
+    .goals .steps li.on { color: var(--ink); }
+    .goals .steps li.on::before { content: "●"; color: var(--a); }
+
+    /* Догадки */
+    .insights { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+    .insights > li { padding: 10px 11px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
+    .insights .iq { color: var(--faint); font: 500 .66rem/1.3 var(--mono); }
+    .insights p { margin: 3px 0 7px; font-size: .86rem; line-height: 1.45; }
+    .insights .ia { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    .badge { padding: 2px 8px; border: 1px solid var(--line-2); border-radius: 999px; color: var(--muted); font: 600 .58rem/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .badge.ok { border-color: var(--a); color: var(--a); }
+
+    /* Лента */
+    .feed { list-style: none; margin: 0; padding: 0; }
+    .feed li { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+    .feed li:last-child { border-bottom: 0; }
+    .feed .ico { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: var(--a-soft); font-size: .95rem; }
+    .feed time { display: block; color: var(--faint); font: 500 .62rem/1.3 var(--mono); letter-spacing: .06em; }
+    .feed p { margin: 1px 0 0; font-size: .85rem; line-height: 1.4; overflow-wrap: anywhere; }
+
+    /* Управление обучением */
+    .seg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
+    .seg button { padding: 8px 4px; border: 0; border-radius: 7px; background: none; color: var(--muted); font: 600 .68rem/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+    .seg button:hover { color: var(--ink); }
+    .seg button[aria-checked="true"] { background: var(--a); color: var(--on-a); }
+    .usage { margin: 10px 0 12px; }
+    .usage .soul-bond { height: 7px; }
+    #g-run { margin-top: 2px; padding: 8px 12px; }
+    #g-limit { max-width: 220px; }
+
+    @media (max-width: 980px) {
+      .soul-hero { grid-template-columns: minmax(150px, 210px) minmax(0, 1fr); padding: 16px; gap: 12px 22px; }
+      .hero-stats { grid-column: 1 / -1; }
+    }
+    @media (max-width: 720px) {
+      .soul-hero { grid-template-columns: 1fr; text-align: center; }
+      .hero-art { max-width: 210px; }
+      .hero-line { justify-content: center; flex-wrap: wrap; }
+      .hero-main .soul-stage { align-items: center; }
+      .hero-main .soul-xp-note { text-align: center; }
+      .pill { text-align: left; }
+      .ladder { grid-template-columns: 1fr; gap: 14px; padding: 0; }
+      .ladder::before, .ladder::after { top: 16px; left: 15px; width: 3px; }
+      .ladder::before { right: auto; bottom: 16px; height: auto; }
+      .ladder::after { width: 3px; height: calc((100% - 32px) * var(--p)); transition: height .9s; }
+      .ladder li { flex-direction: row; align-items: center; gap: 12px; text-align: left; }
+      .ladder .lt { align-items: flex-start; }
+    }
+
     /* ---------- Узкие экраны ---------- */
     @media (max-width: 1180px) {
       .deck { grid-template-columns: minmax(240px, 280px) minmax(0, 1fr); }
       .col-right { display: none; }
-      .soul-view { grid-template-columns: minmax(260px, 320px) minmax(0, 1fr); overflow-y: auto; align-content: start; }
-      .soul-view .col, .soul-view .card { min-height: auto; }
-      .soul-view .card-body.grow { max-height: 70vh; }
-      .soul-view > .col:last-child { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); align-items: start; }
     }
     @media (max-width: 820px) {
       body { overflow: auto; }
+      .soul-view { overflow: visible; padding: 8px; }
+      .soul-tabs { top: 96px; }
       .shell { height: auto; min-height: 100vh; }
       .topbar { position: sticky; top: 0; z-index: 5; height: auto; background: var(--bg); flex-wrap: wrap; gap: 8px 12px; padding: 8px 12px; }
       .tabs { order: 3; width: 100%; margin: 0; }
@@ -741,9 +896,6 @@
       .col-right { display: flex; }
       .mem-card .card-body { max-height: 60vh; }
       .brain-view { display: flex; flex-direction: column; }
-      .soul-view { display: flex; flex-direction: column; padding: 8px; gap: 8px; overflow: visible; }
-      .soul-view > .col:last-child { display: flex; }
-      .soul-view .card-body.grow { max-height: 70vh; }
       .stage { height: 64vh; flex: none; }
       .controls { border-left: 0; border-top: 1px solid var(--line); }
       .chat { padding: 14px 12px; }
@@ -1012,42 +1164,52 @@
     <!-- Аватар Яэри: открывает чат поверх любого раздела -->
     <!-- Душа -->
     <main class="view soul-view" id="soul" role="tabpanel" aria-labelledby="tab-soul" hidden>
-      <div class="col">
-        <section class="card soul-core" aria-labelledby="soul-core-title">
-          <div class="card-head">
-            <h2 id="soul-core-title">Яэри сейчас</h2>
-            <span class="card-meta" id="soul-age"></span>
+      <section class="card soul-hero" id="soul-hero" data-tone="calm" aria-labelledby="soul-core-title">
+        <h2 class="vh" id="soul-core-title">Яэри сейчас</h2>
+        <div class="hero-art">
+          <span class="hero-aura" aria-hidden="true"></span>
+          <div class="tails-box big" id="soul-tails" aria-hidden="true"></div>
+          <img class="hero-face" id="soul-face" src="yaeri/idle-face.webp" alt="" width="96" height="96">
+        </div>
+        <div class="hero-main">
+          <div class="hero-line"><span class="hero-kicker" id="soul-level">хвост души 1 из 9</span><span class="hero-age" id="soul-age"></span></div>
+          <div class="soul-stage"><b id="soul-stage">Искорка</b></div>
+          <div class="soul-xp" role="progressbar" aria-label="Рост до следующей ступени" aria-valuemin="0" aria-valuemax="100" id="soul-xp-bar"><i id="soul-xp"></i></div>
+          <p class="soul-xp-note" id="soul-xp-note"></p>
+          <div class="hero-pills">
+            <div class="pill pill-mood"><span class="soul-lbl">Настроение</span><p class="soul-mood"><b id="soul-mood">тихая радость</b> <span id="soul-mood-why"></span></p></div>
+            <div class="pill pill-bond"><span class="soul-lbl">Близость с вами <output id="soul-bond-val">10</output></span><div class="soul-bond"><i id="soul-bond"></i></div><p class="soul-small" id="soul-bond-note"></p></div>
           </div>
-          <div class="card-body grow">
-            <p class="soul-demo" id="soul-demo" hidden>Душа проснётся и начнёт расти, когда Яэри подключится к Cloud.ru. Пока здесь её самое первое состояние.</p>
-            <div class="tails-box big" id="soul-tails" aria-hidden="true"></div>
-            <div class="soul-stage">
-              <b id="soul-stage">Искорка</b>
-              <span id="soul-level">хвост души 1 из 9</span>
-            </div>
-            <div class="soul-xp" role="progressbar" aria-label="Рост до следующей ступени" aria-valuemin="0" aria-valuemax="100" id="soul-xp-bar"><i id="soul-xp"></i></div>
-            <p class="soul-xp-note" id="soul-xp-note"></p>
-            <div class="soul-block">
-              <span class="soul-lbl">Настроение</span>
-              <p class="soul-mood"><b id="soul-mood">тихая радость</b> <span id="soul-mood-why"></span></p>
-            </div>
-            <div class="soul-block">
-              <span class="soul-lbl">Что она чувствует внутри</span>
-              <div class="needs" id="soul-needs"></div>
-            </div>
-            <div class="soul-block">
-              <span class="soul-lbl">Близость с вами <output id="soul-bond-val">10</output></span>
-              <div class="soul-bond"><i id="soul-bond"></i></div>
-              <p class="soul-small" id="soul-bond-note"></p>
-            </div>
+        </div>
+        <div class="hero-stats">
+          <div class="stat"><b id="soul-st-ex">0</b><span>реплик</span></div>
+          <div class="stat"><b id="soul-st-ref">0</b><span>раздумий</span></div>
+          <div class="stat"><b id="soul-st-days">0</b><span>дней</span></div>
+        </div>
+      </section>
+
+      <div class="soul-tabs" role="tablist" aria-label="Разделы души">
+        <button type="button" class="stab" role="tab" id="stab-now" aria-controls="sp-now" aria-selected="true" data-sp="now">Сейчас</button>
+        <button type="button" class="stab" role="tab" id="stab-growth" aria-controls="sp-growth" aria-selected="false" data-sp="growth">Рост</button>
+        <button type="button" class="stab" role="tab" id="stab-memory" aria-controls="sp-memory" aria-selected="false" data-sp="memory">Память</button>
+        <button type="button" class="stab" role="tab" id="stab-world" aria-controls="sp-world" aria-selected="false" data-sp="world">Мир</button>
+        <button type="button" class="stab" role="tab" id="stab-char" aria-controls="sp-char" aria-selected="false" data-sp="char">Характер</button>
+      </div>
+
+      <div class="sp-grid" id="sp-now" role="tabpanel" aria-labelledby="stab-now">
+                  <div class="soul-thought" id="soul-thought" hidden>
+                    <span class="soul-lbl">Последняя мысль о вас</span>
+                    <p id="soul-thought-text"></p>
+                  </div>
+        <section class="card" aria-labelledby="soul-inside-title">
+          <div class="card-head"><h2 id="soul-inside-title">Что внутри</h2></div>
+          <div class="card-body">
+            <p class="soul-demo" id="soul-demo" hidden>Душа проснётся и начнёт расти, когда Яэри подключится к Cloud.ru. Пока здесь её самое начало: всё сохраняется только в этом браузере.</p>
+            <span class="soul-lbl">Что она чувствует</span>
+            <div class="needs" id="soul-needs"></div>
             <div class="soul-block">
               <label class="soul-lbl" for="soul-self">Кем она себя чувствует</label>
               <textarea class="field soul-edit" id="soul-self" rows="3" maxlength="500"></textarea>
-            </div>
-            <div class="soul-stats">
-              <div class="stat"><b id="soul-st-ex">0</b><span>реплик</span></div>
-              <div class="stat"><b id="soul-st-ref">0</b><span>раздумий</span></div>
-              <div class="stat"><b id="soul-st-days">0</b><span>дней</span></div>
             </div>
             <p class="soul-small soul-sad" id="soul-sad" hidden></p>
             <p class="soul-small" id="soul-sleep-note"></p>
@@ -1059,176 +1221,239 @@
             <span class="soul-status" id="soul-status" role="status"></span>
           </div>
         </section>
-      </div>
-
-      <div class="col">
         <section class="card" aria-labelledby="soul-moods-title">
-          <div class="card-head">
-            <h2 id="soul-moods-title">Ваше настроение</h2>
-            <span class="card-meta">30 дней, как его видит Яэри</span>
-          </div>
-          <div class="card-body"><div class="mood-strip" id="soul-moods" role="img" aria-label="Настроение по дням"></div><p class="soul-small" id="soul-moods-note"></p></div>
-        </section>
-        <section class="card" aria-labelledby="soul-moments-title">
-          <div class="card-head">
-            <h2 id="soul-moments-title">Важные моменты</h2>
-            <span class="card-meta" id="soul-moments-count"></span>
-          </div>
-          <div class="card-body"><ul class="moments" id="soul-moments"></ul></div>
-          <div class="card-foot"><span>Что вспоминается — крепнет, что нет — бледнеет. 📌 — не забывать</span></div>
-        </section>
-        <section class="card grow" aria-labelledby="soul-journal-title">
-          <div class="card-head">
-            <h2 id="soul-journal-title">Дневник Яэри</h2>
-            <span class="card-meta" id="soul-journal-count"></span>
-          </div>
-          <div class="soul-thought" id="soul-thought" hidden>
-            <span class="soul-lbl">Последняя мысль о вас</span>
-            <p id="soul-thought-text"></p>
-          </div>
-          <div class="j-tools">
-            <input class="field" id="soul-jsearch" type="search" placeholder="Поиск по дневнику" aria-label="Поиск по дневнику">
-            <div class="j-cal" id="soul-jcal" aria-label="Календарь дневника"></div>
-            <p class="j-filter" id="soul-jfilter" hidden></p>
-          </div>
-          <div class="card-body grow"><ul class="journal" id="soul-journal"></ul></div>
-          <div class="card-foot"><span>Яэри пишет сюда, когда размышляет о разговорах и о вас</span></div>
+                  <div class="card-head">
+                    <h2 id="soul-moods-title">Ваше настроение</h2>
+                    <span class="card-meta">30 дней, как его видит Яэри</span>
+                  </div>
+                  <div class="card-body"><div class="mood-strip" id="soul-moods" role="img" aria-label="Настроение по дням"></div><p class="soul-small" id="soul-moods-note"></p></div>
+                </section>
+        <section class="card" aria-labelledby="g-feed-title">
+          <div class="card-head"><h2 id="g-feed-title">Что нового</h2><span class="card-meta" id="g-feed-meta"></span></div>
+          <div class="card-body"><ul class="feed" id="g-feed"></ul></div>
+          <div class="card-foot"><span>То, чему она научилась сама, пока вас не было</span></div>
         </section>
       </div>
-
-      <div class="col">
-        <section class="card" aria-labelledby="soul-owner-title">
-          <div class="card-head">
-            <h2 id="soul-owner-title">Как она видит вас</h2>
-          </div>
-          <div class="card-body">
-            <textarea class="field soul-edit" id="soul-portrait" rows="4" maxlength="700" placeholder="Яэри ещё только знакомится с вами. После нескольких разговоров здесь появится её портрет хозяина."></textarea>
-            <div class="soul-list" data-key="goals"><span class="soul-lbl">Цели и мечты</span><ul></ul><input class="field" type="text" maxlength="200" placeholder="+ добавить" aria-label="Добавить цель"></div>
-            <div class="soul-list" data-key="likes"><span class="soul-lbl">Что вам нравится</span><ul></ul><input class="field" type="text" maxlength="200" placeholder="+ добавить" aria-label="Добавить, что нравится"></div>
-            <div class="soul-list" data-key="worries"><span class="soul-lbl">Что вас тревожит</span><ul></ul><input class="field" type="text" maxlength="200" placeholder="+ добавить" aria-label="Добавить тревогу"></div>
-          </div>
+      <div class="sp-grid" id="sp-growth" role="tabpanel" aria-labelledby="stab-growth" hidden>
+        <section class="card wide" aria-labelledby="g-ladder-title">
+          <div class="card-head"><h2 id="g-ladder-title">Ступени развития</h2><span class="card-meta" id="g-ladder-meta"></span></div>
+          <div class="card-body"><ol class="ladder" id="g-ladder"></ol></div>
         </section>
-        <section class="card" aria-labelledby="soul-world-title">
-          <div class="card-head">
-            <h2 id="soul-world-title">Её мир</h2>
-          </div>
-          <div class="card-body">
-            <span class="soul-lbl">Её цели</span>
-            <ul class="aims" id="soul-aims"></ul>
-            <input class="field" id="soul-aim-add" type="text" maxlength="200" placeholder="+ подарить ей цель" aria-label="Добавить цель Яэри">
-            <span class="soul-lbl soul-gap">Её увлечения</span>
-            <div class="soul-list"><ul id="soul-interests"></ul></div>
-            <span class="soul-lbl soul-gap">Её мнения и вкусы</span>
-            <ul class="opinions" id="soul-opinions"></ul>
-          </div>
+        <section class="card wide" aria-labelledby="g-xp-title">
+          <div class="card-head"><h2 id="g-xp-title">Рост опыта</h2><span class="card-meta" id="g-xp-meta"></span></div>
+          <div class="card-body"><div class="chart" id="g-xp-chart" role="img" aria-label="График опыта по дням"></div><div class="t-legend" id="g-xp-legend"></div></div>
         </section>
-        <section class="card" aria-labelledby="soul-secrets-title">
-          <div class="card-head">
-            <h2 id="soul-secrets-title">Секреты</h2>
-            <span class="card-meta">открываются с близостью</span>
-          </div>
-          <div class="card-body"><ul class="secrets" id="soul-secrets"></ul></div>
+        <section class="card" aria-labelledby="g-know-title">
+          <div class="card-head"><h2 id="g-know-title">Знания и память</h2><span class="card-meta" id="g-know-meta"></span></div>
+          <div class="card-body"><div class="chart" id="g-know-chart" role="img" aria-label="График знаний по дням"></div><div class="t-legend" id="g-know-legend"></div></div>
         </section>
-        <section class="card" aria-labelledby="soul-skills-title">
-          <div class="card-head">
-            <h2 id="soul-skills-title">Умения</h2>
-            <span class="card-meta">открываются с хвостами</span>
-          </div>
-          <div class="card-body"><ul class="soul-skills" id="soul-skills"></ul></div>
+        <section class="card" aria-labelledby="g-radar-title">
+          <div class="card-head"><h2 id="g-radar-title">Характер сейчас</h2><span class="card-meta">штрих — как было</span></div>
+          <div class="card-body"><div class="chart radar" id="g-radar" role="img" aria-label="Радар черт характера"></div></div>
         </section>
-        <section class="card" aria-labelledby="soul-traits-title">
-          <div class="card-head">
-            <h2 id="soul-traits-title">Характер</h2>
-            <span class="card-meta">меняется медленно</span>
-          </div>
-          <div class="card-body"><div class="traits" id="soul-traits"></div></div>
+        <section class="card" aria-labelledby="g-calls-title">
+          <div class="card-head"><h2 id="g-calls-title">Фоновая работа</h2><span class="card-meta" id="g-calls-meta"></span></div>
+          <div class="card-body"><div class="chart" id="g-calls-chart" role="img" aria-label="Запросы по дням"></div><div class="t-legend" id="g-calls-legend"></div></div>
         </section>
         <section class="card" aria-labelledby="soul-chart-title">
-          <div class="card-head">
-            <h2 id="soul-chart-title">Как менялся характер</h2>
-            <span class="card-meta" id="soul-chart-meta"></span>
-          </div>
-          <div class="card-body">
-            <div class="t-chart" id="soul-chart" role="img" aria-label="График черт характера по дням"></div>
-            <div class="t-legend" id="soul-chart-legend"></div>
-          </div>
+                  <div class="card-head">
+                    <h2 id="soul-chart-title">Как менялся характер</h2>
+                    <span class="card-meta" id="soul-chart-meta"></span>
+                  </div>
+                  <div class="card-body">
+                    <div class="t-chart" id="soul-chart" role="img" aria-label="График черт характера по дням"></div>
+                    <div class="t-legend" id="soul-chart-legend"></div>
+                  </div>
+                </section>
+        <section class="card wide" aria-labelledby="g-goals-title">
+          <div class="card-head"><h2 id="g-goals-title">Чему она учится</h2><span class="card-meta" id="g-goals-meta"></span></div>
+          <div class="card-body"><ul class="goals" id="g-goals"></ul></div>
+          <div class="card-foot"><span>Свои цели роста; прогресс растёт только от практики и двигает ступени</span></div>
         </section>
-        <section class="card" aria-labelledby="soul3-title">
-          <div class="card-head">
-            <h2 id="soul3-title">Разум, близость и развитие · Soul 3.0</h2>
-            <span class="card-meta" id="soul3-trust">Доверие: —</span>
-          </div>
+        <section class="card" aria-labelledby="g-ins-title">
+          <div class="card-head"><h2 id="g-ins-title">Догадки о вас</h2><span class="card-meta" id="g-ins-meta"></span></div>
           <div class="card-body">
-            <label class="toggle server-only">
-              <span class="t-text"><span class="t-name">Развитие Soul 3.0</span><span class="t-desc">Личная история, исправления, планы и забота — хранится локально</span></span>
-              <input class="vh" type="checkbox" role="switch" id="soul3-enabled"><span class="track" aria-hidden="true"></span>
-            </label>
-            <label class="lbl" for="soul3-affection">Стиль близости</label>
-            <select class="field server-only" id="soul3-affection">
-              <option value="0">Тёплый дружеский</option>
-              <option value="1">Нежный, ненавязчивый</option>
-              <option value="2">Романтический стиль персонажа</option>
+            <ul class="insights" id="g-insights"></ul>
+            <span class="soul-lbl soul-gap">Хочет у вас узнать</span>
+            <ul class="soul-simple" id="g-questions"></ul>
+          </div>
+          <div class="card-foot"><span>Догадка — не факт, пока вы её не подтвердили</span></div>
+        </section>
+        <section class="card" aria-labelledby="g-lessons-title">
+          <div class="card-head"><h2 id="g-lessons-title">Уроки на ошибках</h2><span class="card-meta" id="g-lessons-meta"></span></div>
+          <div class="card-body"><ul class="soul-simple" id="g-lessons"></ul></div>
+          <div class="card-foot"><span>Из ваших поправок Яэри сама выводит правила</span></div>
+        </section>
+        <section class="card" aria-labelledby="g-ctl-title">
+          <div class="card-head"><h2 id="g-ctl-title">Фоновое обучение</h2><span class="card-meta" id="g-ctl-meta"></span></div>
+          <div class="card-body">
+            <span class="soul-lbl">Активность</span>
+            <div class="seg" id="g-int" role="radiogroup" aria-label="Активность фонового обучения">
+              <button type="button" role="radio" data-int="off">Выкл</button>
+              <button type="button" role="radio" data-int="quiet">Тихо</button>
+              <button type="button" role="radio" data-int="normal">Обычно</button>
+              <button type="button" role="radio" data-int="active">Активно</button>
+            </div>
+            <p class="soul-small" id="g-int-note"></p>
+            <label class="soul-lbl soul-gap" for="g-limit">Лимит запросов в сутки</label>
+            <select class="field" id="g-limit">
+              <option value="30">30</option><option value="60">60</option><option value="150">150</option><option value="300">300</option><option value="0">Без лимита</option>
             </select>
-            <label class="toggle server-only">
-              <span class="t-text"><span class="t-name">Ненавязчивая инициатива</span><span class="t-desc">Не чаще раза в сутки готовит мысль или напоминание, показываемое только в приложении</span></span>
-              <input class="vh" type="checkbox" role="switch" id="soul3-initiative"><span class="track" aria-hidden="true"></span>
-            </label>
-            <p class="soul-small" id="soul3-status" role="status">Загружаю развитие личности…</p>
-            <span class="soul-lbl soul-gap">Личные ценности</span>
-            <ul class="journal" id="soul3-values"></ul>
-            <span class="soul-lbl soul-gap">Интересы и переломные моменты</span>
-            <ul class="journal" id="soul3-milestones"></ul>
-            <span class="soul-lbl soul-gap">Забота и уроки общения</span>
-            <ul class="journal" id="soul3-bond"></ul>
-            <span class="soul-lbl soul-gap">История роста</span>
-            <ul class="journal" id="soul3-growth"></ul>
-            <span class="soul-lbl soul-gap">Совместные планы</span>
-            <form id="soul3-plan-form">
-              <label class="lbl" for="soul3-goal">Новая цель хозяина</label>
-              <input class="field" type="text" maxlength="240" id="soul3-goal" placeholder="Например: выучить пять аккордов">
-              <button class="mini-btn" type="submit">Составить план</button>
-            </form>
-            <ul class="journal" id="soul3-plans"></ul>
-            <span class="soul-lbl soul-gap">Договорённости и обещания</span>
-            <form id="soul3-promise-form">
-              <label class="lbl" for="soul3-promise">Добавить договорённость</label>
-              <input class="field" type="text" maxlength="300" id="soul3-promise" placeholder="Что нужно не забыть выполнить">
-              <label class="lbl" for="soul3-due">Срок (необязательно)</label>
-              <input class="field" type="date" id="soul3-due">
-              <button class="mini-btn" type="submit">Сохранить обещание</button>
-            </form>
-            <ul class="journal" id="soul3-promises"></ul>
-            <button type="button" class="mini-btn server-only" id="soul3-clear">Очистить данные Soul 3.0</button>
+            <div class="usage"><div class="soul-bond"><i id="g-usage-bar"></i></div><p class="soul-small" id="g-usage-text"></p></div>
+            <button class="mini-btn solid server-only" type="button" id="g-run" hidden>Учиться сейчас</button>
+            <p class="soul-small" id="g-ctl-status" role="status"></p>
           </div>
-          <div class="card-foot"><span>Планы выполняются только после подтверждения хозяином. Романтический стиль и инициативу можно отключить.</span></div>
+          <div class="card-foot"><span>Каждый шаг обучения — запрос к Cloud.ru</span></div>
         </section>
+      </div>
+      <div class="sp-grid" id="sp-memory" role="tabpanel" aria-labelledby="stab-memory" hidden>
+        <section class="card" aria-labelledby="soul-moments-title">
+                  <div class="card-head">
+                    <h2 id="soul-moments-title">Важные моменты</h2>
+                    <span class="card-meta" id="soul-moments-count"></span>
+                  </div>
+                  <div class="card-body"><ul class="moments" id="soul-moments"></ul></div>
+                  <div class="card-foot"><span>Что вспоминается — крепнет, что нет — бледнеет. 📌 — не забывать</span></div>
+                </section>
+        <section class="card grow" aria-labelledby="soul-journal-title">
+                  <div class="card-head">
+                    <h2 id="soul-journal-title">Дневник Яэри</h2>
+                    <span class="card-meta" id="soul-journal-count"></span>
+                  </div>
+                  <div class="j-tools">
+                    <input class="field" id="soul-jsearch" type="search" placeholder="Поиск по дневнику" aria-label="Поиск по дневнику">
+                    <div class="j-cal" id="soul-jcal" aria-label="Календарь дневника"></div>
+                    <p class="j-filter" id="soul-jfilter" hidden></p>
+                  </div>
+                  <div class="card-body grow"><ul class="journal" id="soul-journal"></ul></div>
+                  <div class="card-foot"><span>Яэри пишет сюда, когда размышляет о разговорах и о вас</span></div>
+                </section>
         <section class="card" aria-labelledby="soul-evolution-title">
-          <div class="card-head">
-            <h2 id="soul-evolution-title">Автономная жизнь</h2>
-            <span class="card-meta" id="soul-evo-meta">Ожидание</span>
-          </div>
-          <div class="card-body">
-            <label class="toggle server-only">
-              <span class="t-text"><span class="t-name">Фоновое обучение и память</span><span class="t-desc">Пока запущен локальный сервер: обдумывает опыт, проверяет знания и записывает перемены</span></span>
-              <input class="vh" type="checkbox" role="switch" id="soul-evo-enabled"><span class="track" aria-hidden="true"></span>
-            </label>
-            <p class="soul-small" id="soul-evo-state" role="status"></p>
-            <button type="button" class="mini-btn server-only" id="soul-evo-clear">Очистить автономную память</button>
-            <span class="soul-lbl">Внутренние события</span>
-            <ul class="journal" id="soul-evo-events"></ul>
-            <span class="soul-lbl soul-gap">История личности</span>
-            <ul class="journal" id="soul-evo-timeline"></ul>
-            <span class="soul-lbl soul-gap">Знания и уверенность</span>
-            <ul class="journal" id="soul-evo-facts"></ul>
-          </div>
-          <div class="card-foot"><span>Непроверенные факты не считаются достоверными. Фоновые задачи работают при запущенном сервере.</span></div>
-        </section>
+                  <div class="card-head">
+                    <h2 id="soul-evolution-title">Автономная жизнь</h2>
+                    <span class="card-meta" id="soul-evo-meta">Ожидание</span>
+                  </div>
+                  <div class="card-body">
+                    <label class="toggle server-only">
+                      <span class="t-text"><span class="t-name">Фоновое обучение и память</span><span class="t-desc">Пока запущен локальный сервер: обдумывает опыт, проверяет знания и записывает перемены</span></span>
+                      <input class="vh" type="checkbox" role="switch" id="soul-evo-enabled"><span class="track" aria-hidden="true"></span>
+                    </label>
+                    <p class="soul-small" id="soul-evo-state" role="status"></p>
+                    <button type="button" class="mini-btn server-only" id="soul-evo-clear">Очистить автономную память</button>
+                    <span class="soul-lbl">Внутренние события</span>
+                    <ul class="journal" id="soul-evo-events"></ul>
+                    <span class="soul-lbl soul-gap">История личности</span>
+                    <ul class="journal" id="soul-evo-timeline"></ul>
+                    <span class="soul-lbl soul-gap">Знания и уверенность</span>
+                    <ul class="journal" id="soul-evo-facts"></ul>
+                  </div>
+                  <div class="card-foot"><span>Непроверенные факты не считаются достоверными. Фоновые задачи работают при запущенном сервере.</span></div>
+                </section>
         <section class="card grow" aria-labelledby="soul-lessons-title">
-          <div class="card-head">
-            <h2 id="soul-lessons-title">Что она поняла</h2>
-          </div>
-          <div class="card-body grow"><div class="soul-list" data-key="lessons"><ul></ul><input class="field" type="text" maxlength="300" placeholder="+ подсказать Яэри" aria-label="Добавить урок"></div></div>
-        </section>
+                  <div class="card-head">
+                    <h2 id="soul-lessons-title">Что она поняла</h2>
+                  </div>
+                  <div class="card-body grow"><div class="soul-list" data-key="lessons"><ul></ul><input class="field" type="text" maxlength="300" placeholder="+ подсказать Яэри" aria-label="Добавить урок"></div></div>
+                </section>
+      </div>
+      <div class="sp-grid" id="sp-world" role="tabpanel" aria-labelledby="stab-world" hidden>
+        <section class="card" aria-labelledby="soul-owner-title">
+                  <div class="card-head">
+                    <h2 id="soul-owner-title">Как она видит вас</h2>
+                  </div>
+                  <div class="card-body">
+                    <textarea class="field soul-edit" id="soul-portrait" rows="4" maxlength="700" placeholder="Яэри ещё только знакомится с вами. После нескольких разговоров здесь появится её портрет хозяина."></textarea>
+                    <div class="soul-list" data-key="goals"><span class="soul-lbl">Цели и мечты</span><ul></ul><input class="field" type="text" maxlength="200" placeholder="+ добавить" aria-label="Добавить цель"></div>
+                    <div class="soul-list" data-key="likes"><span class="soul-lbl">Что вам нравится</span><ul></ul><input class="field" type="text" maxlength="200" placeholder="+ добавить" aria-label="Добавить, что нравится"></div>
+                    <div class="soul-list" data-key="worries"><span class="soul-lbl">Что вас тревожит</span><ul></ul><input class="field" type="text" maxlength="200" placeholder="+ добавить" aria-label="Добавить тревогу"></div>
+                  </div>
+                </section>
+        <section class="card" aria-labelledby="soul-world-title">
+                  <div class="card-head">
+                    <h2 id="soul-world-title">Её мир</h2>
+                  </div>
+                  <div class="card-body">
+                    <span class="soul-lbl">Её цели</span>
+                    <ul class="aims" id="soul-aims"></ul>
+                    <input class="field" id="soul-aim-add" type="text" maxlength="200" placeholder="+ подарить ей цель" aria-label="Добавить цель Яэри">
+                    <span class="soul-lbl soul-gap">Её увлечения</span>
+                    <div class="soul-list"><ul id="soul-interests"></ul></div>
+                    <span class="soul-lbl soul-gap">Её мнения и вкусы</span>
+                    <ul class="opinions" id="soul-opinions"></ul>
+                  </div>
+                </section>
+        <section class="card" aria-labelledby="soul-secrets-title">
+                  <div class="card-head">
+                    <h2 id="soul-secrets-title">Секреты</h2>
+                    <span class="card-meta">открываются с близостью</span>
+                  </div>
+                  <div class="card-body"><ul class="secrets" id="soul-secrets"></ul></div>
+                </section>
+        <section class="card" aria-labelledby="soul-skills-title">
+                  <div class="card-head">
+                    <h2 id="soul-skills-title">Умения</h2>
+                    <span class="card-meta">открываются с хвостами</span>
+                  </div>
+                  <div class="card-body"><ul class="soul-skills" id="soul-skills"></ul></div>
+                </section>
+      </div>
+      <div class="sp-grid" id="sp-char" role="tabpanel" aria-labelledby="stab-char" hidden>
+        <section class="card" aria-labelledby="soul-traits-title">
+                  <div class="card-head">
+                    <h2 id="soul-traits-title">Характер</h2>
+                    <span class="card-meta">меняется медленно</span>
+                  </div>
+                  <div class="card-body"><div class="traits" id="soul-traits"></div></div>
+                </section>
+        <section class="card" aria-labelledby="soul3-title">
+                  <div class="card-head">
+                    <h2 id="soul3-title">Разум, близость и развитие · Soul 3.0</h2>
+                    <span class="card-meta" id="soul3-trust">Доверие: —</span>
+                  </div>
+                  <div class="card-body">
+                    <label class="toggle server-only">
+                      <span class="t-text"><span class="t-name">Развитие Soul 3.0</span><span class="t-desc">Личная история, исправления, планы и забота — хранится локально</span></span>
+                      <input class="vh" type="checkbox" role="switch" id="soul3-enabled"><span class="track" aria-hidden="true"></span>
+                    </label>
+                    <label class="lbl" for="soul3-affection">Стиль близости</label>
+                    <select class="field server-only" id="soul3-affection">
+                      <option value="0">Тёплый дружеский</option>
+                      <option value="1">Нежный, ненавязчивый</option>
+                      <option value="2">Романтический стиль персонажа</option>
+                    </select>
+                    <label class="toggle server-only">
+                      <span class="t-text"><span class="t-name">Ненавязчивая инициатива</span><span class="t-desc">Не чаще раза в сутки готовит мысль или напоминание, показываемое только в приложении</span></span>
+                      <input class="vh" type="checkbox" role="switch" id="soul3-initiative"><span class="track" aria-hidden="true"></span>
+                    </label>
+                    <p class="soul-small" id="soul3-status" role="status">Загружаю развитие личности…</p>
+                    <span class="soul-lbl soul-gap">Личные ценности</span>
+                    <ul class="journal" id="soul3-values"></ul>
+                    <span class="soul-lbl soul-gap">Интересы и переломные моменты</span>
+                    <ul class="journal" id="soul3-milestones"></ul>
+                    <span class="soul-lbl soul-gap">Забота и уроки общения</span>
+                    <ul class="journal" id="soul3-bond"></ul>
+                    <span class="soul-lbl soul-gap">История роста</span>
+                    <ul class="journal" id="soul3-growth"></ul>
+                    <span class="soul-lbl soul-gap">Совместные планы</span>
+                    <form id="soul3-plan-form">
+                      <label class="lbl" for="soul3-goal">Новая цель хозяина</label>
+                      <input class="field" type="text" maxlength="240" id="soul3-goal" placeholder="Например: выучить пять аккордов">
+                      <button class="mini-btn" type="submit">Составить план</button>
+                    </form>
+                    <ul class="journal" id="soul3-plans"></ul>
+                    <span class="soul-lbl soul-gap">Договорённости и обещания</span>
+                    <form id="soul3-promise-form">
+                      <label class="lbl" for="soul3-promise">Добавить договорённость</label>
+                      <input class="field" type="text" maxlength="300" id="soul3-promise" placeholder="Что нужно не забыть выполнить">
+                      <label class="lbl" for="soul3-due">Срок (необязательно)</label>
+                      <input class="field" type="date" id="soul3-due">
+                      <button class="mini-btn" type="submit">Сохранить обещание</button>
+                    </form>
+                    <ul class="journal" id="soul3-promises"></ul>
+                    <button type="button" class="mini-btn server-only" id="soul3-clear">Очистить данные Soul 3.0</button>
+                  </div>
+                  <div class="card-foot"><span>Планы выполняются только после подтверждения хозяином. Романтический стиль и инициативу можно отключить.</span></div>
+                </section>
       </div>
     </main>
 
@@ -1571,7 +1796,7 @@
           if (location.hash !== hash) history_.replaceState(null, '', hash || location.pathname + location.search);
         }
         if (window.YBrain) YBrain.onShow(name);
-        if (name === 'soul') { renderSoul(); if (online) loadEvolution(); }
+        if (name === 'soul') { renderSoul(); if (online) { loadEvolution(); loadGrowth(); } }
         syncFab();
         if (!fromHash && window.scrollY) window.scrollTo(0, 0);
       }
@@ -2658,6 +2883,7 @@
         if (currentView !== 'soul') return;
         var d = soulData, s = d.soul;
         $('soul-demo').hidden = online;
+        renderHero();
         $('soul-tails').innerHTML = tailsSvg(d.level);
         $('soul-stage').textContent = d.stage;
         $('soul-level').textContent = 'хвост души ' + d.level + ' из ' + (d.maxLevel || 9);
@@ -2732,6 +2958,7 @@
 
         renderSoulGrowth(d, s);
         renderTraitChart(d, s);
+        renderGrowth();
 
         var traits = $('soul-traits');
         traits.textContent = '';
@@ -3147,6 +3374,425 @@
         if (online && currentView === 'soul' && !document.hidden) loadEvolution();
       }, 60000);
 
+      /* ---------- Душа: подвкладки, рост и графики ---------- */
+      var growthData = null;
+      var SOUL_TABS = ['now', 'growth', 'memory', 'world', 'char'];
+      var SOUL_XP = [0, 12, 35, 70, 120, 190, 280, 400, 560];
+      var GROWTH_ICONS = { study: '📖', insight: '💡', question: '❓', lesson: '🧭', goal: '🎯', 'goal-new': '🌱', 'goal-done': '🏆', sleep: '🌙', reflection: '💭' };
+      var GROWTH_RAN = {
+        study: 'разобрала ваш разговор', lessons: 'вывела уроки из поправок', goals: 'обновила учебные цели', wonder: 'задумалась о вас',
+        maintenance: 'навела порядок в памяти', opinions: 'пересмотрела свои мнения', sleep: 'уснула и пересобрала воспоминания', reflection: 'подумала о разговорах'
+      };
+      var INTENSITY_NOTE = {
+        off: 'Только разговоры, сон и размышления. Собственного любопытства и учебных целей нет.',
+        quiet: 'Редко: догадки раз в несколько часов, цели раз в сутки, пауза между задачами 20 минут.',
+        normal: 'Раз в пару часов задумывается о вас, цели обновляет несколько раз в день.',
+        active: 'Часто: думает о вас каждые 45 минут, шаг обучения раз в 3 минуты. Запросов больше.'
+      };
+      var TONE_FACE = { joy: 'happy', sad: 'sorry', sleepy: 'sleep', think: 'think', calm: 'idle' };
+      function soulTone(name) {
+        name = String(name || '').toLowerCase();
+        if (/груст|тоск|печал|скуч|тревож|обид|одинок|винов/.test(name)) return 'sad';
+        if (/сонн|сон\b|уста|дрем|покой|умирот/.test(name)) return 'sleepy';
+        if (/раздум|задум|любопыт|интерес|размышл|сосредоточ/.test(name)) return 'think';
+        if (/рад|счаст|весел|игрив|восторг|довольн|вдохнов|нежн|тепл/.test(name)) return 'joy';
+        return 'calm';
+      }
+      function renderHero() {
+        if (!soulData) return;
+        var tone = soulTone(soulData.soul.mood && soulData.soul.mood.name);
+        $('soul-hero').setAttribute('data-tone', tone);
+        var src = 'yaeri/' + TONE_FACE[tone] + '-face.webp';
+        var face = $('soul-face');
+        if (face.getAttribute('src') !== src) face.setAttribute('src', src);
+      }
+      function showSoulTab(name, focus) {
+        if (SOUL_TABS.indexOf(name) < 0) name = 'now';
+        SOUL_TABS.forEach(function (k) {
+          var t = $('stab-' + k);
+          t.setAttribute('aria-selected', k === name ? 'true' : 'false');
+          t.tabIndex = k === name ? 0 : -1;
+          $('sp-' + k).hidden = k !== name;
+          if (k === name && focus) t.focus();
+        });
+        try { localStorage.setItem('yaeri-soul-tab', name); } catch (e) { /* без запоминания вкладки */ }
+        if (name === 'growth') renderGrowth();
+      }
+      each(document.querySelectorAll('.stab'), function (b) {
+        b.addEventListener('click', function () { showSoulTab(b.getAttribute('data-sp')); });
+        b.addEventListener('keydown', function (e) {
+          var i = SOUL_TABS.indexOf(b.getAttribute('data-sp'));
+          if (e.key === 'ArrowRight') { e.preventDefault(); showSoulTab(SOUL_TABS[(i + 1) % SOUL_TABS.length], true); }
+          else if (e.key === 'ArrowLeft') { e.preventDefault(); showSoulTab(SOUL_TABS[(i + SOUL_TABS.length - 1) % SOUL_TABS.length], true); }
+        });
+      });
+      (function () {
+        var saved = 'now';
+        try { saved = localStorage.getItem('yaeri-soul-tab') || 'now'; } catch (e) { saved = 'now'; }
+        showSoulTab(saved);
+      }());
+
+      function ago(t) {
+        var m = Math.max(0, Math.round((Date.now() - t) / 60000));
+        if (m < 1) return 'только что';
+        if (m < 60) return m + ' мин назад';
+        var h = Math.round(m / 60);
+        if (h < 24) return h + ' ' + plural(h, 'час', 'часа', 'часов') + ' назад';
+        var d = Math.round(h / 24);
+        return d + ' ' + plural(d, 'день', 'дня', 'дней') + ' назад';
+      }
+      function dayMs(key) { var p = String(key).split('-'); return Date.UTC(+p[0], +p[1] - 1, +p[2]); }
+      function dayLabel(key) { return String(key).slice(8, 10) + '.' + String(key).slice(5, 7); }
+      function chartEmpty(box, text) { box.innerHTML = '<div class="chart-empty">' + text + '</div>'; }
+      function legendFill(box, items) {
+        box.textContent = '';
+        items.forEach(function (it) {
+          var sp = el('span');
+          var i = el('i');
+          i.style.background = it.color;
+          sp.appendChild(i);
+          sp.appendChild(document.createTextNode(it.label + ' '));
+          sp.appendChild(el('b', '', String(it.value)));
+          box.appendChild(sp);
+        });
+      }
+      // Линейный график по датам: подсказка и направляющая при наведении или касании.
+      function drawLines(box, cfg) {
+        var days = cfg.days, n = days.length;
+        var W = Math.max(300, Math.round(box.clientWidth) || 640), H = 230, L = 36, R = cfg.thresholds && cfg.thresholds.length ? 54 : 14, T = 12, B = 26;
+        var t0 = dayMs(days[0]), t1 = dayMs(days[n - 1]);
+        function X(i) { return n < 2 || t1 === t0 ? (L + W - R) / 2 : L + (dayMs(days[i]) - t0) * (W - L - R) / (t1 - t0); }
+        var lo = cfg.yMin || 0, hi = cfg.yMax;
+        function Y(v) { return T + (hi - v) * (H - T - B) / (hi - lo); }
+        var id = box.id, s = '<svg viewBox="0 0 ' + W + ' ' + H + '"><defs>';
+        cfg.series.forEach(function (sr, k) {
+          s += '<linearGradient id="' + id + '-g' + k + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:' + sr.color + ';stop-opacity:.38"/><stop offset="1" style="stop-color:' + sr.color + ';stop-opacity:0"/></linearGradient>';
+        });
+        s += '</defs>';
+        for (var g = 0; g <= 4; g++) {
+          var v = lo + (hi - lo) * g / 4;
+          s += '<line class="grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '"/><text x="' + (L - 6) + '" y="' + (Y(v) + 3).toFixed(1) + '" text-anchor="end">' + Math.round(v) + '</text>';
+        }
+        var lastLabelY = 1e9;
+        (cfg.thresholds || []).slice().sort(function (a, b) { return b.v - a.v; }).forEach(function (th) {
+          if (th.v <= lo || th.v > hi) return;
+          var ty = Y(th.v);
+          s += '<line class="thr" x1="' + L + '" x2="' + (W - R) + '" y1="' + ty.toFixed(1) + '" y2="' + ty.toFixed(1) + '"/>';
+          // Подписи ступеней не накладываем друг на друга.
+          if (lastLabelY === 1e9 || ty - lastLabelY >= 13) { s += '<text class="thr-l" x="' + (W - R + 5) + '" y="' + (ty + 3).toFixed(1) + '">' + th.label + '</text>'; lastLabelY = ty; }
+        });
+        s += '<text x="' + L + '" y="' + (H - 7) + '">' + dayLabel(days[0]) + '</text>';
+        if (n > 1) s += '<text x="' + (W - R) + '" y="' + (H - 7) + '" text-anchor="end">' + dayLabel(days[n - 1]) + '</text>';
+        if (n > 4) s += '<text x="' + ((L + W - R) / 2).toFixed(1) + '" y="' + (H - 7) + '" text-anchor="middle">' + dayLabel(days[Math.floor((n - 1) / 2)]) + '</text>';
+        cfg.series.forEach(function (sr, k) {
+          var d = '';
+          sr.values.forEach(function (v, i) { d += (i ? ' L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); });
+          if (n > 1 && cfg.area) s += '<path d="' + d + ' L' + X(n - 1).toFixed(1) + ' ' + Y(lo).toFixed(1) + ' L' + X(0).toFixed(1) + ' ' + Y(lo).toFixed(1) + ' Z" fill="url(#' + id + '-g' + k + ')"/>';
+          if (n > 1) s += '<path class="ln" style="stroke:' + sr.color + '" d="' + d + '"/>';
+          var last = n - 1;
+          s += '<circle class="pt" style="fill:' + sr.color + '" cx="' + X(last).toFixed(1) + '" cy="' + Y(sr.values[last]).toFixed(1) + '" r="4"/>';
+        });
+        s += '<line class="guide" id="' + id + '-guide" y1="' + T + '" y2="' + (H - B) + '" x1="0" x2="0" style="display:none"/>';
+        s += '<rect id="' + id + '-hit" x="' + L + '" y="0" width="' + (W - L - R) + '" height="' + H + '" fill="transparent" style="touch-action:pan-y"/></svg>';
+        box.innerHTML = s;
+        var svg = box.querySelector('svg'), guide = $(id + '-guide'), hit = $(id + '-hit');
+        var tip = el('div', 'c-tip');
+        tip.hidden = true;
+        box.appendChild(tip);
+        function show(e) {
+          var r = svg.getBoundingClientRect();
+          var sx = (e.clientX - r.left) * W / r.width;
+          var best = 0, bd = 1e9;
+          for (var i = 0; i < n; i++) { var dd = Math.abs(X(i) - sx); if (dd < bd) { bd = dd; best = i; } }
+          guide.setAttribute('x1', X(best)); guide.setAttribute('x2', X(best)); guide.style.display = '';
+          tip.textContent = '';
+          tip.appendChild(el('b', '', days[best].split('-').reverse().join('.')));
+          var top = 1e9;
+          cfg.series.forEach(function (sr) {
+            var row = el('div');
+            var dot = el('i');
+            dot.style.background = sr.color;
+            row.appendChild(dot);
+            row.appendChild(document.createTextNode(sr.label + ': ' + sr.values[best]));
+            tip.appendChild(row);
+            top = Math.min(top, Y(sr.values[best]));
+          });
+          tip.hidden = false;
+          tip.style.left = Math.max(60, Math.min(r.width - 60, X(best) * r.width / W)) + 'px';
+          tip.style.top = Math.max(30, top * r.height / H) + 'px';
+        }
+        function hide() { guide.style.display = 'none'; tip.hidden = true; }
+        hit.addEventListener('pointermove', show);
+        hit.addEventListener('pointerdown', show);
+        hit.addEventListener('pointerleave', hide);
+      }
+      function renderLadder() {
+        var d = soulData;
+        var ol = $('g-ladder');
+        ol.textContent = '';
+        var stages = growthData && growthData.stages ? growthData.stages : SOUL_STAGES.map(function (n, i) { return { level: i + 1, name: n, xp: SOUL_XP[i], t: 0 }; });
+        var lvl = d.level || 1;
+        var span = d.xpTo > d.xpFrom ? d.xpTo - d.xpFrom : 1;
+        var frac = d.xpTo < 0 ? 0 : Math.max(0, Math.min(1, (d.soul.xp - d.xpFrom) / span));
+        ol.style.setProperty('--p', String(Math.min(1, (lvl - 1 + frac) / 8)));
+        stages.forEach(function (st) {
+          var li = el('li', st.level < lvl ? 'done' : (st.level === lvl ? 'cur' : ''));
+          if (st.level === lvl) li.setAttribute('aria-current', 'step');
+          li.appendChild(el('span', 'dot', st.level <= lvl ? String(st.level) : String(st.level)));
+          var lt = el('span', 'lt');
+          lt.appendChild(el('b', '', st.name));
+          lt.appendChild(el('small', '', st.level <= lvl && st.t ? dmy(st.t) : 'от ' + st.xp + ' оп.'));
+          li.appendChild(lt);
+          ol.appendChild(li);
+        });
+        $('g-ladder-meta').textContent = 'ступень ' + lvl + ' из ' + stages.length + ' · опыт ' + d.soul.xp;
+      }
+      function renderXpChart() {
+        var box = $('g-xp-chart');
+        var ser = growthData ? arr(growthData.series) : [];
+        if (!ser.length) {
+          chartEmpty(box, online ? 'График появится после первого дня работы: Яэри записывает опыт раз в день.' : 'Подключите Cloud.ru: график опыта и ступеней начнёт строиться сам.');
+          $('g-xp-legend').textContent = '';
+          $('g-xp-meta').textContent = '';
+          return;
+        }
+        var days = ser.map(function (p) { return p.day; });
+        var xs = ser.map(function (p) { return p.xp; });
+        var maxXp = Math.max.apply(null, xs);
+        var stages = arr(growthData.stages);
+        var top = SOUL_XP[SOUL_XP.length - 1];
+        for (var i = 0; i < SOUL_XP.length; i++) { if (SOUL_XP[i] > maxXp) { top = SOUL_XP[i]; break; } }
+        top = Math.max(top, 12);
+        drawLines(box, {
+          days: days, yMax: top, area: true, series: [{ label: 'Опыт', color: 'var(--a)', values: xs }],
+          thresholds: stages.filter(function (s) { return s.level > 1; }).map(function (s) { return { v: s.xp, label: 'ступ. ' + s.level }; })
+        });
+        var first = xs[0], lastv = xs[xs.length - 1];
+        $('g-xp-meta').textContent = ser.length + ' ' + plural(ser.length, 'день', 'дня', 'дней');
+        legendFill($('g-xp-legend'), [
+          { color: 'var(--a)', label: 'Опыт сейчас', value: lastv },
+          { color: 'var(--faint)', label: 'за период', value: (lastv - first >= 0 ? '+' : '') + (lastv - first) },
+          { color: 'var(--warn)', label: 'близость', value: ser[ser.length - 1].bond }
+        ]);
+      }
+      function renderKnowChart() {
+        var box = $('g-know-chart');
+        var ser = growthData ? arr(growthData.series) : [];
+        if (!ser.length) { chartEmpty(box, 'Здесь будет видно, как растут её знания о вас, моменты, догадки и уроки.'); $('g-know-legend').textContent = ''; $('g-know-meta').textContent = ''; return; }
+        var defs = [['facts', 'Знания', TRAIT_COLORS[0]], ['episodes', 'Эпизоды', TRAIT_COLORS[1]], ['insights', 'Догадки', TRAIT_COLORS[2]], ['lessons', 'Уроки', TRAIT_COLORS[3]]];
+        var mx = 5;
+        var series = defs.map(function (df) {
+          var vals = ser.map(function (p) { return p[df[0]] || 0; });
+          mx = Math.max(mx, Math.max.apply(null, vals));
+          return { label: df[1], color: df[2], values: vals };
+        });
+        drawLines(box, { days: ser.map(function (p) { return p.day; }), yMax: Math.ceil(mx * 1.15 / 4) * 4, series: series });
+        legendFill($('g-know-legend'), series.map(function (sr) { return { color: sr.color, label: sr.label, value: sr.values[sr.values.length - 1] }; }));
+        $('g-know-meta').textContent = 'накопительно';
+      }
+      function renderCallsChart() {
+        var box = $('g-calls-chart');
+        var ser = growthData ? arr(growthData.series).slice(-14) : [];
+        if (!ser.length) { chartEmpty(box, 'Сколько запросов она тратит на учёбу в фоне, по дням.'); $('g-calls-legend').textContent = ''; $('g-calls-meta').textContent = ''; return; }
+        var lim = growthData.dailyLimit || 0;
+        var mx = Math.max(4, lim, Math.max.apply(null, ser.map(function (p) { return p.calls || 0; })));
+        var W = Math.max(300, Math.round(box.clientWidth) || 640), H = 190, L = 34, R = 10, T = 12, B = 26, slot = (W - L - R) / ser.length, bw = Math.min(34, slot * 0.62);
+        function Y(v) { return T + (mx - v) * (H - T - B) / mx; }
+        var s = '<svg viewBox="0 0 ' + W + ' ' + H + '">';
+        for (var g = 0; g <= 4; g++) { var v = mx * g / 4; s += '<line class="grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '"/><text x="' + (L - 6) + '" y="' + (Y(v) + 3).toFixed(1) + '" text-anchor="end">' + Math.round(v) + '</text>'; }
+        ser.forEach(function (p, i) {
+          var x = L + slot * i + (slot - bw) / 2, c = p.calls || 0, h = Math.max(c ? 2 : 0, (H - T - B) * c / mx);
+          s += '<rect class="bar" x="' + x.toFixed(1) + '" y="' + (H - B - h).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="3" style="fill:var(--a)"><title>' + dayLabel(p.day) + ': ' + c + ' ' + plural(c, 'запрос', 'запроса', 'запросов') + '</title></rect>';
+        });
+        if (lim > 0) s += '<line class="thr" x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(lim).toFixed(1) + '" y2="' + Y(lim).toFixed(1) + '" style="stroke:var(--warn)"/><text class="thr-l" x="' + (W - R) + '" y="' + (Y(lim) - 4).toFixed(1) + '" text-anchor="end" style="fill:var(--warn)">лимит ' + lim + '</text>';
+        s += '<text x="' + L + '" y="' + (H - 7) + '">' + dayLabel(ser[0].day) + '</text>';
+        if (ser.length > 1) s += '<text x="' + (W - R) + '" y="' + (H - 7) + '" text-anchor="end">' + dayLabel(ser[ser.length - 1].day) + '</text>';
+        box.innerHTML = s + '</svg>';
+        var total = ser.reduce(function (a, p) { return a + (p.calls || 0); }, 0);
+        $('g-calls-meta').textContent = 'за ' + ser.length + ' ' + plural(ser.length, 'день', 'дня', 'дней');
+        legendFill($('g-calls-legend'), [{ color: 'var(--a)', label: 'Всего запросов', value: total }, { color: 'var(--warn)', label: 'Сегодня', value: ser[ser.length - 1].calls || 0 }]);
+      }
+      function renderRadar() {
+        var box = $('g-radar');
+        var traits = arr(soulData.traitList);
+        if (!traits.length) { chartEmpty(box, 'Черты характера появятся позже.'); return; }
+        var hist = arr(soulData.soul.traitHistory);
+        var base = hist.length > 1 ? hist[0].traits : null;
+        var W = 340, H = 270, cx = 170, cy = 135, Rr = 92, n = traits.length;
+        function pt(i, v) { var a = -Math.PI / 2 + i * 2 * Math.PI / n; return [cx + Math.cos(a) * Rr * v / 100, cy + Math.sin(a) * Rr * v / 100]; }
+        function poly(f) { return traits.map(function (t, i) { var p = pt(i, f(t)); return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' '); }
+        var s = '<svg viewBox="0 0 ' + W + ' ' + H + '">';
+        [25, 50, 75, 100].forEach(function (r) { s += '<polygon class="rd-g" points="' + poly(function () { return r; }) + '"/>'; });
+        traits.forEach(function (t, i) { var p = pt(i, 100); s += '<line class="rd-g" x1="' + cx + '" y1="' + cy + '" x2="' + p[0].toFixed(1) + '" y2="' + p[1].toFixed(1) + '"/>'; });
+        if (base) s += '<polygon class="rd-old" points="' + poly(function (t) { return typeof base[t.id] === 'number' ? base[t.id] : t.value; }) + '"/>';
+        s += '<polygon class="rd-now" points="' + poly(function (t) { return t.value; }) + '"/>';
+        traits.forEach(function (t, i) {
+          var p = pt(i, 100), lp = pt(i, 100 + 20), vp = pt(i, t.value);
+          var anchor = Math.abs(lp[0] - cx) < 8 ? 'middle' : (lp[0] > cx ? 'start' : 'end');
+          s += '<circle cx="' + vp[0].toFixed(1) + '" cy="' + vp[1].toFixed(1) + '" r="3.5" style="fill:var(--a-glow)"/>';
+          s += '<text x="' + lp[0].toFixed(1) + '" y="' + (lp[1] + 3).toFixed(1) + '" text-anchor="' + anchor + '" style="fill:var(--ink)">' + t.name + ' <tspan style="fill:var(--a)">' + t.value + '</tspan></text>';
+        });
+        box.innerHTML = s + '</svg>';
+      }
+      function renderGoals() {
+        var box = $('g-goals');
+        box.textContent = '';
+        var goals = growthData ? arr(growthData.goals).slice().sort(function (a, b) { return (a.status === 'done') - (b.status === 'done'); }) : [];
+        var act = goals.filter(function (g) { return g.status === 'active'; }).length;
+        $('g-goals-meta').textContent = goals.length ? act + ' ' + plural(act, 'цель', 'цели', 'целей') + ' в работе' : '';
+        if (!goals.length) { box.appendChild(el('li', 'empty soul-small', online ? 'Пока целей нет: Яэри сама поставит их, когда немного узнает вас. Нажмите «Учиться сейчас», чтобы ускорить.' : 'Свои учебные цели Яэри ставит, когда подключена к Cloud.ru.')); return; }
+        goals.forEach(function (g) {
+          var li = el('li', g.status === 'done' ? 'done' : '');
+          var ring = el('div', 'ring');
+          ring.style.setProperty('--v', String(g.progress || 0));
+          ring.appendChild(el('span', '', (g.progress || 0) + '%'));
+          li.appendChild(ring);
+          var t = el('div', 'goal-t');
+          t.appendChild(el('b', '', g.text));
+          t.appendChild(el('span', '', (g.status === 'done' ? 'Достигнуто. ' : '') + (g.why || '')));
+          li.appendChild(t);
+          var steps = arr(g.steps);
+          if (steps.length) {
+            var ul = el('ul', 'steps');
+            steps.forEach(function (st) { ul.appendChild(el('li', st.done ? 'on' : '', st.text)); });
+            li.appendChild(ul);
+          }
+          box.appendChild(li);
+        });
+      }
+      function growthAct(id, action) {
+        return api('soul/growth/insight', { id: id, action: action }).then(setGrowth).catch(function (e) { $('g-ctl-status').textContent = e.message; });
+      }
+      function renderInsights() {
+        var ul = $('g-insights');
+        ul.textContent = '';
+        var items = growthData ? arr(growthData.insights).filter(function (x) { return x.status !== 'dismissed'; }).slice().reverse() : [];
+        $('g-ins-meta').textContent = items.length ? items.length + ' ' + plural(items.length, 'догадка', 'догадки', 'догадок') : '';
+        if (!items.length) ul.appendChild(el('li', 'empty soul-small', 'Когда вас нет, Яэри размышляет о вас и сверяет догадки с памятью и документами. Они появятся здесь.'));
+        items.forEach(function (x) {
+          var li = el('li');
+          li.appendChild(el('div', 'iq', x.question));
+          li.appendChild(el('p', '', x.answer));
+          var act = el('div', 'ia');
+          act.appendChild(el('span', 'badge' + (x.status === 'confirmed' ? ' ok' : ''), x.status === 'confirmed' ? 'подтверждено' : 'гипотеза'));
+          act.appendChild(el('span', 'badge', x.basis === 'docs' ? 'из документов' : 'из памяти'));
+          if (online && x.status === 'hypothesis') {
+            act.appendChild(smallBtn('Это так', 'Подтвердить догадку', function () { growthAct(x.id, 'confirm'); }, 'mini-btn solid'));
+            act.appendChild(smallBtn('Не так', 'Отклонить догадку', function () { growthAct(x.id, 'dismiss'); }, 'mini-btn'));
+          }
+          li.appendChild(act);
+          ul.appendChild(li);
+        });
+        var q = $('g-questions');
+        q.textContent = '';
+        var qs = growthData ? arr(growthData.questions).slice().reverse() : [];
+        if (!qs.length) q.appendChild(el('li', 'empty', 'Пока вопросов нет.'));
+        qs.forEach(function (x) { q.appendChild(el('li', '', x.q)); });
+      }
+      function renderGrowthLessons() {
+        var ul = $('g-lessons');
+        ul.textContent = '';
+        var items = growthData ? arr(growthData.lessons).slice().reverse() : [];
+        $('g-lessons-meta').textContent = items.length ? String(items.length) : '';
+        if (!items.length) ul.appendChild(el('li', 'empty', 'Когда вы поправите Яэри, она запишет здесь правило, чтобы не повторять ошибку.'));
+        items.forEach(function (x) { ul.appendChild(el('li', '', x.rule)); });
+      }
+      function renderFeedList() {
+        var ul = $('g-feed');
+        ul.textContent = '';
+        var items = growthData ? arr(growthData.feed).slice(-14).reverse() : [];
+        $('g-feed-meta').textContent = items.length ? 'последнее ' + ago(items[0].t) : '';
+        if (!items.length) { ul.appendChild(el('li', 'empty', online ? 'Пока тихо. Как только Яэри что-то узнает, подумает или поставит себе цель, это появится здесь.' : 'Лента обучения появится, когда Яэри подключится к Cloud.ru.')); return; }
+        items.forEach(function (it) {
+          var li = el('li');
+          li.appendChild(el('span', 'ico', GROWTH_ICONS[it.kind] || '✨'));
+          var box = el('div');
+          box.appendChild(el('time', '', dmy(it.t) + ' ' + hhmm(it.t)));
+          box.appendChild(el('p', '', it.text));
+          li.appendChild(box);
+          ul.appendChild(li);
+        });
+      }
+      function renderGrowthControls() {
+        var g = growthData;
+        each(document.querySelectorAll('#g-int button'), function (b) {
+          var on = !!g && b.getAttribute('data-int') === g.intensity;
+          b.setAttribute('aria-checked', on ? 'true' : 'false');
+          b.disabled = !online;
+        });
+        $('g-int-note').textContent = g ? INTENSITY_NOTE[g.intensity] || '' : 'Настройки появятся, когда Яэри подключится к Cloud.ru.';
+        var sel = $('g-limit');
+        sel.disabled = !online;
+        if (g) {
+          var v = String(g.dailyLimit);
+          if (!sel.querySelector('option[value="' + v + '"]')) { var o = el('option', '', v); o.value = v; sel.appendChild(o); }
+          sel.value = v;
+          var pct = g.dailyLimit > 0 ? Math.min(100, g.usedToday * 100 / g.dailyLimit) : 0;
+          $('g-usage-bar').style.width = Math.max(g.usedToday ? 3 : 0, pct) + '%';
+          $('g-usage-text').textContent = g.dailyLimit > 0
+            ? 'Сегодня: ' + g.usedToday + ' из ' + g.dailyLimit + ' ' + plural(g.dailyLimit, 'запроса', 'запросов', 'запросов') + (g.limitReached ? '. Лимит исчерпан: фоновая учёба на паузе до полуночи.' : '.')
+            : 'Сегодня: ' + g.usedToday + ' запросов (без лимита).';
+          $('g-ctl-meta').textContent = g.lastAction ? 'шаг ' + ago(g.lastAction) : '';
+          if (g.lastError) $('g-ctl-status').textContent = 'Последняя ошибка: ' + g.lastError;
+        } else {
+          $('g-usage-bar').style.width = '0%';
+          $('g-usage-text').textContent = '';
+          $('g-ctl-meta').textContent = '';
+        }
+      }
+      function renderGrowth() {
+        if (!soulData) soulData = soulDefault();
+        renderFeedList();
+        if (currentView !== 'soul') return;
+        renderLadder();
+        renderXpChart();
+        renderKnowChart();
+        renderCallsChart();
+        renderRadar();
+        renderGoals();
+        renderInsights();
+        renderGrowthLessons();
+        renderGrowthControls();
+      }
+      function setGrowth(data) {
+        if (!data || !data.stages) return;
+        growthData = data;
+        renderGrowth();
+      }
+      function loadGrowth() {
+        if (!online) return Promise.resolve();
+        return api('soul/growth').then(setGrowth).catch(function () { /* Покажем при следующем обновлении. */ });
+      }
+      each(document.querySelectorAll('#g-int button'), function (b) {
+        b.addEventListener('click', function () {
+          if (!online) return;
+          api('soul/growth/settings', { intensity: b.getAttribute('data-int') }).then(setGrowth).catch(function (e) { $('g-ctl-status').textContent = e.message; });
+        });
+      });
+      $('g-limit').addEventListener('change', function () {
+        api('soul/growth/settings', { dailyLimit: Number(this.value) }).then(setGrowth).catch(function (e) { $('g-ctl-status').textContent = e.message; });
+      });
+      $('g-run').addEventListener('click', function () {
+        var btn = this;
+        btn.disabled = true;
+        $('g-ctl-status').textContent = 'Яэри учится…';
+        api('soul/growth/run', {}).then(function (data) {
+          setGrowth(data);
+          $('g-ctl-status').textContent = data.ran ? 'Готово: Яэри ' + (GROWTH_RAN[data.ran] || 'поучилась') + '.' : 'Пока нечему учиться: всё свежо. Поговорите с ней, и будет над чем думать.';
+          return loadSoul();
+        }).catch(function (e) { $('g-ctl-status').textContent = e.message; }).then(function () { btn.disabled = false; });
+      });
+      setInterval(function () {
+        if (online && currentView === 'soul' && !document.hidden) loadGrowth();
+      }, 60000);
+      (function () {
+        var timer = 0;
+        window.addEventListener('resize', function () {
+          clearTimeout(timer);
+          timer = setTimeout(function () { if (currentView === 'soul' && !$('sp-growth').hidden) renderGrowth(); }, 160);
+        });
+      }());
+
       /* ---------- Soul 3.0: consent, growth, goals and explicit promises ---------- */
       function soul3Error(err) {
         $('soul3-status').textContent = err && err.message ? err.message : 'Не удалось обновить Soul 3.0.';
@@ -3260,6 +3906,7 @@
         return api('soul').then(function (data) {
           setSoul(data);
           loadEvolution();
+          loadGrowth();
           loadSoul3();
         });
       }

@@ -15,6 +15,7 @@ $script:Utf8 = [System.Text.UTF8Encoding]::new($false)
 . (Join-Path $PSScriptRoot 'yaeri-soul.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-evolution.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-growth.ps1')
+. (Join-Path $PSScriptRoot 'yaeri-curiosity.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-bond.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-reason.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-relationship.ps1')
@@ -309,6 +310,7 @@ function Import-YStore {
     Import-YSoul
     Import-YEvolution
     Import-Y3
+    Import-YCuriosity
 }
 
 function Save-YHistory { Write-YJsonFile $script:HistoryFile @{ version = 1; messages = $script:History.ToArray() } }
@@ -883,6 +885,8 @@ function Invoke-YChat($Req) {
     if ($useSoul -and $script:Y3.enabled) {
         $system += [Environment]::NewLine + [Environment]::NewLine + 'Твоя эволюция Soul 3.0:' + [Environment]::NewLine + (Get-Y3Prompt) +
             [Environment]::NewLine + (Get-Y3ReasonPrompt)
+        $curiosity = Get-YCuriosityPrompt
+        if ($curiosity) { $system += [Environment]::NewLine + 'Твоё самообучение:' + [Environment]::NewLine + $curiosity }
     }
     if ($innerVoice) {
         $system += "`n`nПеред ответом коротко подумай про себя в теге <мысли>…</мысли> (2–4 фразы): что хозяин сейчас чувствует и чего хочет, " +
@@ -1067,6 +1071,11 @@ function Invoke-YApi([string]$Method, [string]$Path, [string]$BodyText) {
         'POST /api/soul3/plans/step' { return Set-Y3PlanStep $req }
         'POST /api/soul3/promises' { return Add-Y3Promise $req }
         'POST /api/soul3/promises/update' { return Set-Y3Promise $req }
+        'GET /api/soul/growth'     { return Get-YGrowthView }
+        'POST /api/soul/growth/settings' { return Set-YGrowthSettings $req }
+        'POST /api/soul/growth/insight'  { return Set-YGrowthInsight $req }
+        'POST /api/soul/growth/run'      { return Invoke-YGrowthRun }
+        'POST /api/soul/growth/clear'    { return Clear-YCuriosity }
         'POST /api/soul/evolution' { return Set-YEvolution $req }
         'POST /api/soul/evolution/clear' { return Clear-YEvolution }
         'POST /api/soul/reflect'   { return Invoke-YEvolutionReflect $req }
