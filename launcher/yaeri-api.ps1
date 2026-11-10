@@ -13,6 +13,7 @@ $script:Utf8 = [System.Text.UTF8Encoding]::new($false)
 
 # Душа Яэри (характер, настроение, мысли о хозяине) — в отдельном файле.
 . (Join-Path $PSScriptRoot 'yaeri-soul.ps1')
+. (Join-Path $PSScriptRoot 'yaeri-evolution.ps1')
 
 # ---------- Вспомогательный код на C# (компилируется встроенным .NET, установка не нужна) ----------
 if (-not ('YaeriVec' -as [type])) {
@@ -302,6 +303,7 @@ function Import-YStore {
 
     # Душа Яэри: характер, настроение, представление о хозяине, дневник.
     Import-YSoul
+    Import-YEvolution
 }
 
 function Save-YHistory { Write-YJsonFile $script:HistoryFile @{ version = 1; messages = $script:History.ToArray() } }
@@ -969,6 +971,11 @@ function Invoke-YChat($Req) {
         }
     }
 
+    # Structured autobiographical learning is queued for the server-owned scheduler.
+    # The queue never changes the result of a successful chat request.
+    try { Add-YEvolutionTurn $userMsg $answer ($useSoul -and $remember) } catch {
+        Write-Warning ('Не удалось поставить обучение Яэри в очередь: ' + $_.Exception.Message)
+    }
     return @{ user = $userMsg; reply = $answer; note = $ragNote; notes = $newNotes.ToArray(); soul = $soulInfo }
 }
 
@@ -1041,7 +1048,9 @@ function Invoke-YApi([string]$Method, [string]$Path, [string]$BodyText) {
         'POST /api/config'         { return Set-YConfig $req }
         'POST /api/config/test'    { return Test-YConnection }
         'GET /api/soul'            { return Get-YSoulView }
-        'POST /api/soul/reflect'   { return Invoke-YSoulReflect $req }
+        'GET /api/soul/evolution'  { return Get-YEvolutionView }
+        'POST /api/soul/evolution' { return Set-YEvolution $req }
+        'POST /api/soul/reflect'   { return Invoke-YEvolutionReflect $req }
         'POST /api/soul/share'     { return Invoke-YSoulShare }
         'POST /api/soul/update'    { return Update-YSoul $req }
         'POST /api/soul/reset'     { return Reset-YSoul }
