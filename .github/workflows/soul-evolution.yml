@@ -12,6 +12,9 @@ jobs:
       - name: PowerShell 5.1 parse and memory tests
         shell: cmd
         run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\test-soul-evolution.ps1
+      - name: Soul 3.0 persistence and logic tests
+        shell: cmd
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\\test-soul3.ps1
       - name: Browser JavaScript syntax
         shell: cmd
         run: node tests\check-site.js
