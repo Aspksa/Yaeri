@@ -466,6 +466,11 @@ function Test-YIndexReady {
 
 # ---------- Обработчики API ----------
 function Get-YStatus {
+    # Статус должен отвечать всегда: без него страница не покажет поле для ключа.
+    $level = $null
+    try { $level = Get-YSoulLevel $script:Soul.xp } catch { $level = $null }
+    $reindex = $false
+    try { $reindex = -not (Test-YIndexReady) } catch { $reindex = $false }
     return @{
         configured     = (Test-YConfigured)
         keySource      = (Get-YKeySource)
@@ -478,8 +483,8 @@ function Get-YStatus {
         memory         = $script:Memory.Count
         notes          = $script:Notes.Count
         messages       = $script:History.Count
-        reindexNeeded  = -not (Test-YIndexReady)
-        soulLevel      = (Get-YSoulLevel $script:Soul.xp)
+        reindexNeeded  = $reindex
+        soulLevel      = $level
         storage        = 'data\'
     }
 }
