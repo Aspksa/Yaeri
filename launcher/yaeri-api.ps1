@@ -14,6 +14,10 @@ $script:Utf8 = [System.Text.UTF8Encoding]::new($false)
 # Душа Яэри (характер, настроение, мысли о хозяине) — в отдельном файле.
 . (Join-Path $PSScriptRoot 'yaeri-soul.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-evolution.ps1')
+. (Join-Path $PSScriptRoot 'yaeri-growth.ps1')
+. (Join-Path $PSScriptRoot 'yaeri-bond.ps1')
+. (Join-Path $PSScriptRoot 'yaeri-reason.ps1')
+. (Join-Path $PSScriptRoot 'yaeri-relationship.ps1')
 
 # ---------- Вспомогательный код на C# (компилируется встроенным .NET, установка не нужна) ----------
 if (-not ('YaeriVec' -as [type])) {
@@ -304,6 +308,7 @@ function Import-YStore {
     # Душа Яэри: характер, настроение, представление о хозяине, дневник.
     Import-YSoul
     Import-YEvolution
+    Import-Y3
 }
 
 function Save-YHistory { Write-YJsonFile $script:HistoryFile @{ version = 1; messages = $script:History.ToArray() } }
@@ -875,6 +880,10 @@ function Invoke-YChat($Req) {
             "Ты искренне привязана к хозяину и думаешь о нём, но остаёшься собой и не льстишь.`n" + (Get-YSoulPrompt $name)
         if ($soulRecall.Count -gt 0) { $system += "`n`nСейчас тебе вспомнилось (твои воспоминания, близкие к вопросу):`n" + ($soulRecall -join "`n") }
     }
+    if ($useSoul -and $script:Y3.enabled) {
+        $system += [Environment]::NewLine + [Environment]::NewLine + 'Твоя эволюция Soul 3.0:' + [Environment]::NewLine + (Get-Y3Prompt) +
+            [Environment]::NewLine + (Get-Y3ReasonPrompt)
+    }
     if ($innerVoice) {
         $system += "`n`nПеред ответом коротко подумай про себя в теге <мысли>…</мысли> (2–4 фразы): что хозяин сейчас чувствует и чего хочет, " +
             'что ты о нём помнишь, что подсказывают твоя душа и память, нет ли противоречий. Затем дай сам ответ. Хозяин твои мысли не видит, не упоминай их.'
@@ -937,7 +946,8 @@ function Invoke-YChat($Req) {
     $checked = ''
     if ($selfCheck -and $content.Length -ge 40) {
         try {
-            $fix = Invoke-YSelfCheck $text $content $notesText $(if ($useSoul) { Get-YSoulPrompt $name } else { '' })
+            $reviewContext = $(if ($useSoul) { (Get-YSoulPrompt $name) + [Environment]::NewLine + (Get-Y3Prompt) + [Environment]::NewLine + (Get-Y3ReasonPrompt) } else { '' })
+            $fix = Invoke-YSelfCheck $text $content $notesText $reviewContext
             if ($fix) { $content = $fix; $checked = 'fixed' } else { $checked = 'ok' }
         } catch { $checked = '' }
     }
@@ -1050,6 +1060,13 @@ function Invoke-YApi([string]$Method, [string]$Path, [string]$BodyText) {
         'POST /api/config/test'    { return Test-YConnection }
         'GET /api/soul'            { return Get-YSoulView }
         'GET /api/soul/evolution'  { return Get-YEvolutionView }
+        'GET /api/soul3'           { return Get-Y3View }
+        'POST /api/soul3/settings' { return Set-Y3 $req }
+        'POST /api/soul3/clear'    { return Clear-Y3 }
+        'POST /api/soul3/plans'    { return Add-Y3Plan $req }
+        'POST /api/soul3/plans/step' { return Set-Y3PlanStep $req }
+        'POST /api/soul3/promises' { return Add-Y3Promise $req }
+        'POST /api/soul3/promises/update' { return Set-Y3Promise $req }
         'POST /api/soul/evolution' { return Set-YEvolution $req }
         'POST /api/soul/evolution/clear' { return Clear-YEvolution }
         'POST /api/soul/reflect'   { return Invoke-YEvolutionReflect $req }
