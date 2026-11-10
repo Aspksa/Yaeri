@@ -184,6 +184,28 @@
     .send:hover { background: var(--a-glow); }
     .send:active { transform: scale(.97); }
     .composer-hint { margin: 0; padding: 4px 18px 12px; color: var(--muted); font-size: .76rem; }
+    .send:disabled { opacity: .55; cursor: progress; }
+    .head-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .model-select {
+      max-width: 230px; min-width: 0; padding: 7px 28px 7px 11px; border: 1px solid var(--line); border-radius: 10px;
+      background: hsl(var(--h) 30% 8% / .85) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23aaa' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 10px center;
+      color: var(--ink); font: inherit; font-size: .8rem; text-overflow: ellipsis; -webkit-appearance: none; appearance: none;
+    }
+    .model-select:focus { border-color: var(--a); outline: none; }
+    .model-select option { background: var(--surface-solid); color: var(--ink); }
+    .msg .meta { color: var(--muted); font-family: var(--sans); font-size: .74rem; line-height: 1.4; }
+    .msg.error .text { color: hsl(8 80% 74%); font-family: var(--sans); font-size: .92rem; }
+    .msg.error { background: linear-gradient(hsl(8 80% 64%), hsl(8 80% 64% / 0)) left top / 2px 100% no-repeat; }
+    .status.online .dot { background: hsl(140 60% 60%); box-shadow: 0 0 10px hsl(140 60% 60%); }
+    .status.warn .dot { background: hsl(40 90% 62%); box-shadow: 0 0 10px hsl(40 90% 62%); }
+    .doc-list { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+    .doc-list li { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 12px; font-size: .86rem; }
+    .doc-list .d-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .doc-list .d-info { color: var(--muted); font-size: .76rem; white-space: nowrap; }
+    .doc-list button { padding: 2px 8px; border: 0; background: none; color: var(--muted); font-size: 1rem; line-height: 1; }
+    .doc-list button:hover { color: hsl(8 80% 74%); }
+    .doc-status { margin: 10px 0 0; color: var(--muted); font-size: .82rem; min-height: 1.2em; }
+    .server-only[hidden] { display: none; }
     .foot { margin: 0; color: var(--muted); font-size: .78rem; }
 
     /* Панель настроек */
@@ -266,6 +288,8 @@
       .msg { max-width: 94%; }
       form { padding: 10px 10px 4px; gap: 8px; }
       .send { padding: 0 16px; }
+      .model-select { max-width: 150px; }
+      .panel-head .hint { display: none; }
       .composer-hint { padding: 4px 12px 10px; }
     }
     @media (max-width: 480px) { .status { display: none; } }
@@ -312,7 +336,7 @@
         </div>
       </div>
       <div class="top-actions">
-        <span class="status" title="Подключение к AI ещё не настроено"><i class="dot"></i>Демо-режим</span>
+        <span class="status" id="status" title="Подключение к AI ещё не настроено"><i class="dot"></i><span id="status-text">Демо-режим</span></span>
         <button class="icon-btn" id="open-settings" type="button" aria-label="Настройки проекта" aria-haspopup="dialog" aria-expanded="false" aria-controls="settings">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="3"/>
@@ -326,18 +350,21 @@
       <div class="panel-head">
         <div>
           <h2>Разговор с Яэри</h2>
-          <p class="hint">Ответы пока заготовленные: AI-модель не подключена</p>
+          <p class="hint" id="panel-hint">Ответы пока заготовленные: AI-модель не подключена</p>
         </div>
-        <button class="ghost" type="button" id="clear">Очистить чат</button>
+        <div class="head-actions">
+          <select class="model-select server-only" id="model" aria-label="Модель Cloud.ru" title="Модель Cloud.ru" hidden></select>
+          <button class="ghost" type="button" id="clear">Очистить чат</button>
+        </div>
       </div>
       <div class="chat" id="chat" role="log" aria-live="polite" aria-relevant="additions"></div>
       <form id="message-form">
         <textarea id="message" name="message" rows="1" maxlength="4000" aria-label="Ваше сообщение"></textarea>
-        <button class="send" type="submit">Отправить</button>
+        <button class="send" id="send" type="submit">Отправить</button>
       </form>
       <p class="composer-hint" id="composer-hint"></p>
     </section>
-    <p class="foot">Сайт работает локально и не требует интернета. Сообщения хранятся только в этом браузере.</p>
+    <p class="foot" id="foot">Сайт работает локально и не требует интернета. Сообщения хранятся только в этом браузере.</p>
   </main>
 
   <div class="scrim" id="scrim"></div>
@@ -392,11 +419,39 @@
       </section>
 
       <section class="group">
+        <h3>AI и знания</h3>
+        <p class="note" id="ai-note">AI не подключён. Добавьте ключ Cloud.ru в файл <code>config\yaeri.config.json</code> (или введите его в окне запуска) и перезапустите Яэри.</p>
+        <div class="server-only" id="ai-toggles" hidden>
+          <label class="toggle">
+            <span class="t-text"><span class="t-name">Искать в знаниях (RAG)</span><span class="t-desc">Перед ответом Яэри ищет подходящие фрагменты в ваших документах и прошлых разговорах</span></span>
+            <input class="vh" type="checkbox" role="switch" id="set-rag"><span class="track" aria-hidden="true"></span>
+          </label>
+          <label class="toggle">
+            <span class="t-text"><span class="t-name">Запоминать разговоры</span><span class="t-desc">Каждый обмен репликами сохраняется в долговременную память</span></span>
+            <input class="vh" type="checkbox" role="switch" id="set-remember"><span class="track" aria-hidden="true"></span>
+          </label>
+        </div>
+      </section>
+
+      <section class="group server-only" id="docs-group" hidden>
+        <h3>Документы для RAG</h3>
+        <p class="note">Текстовые файлы (.txt, .md, .csv, .json, .html и подобные). Текст режется на фрагменты, для них считаются эмбеддинги в Cloud.ru, всё хранится в папке <code>data</code>.</p>
+        <div class="actions">
+          <input class="vh" type="file" id="doc-file" multiple accept=".txt,.md,.markdown,.csv,.tsv,.json,.html,.htm,.xml,.log,.ini,.yaml,.yml,.ps1,.py,.js,.css,text/*">
+          <button class="ghost" type="button" id="doc-add">Добавить файлы</button>
+          <button class="ghost" type="button" id="reindex" hidden>Переиндексировать</button>
+        </div>
+        <p class="doc-status" id="doc-status" role="status"></p>
+        <ul class="doc-list" id="doc-list"></ul>
+      </section>
+
+      <section class="group">
         <h3>О проекте</h3>
         <dl class="about">
-          <dt>Версия</dt><dd>0.2, демонстрация интерфейса</dd>
-          <dt>AI-модель</dt><dd>не подключена</dd>
-          <dt>Хранение</dt><dd>только в этом браузере</dd>
+          <dt>Версия</dt><dd>0.3</dd>
+          <dt>AI-модель</dt><dd id="about-model">не подключена</dd>
+          <dt>Эмбеддинги</dt><dd id="about-embed">—</dd>
+          <dt>Хранение</dt><dd id="about-storage">только в этом браузере</dd>
           <dt>Адрес</dt><dd id="about-host"></dd>
         </dl>
       </section>
@@ -406,6 +461,7 @@
         <p class="note">Настройки и переписка хранятся на этом компьютере.</p>
         <div class="actions">
           <button class="ghost" type="button" id="clear-from-settings">Очистить чат</button>
+          <button class="ghost server-only" type="button" id="clear-memory" hidden>Забыть память</button>
           <button class="ghost" type="button" id="reset-settings">Сбросить настройки</button>
         </div>
       </section>
@@ -420,7 +476,7 @@
       var ACCENTS = ['moon', 'fire', 'sakura', 'forest', 'sky'];
       var SIZES = ['sm', 'md', 'lg'];
       var reduce = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
-      var DEFAULTS = { name: 'Хозяин', accent: 'moon', size: 'md', motion: !reduce, enter: true, time: true };
+      var DEFAULTS = { name: 'Хозяин', accent: 'moon', size: 'md', motion: !reduce, enter: true, time: true, rag: true, remember: true, model: '' };
 
       function $(id) { return document.getElementById(id); }
       var html = document.documentElement;
@@ -448,7 +504,10 @@
           size: SIZES.indexOf(s.size) > -1 ? s.size : DEFAULTS.size,
           motion: typeof s.motion === 'boolean' ? s.motion : DEFAULTS.motion,
           enter: typeof s.enter === 'boolean' ? s.enter : DEFAULTS.enter,
-          time: typeof s.time === 'boolean' ? s.time : DEFAULTS.time
+          time: typeof s.time === 'boolean' ? s.time : DEFAULTS.time,
+          rag: typeof s.rag === 'boolean' ? s.rag : DEFAULTS.rag,
+          remember: typeof s.remember === 'boolean' ? s.remember : DEFAULTS.remember,
+          model: typeof s.model === 'string' ? s.model.slice(0, 120) : DEFAULTS.model
         };
       }
       var settings = normalize(load(SET_KEY));
@@ -457,6 +516,8 @@
       var motionBox = $('set-motion');
       var enterBox = $('set-enter');
       var timeBox = $('set-time');
+      var ragBox = $('set-rag');
+      var rememberBox = $('set-remember');
 
       function applySettings() {
         html.dataset.accent = settings.accent;
@@ -473,6 +534,8 @@
         motionBox.checked = settings.motion;
         enterBox.checked = settings.enter;
         timeBox.checked = settings.time;
+        ragBox.checked = settings.rag;
+        rememberBox.checked = settings.remember;
         Array.prototype.forEach.call(document.querySelectorAll('input[name="accent"]'), function (r) { r.checked = r.value === settings.accent; });
         Array.prototype.forEach.call(document.querySelectorAll('input[name="size"]'), function (r) { r.checked = r.value === settings.size; });
       }
@@ -491,6 +554,8 @@
       motionBox.addEventListener('change', function () { settings.motion = motionBox.checked; changed(); });
       enterBox.addEventListener('change', function () { settings.enter = enterBox.checked; changed(); });
       timeBox.addEventListener('change', function () { settings.time = timeBox.checked; changed(); });
+      ragBox.addEventListener('change', function () { settings.rag = ragBox.checked; changed(); });
+      rememberBox.addEventListener('change', function () { settings.remember = rememberBox.checked; changed(); });
       $('reset-settings').addEventListener('click', function () {
         settings = normalize(null);
         syncControls();
@@ -534,6 +599,59 @@
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
       });
 
+      /* ---------- Режим работы ---------- */
+      // online: сервер Яэри отвечает и ключ Cloud.ru задан; иначе демо-режим как раньше.
+      var online = false;
+      var serverStatus = null;
+      var statusPill = $('status');
+      var statusText = $('status-text');
+      var panelHint = $('panel-hint');
+      var modelSelect = $('model');
+      var sendBtn = $('send');
+
+      function api(path, body) {
+        var opts = { method: 'GET', cache: 'no-store' };
+        if (body !== undefined) {
+          opts.method = 'POST';
+          opts.headers = { 'Content-Type': 'application/json' };
+          opts.body = JSON.stringify(body);
+        }
+        return fetch('/api/' + path, opts).then(function (r) {
+          return r.json().catch(function () { return {}; }).then(function (data) {
+            if (!r.ok) throw new Error(data.error || ('Ошибка сервера: ' + r.status));
+            return data;
+          });
+        });
+      }
+      function shortModel(id) {
+        id = String(id || '');
+        return id.slice(id.lastIndexOf('/') + 1) || id;
+      }
+      function showServerParts(on) {
+        Array.prototype.forEach.call(document.querySelectorAll('.server-only'), function (el) { el.hidden = !on; });
+      }
+      function setStatus(kind, text, title) {
+        statusPill.classList.toggle('online', kind === 'online');
+        statusPill.classList.toggle('warn', kind === 'warn');
+        statusText.textContent = text;
+        statusPill.title = title;
+      }
+      function applyMode() {
+        showServerParts(online);
+        if (online) {
+          setStatus('online', 'Cloud.ru', 'AI подключён: Cloud.ru Foundation Models');
+          panelHint.textContent = 'Отвечает модель Cloud.ru. Выберите модель справа.';
+          $('ai-note').textContent = 'Подключено: Cloud.ru Foundation Models. Ключ хранится только в config\\yaeri.config.json на этом компьютере и не передаётся в браузер.';
+          $('about-model').textContent = modelSelect.value || serverStatus.chatModel;
+          $('about-embed').textContent = serverStatus.embeddingModel;
+          $('about-storage').textContent = 'папка data на этом компьютере';
+          $('foot').textContent = 'Сообщения, память и документы хранятся в папке data на этом компьютере. В интернет уходят только запросы к Cloud.ru.';
+        } else if (serverStatus) {
+          setStatus('warn', 'Демо-режим', 'Ключ Cloud.ru не задан');
+          panelHint.textContent = 'Ключ Cloud.ru не задан: ответы заготовленные.';
+        }
+      }
+
       /* ---------- Чат ---------- */
       var history = [];
       var typingNode = null;
@@ -543,10 +661,7 @@
       function valid(m) {
         return m && (m.role === 'user' || m.role === 'assistant') && typeof m.text === 'string';
       }
-      var saved = load(CHAT_KEY);
-      if (Array.isArray(saved)) history = saved.filter(valid).slice(-100);
-
-      function save() { store(CHAT_KEY, history.slice(-100)); }
+      function save() { if (!online) store(CHAT_KEY, history.slice(-100)); }
       function clock(t) {
         try { return new Date(t).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }); }
         catch (error) { return ''; }
@@ -556,11 +671,23 @@
       }
       function bubble(m, animate) {
         var row = document.createElement('div');
-        row.className = 'msg ' + (m.role === 'user' ? 'user' : 'assistant') + (animate ? ' enter' : '');
+        row.className = 'msg ' + (m.role === 'user' ? 'user' : 'assistant') + (m.error ? ' error' : '') + (animate ? ' enter' : '');
         var text = document.createElement('div');
         text.className = 'text';
         text.textContent = m.text;
         row.appendChild(text);
+        var parts = [];
+        if (m.model) parts.push(shortModel(m.model));
+        if (Array.isArray(m.sources) && m.sources.length) {
+          parts.push('источники: ' + m.sources.map(function (x) { return x && x.label; }).filter(Boolean).join(', '));
+        }
+        if (m.note) parts.push(m.note);
+        if (parts.length) {
+          var meta = document.createElement('div');
+          meta.className = 'meta';
+          meta.textContent = parts.join(' · ');
+          row.appendChild(meta);
+        }
         if (typeof m.t === 'number') {
           var time = document.createElement('div');
           time.className = 'time';
@@ -577,7 +704,12 @@
         save();
       }
       function greet() {
-        add('assistant', 'Здравствуйте, ' + settings.name + '! Я Яэри, ваша восьмихвостая лисица. Сейчас чат работает в демонстрационном режиме: я принимаю сообщения, а настоящий AI мы подключим на следующем этапе.');
+        if (online) {
+          // Приветствие только на экране: в базу и в контекст модели оно не попадает.
+          bubble({ role: 'assistant', text: 'Здравствуйте, ' + settings.name + '! Я Яэри, ваша восьмихвостая лисица. Я подключена к Cloud.ru и помню наши разговоры. Спрашивайте, а если добавите документы в настройках, я буду опираться и на них.', t: Date.now() }, true);
+          return;
+        }
+        add('assistant', 'Здравствуйте, ' + settings.name + '! Я Яэри, ваша восьмихвостая лисица. Сейчас чат работает в демонстрационном режиме: чтобы я отвечала по-настоящему, добавьте API-ключ Cloud.ru при запуске Yaeri.bat.');
       }
       function showTyping() {
         if (typingNode) return;
@@ -595,31 +727,78 @@
       function hideTyping() {
         if (typingNode) { typingNode.remove(); typingNode = null; }
       }
-      function reply() {
+      function demoReply() {
         pending++;
         showTyping();
         var id = setTimeout(function () {
           timers = timers.filter(function (x) { return x !== id; });
           pending--;
           if (!pending) hideTyping();
-          add('assistant', settings.name + ', я получила ваше сообщение. Пока AI-модель не подключена, отвечать по-настоящему я не могу, зато интерфейс и локальный запуск уже работают.');
+          add('assistant', settings.name + ', я получила ваше сообщение. Пока ключ Cloud.ru не задан, отвечать по-настоящему я не могу, зато интерфейс и локальный запуск уже работают.');
         }, settings.motion ? 900 : 250);
         timers.push(id);
       }
-      function clearChat() {
-        if (history.length > 1 && !window.confirm('Очистить весь разговор?')) return;
+      var chatEpoch = 0;
+      function aiReply(message) {
+        var epoch = chatEpoch;
+        var userMsg = { role: 'user', text: message, t: Date.now() };
+        history.push(userMsg);
+        bubble(userMsg, true);
+        pending++;
+        sendBtn.disabled = true;
+        showTyping();
+        api('chat', { text: message, model: modelSelect.value, rag: settings.rag, remember: settings.remember, name: settings.name })
+          .then(function (data) {
+            if (epoch !== chatEpoch) return;
+            var m = data.reply;
+            if (data.note) m.note = data.note;
+            history.push(m);
+            hideTyping();
+            bubble(m, true);
+          })
+          .catch(function (error) {
+            if (epoch !== chatEpoch) return;
+            hideTyping();
+            bubble({ role: 'assistant', error: true, text: 'Не получилось ответить: ' + error.message }, true);
+          })
+          .then(function () {
+            pending = Math.max(0, pending - 1);
+            if (!pending) sendBtn.disabled = false;
+          });
+      }
+      function resetView() {
         timers.forEach(clearTimeout);
         timers = [];
         pending = 0;
+        sendBtn.disabled = false;
         hideTyping();
         history = [];
         chat.textContent = '';
-        save();
-        greet();
-        if (!isOpen()) input.focus();
+      }
+      function clearChat() {
+        if (history.length > 1 && !window.confirm(online
+          ? 'Очистить переписку? Долговременная память при этом сохранится, её можно стереть отдельно в настройках.'
+          : 'Очистить весь разговор?')) return;
+        var done = function () {
+          chatEpoch++;
+          resetView();
+          save();
+          greet();
+          if (!isOpen()) input.focus();
+        };
+        if (online) {
+          api('history/clear', {}).then(done).catch(function (error) { window.alert(error.message); });
+        } else {
+          done();
+        }
       }
       $('clear').addEventListener('click', clearChat);
       $('clear-from-settings').addEventListener('click', clearChat);
+      $('clear-memory').addEventListener('click', function () {
+        if (!window.confirm('Стереть долговременную память Яэри о прошлых разговорах? Документы останутся.')) return;
+        api('memory/clear', {}).then(function () { window.alert('Память очищена.'); })
+          .catch(function (error) { window.alert(error.message); });
+      });
 
       function grow() {
         input.style.height = 'auto';
@@ -628,10 +807,15 @@
       function submit() {
         var message = input.value.trim();
         if (!message) return;
-        add('user', message);
+        if (online && pending) return;
         input.value = '';
         grow();
-        reply();
+        if (online) {
+          aiReply(message);
+        } else {
+          add('user', message);
+          demoReply();
+        }
         input.focus();
       }
       form.addEventListener('submit', function (event) { event.preventDefault(); submit(); });
@@ -643,15 +827,150 @@
         if (send) { event.preventDefault(); submit(); }
       });
 
+      /* ---------- Модели ---------- */
+      function fillModels(list, preferred) {
+        modelSelect.textContent = '';
+        list.forEach(function (id) {
+          var option = document.createElement('option');
+          option.value = id;
+          option.textContent = shortModel(id);
+          option.title = id;
+          modelSelect.appendChild(option);
+        });
+        modelSelect.value = list.indexOf(preferred) > -1 ? preferred : list[0];
+        $('about-model').textContent = modelSelect.value;
+      }
+      function loadModels() {
+        fillModels([serverStatus.chatModel], serverStatus.chatModel);
+        api('models').then(function (data) {
+          var list = Array.isArray(data.models) && data.models.length ? data.models : [serverStatus.chatModel];
+          fillModels(list, settings.model || data.default);
+          if (data.error) modelSelect.title = 'Список моделей не загрузился: ' + data.error;
+        }).catch(function () { /* Остаётся модель по умолчанию. */ });
+      }
+      modelSelect.addEventListener('change', function () {
+        settings.model = modelSelect.value;
+        changed();
+        $('about-model').textContent = modelSelect.value;
+      });
+
+      /* ---------- Документы для RAG ---------- */
+      var docList = $('doc-list');
+      var docStatus = $('doc-status');
+      var docFile = $('doc-file');
+      var reindexBtn = $('reindex');
+
+      function renderDocs(data) {
+        docList.textContent = '';
+        reindexBtn.hidden = !data.reindexNeeded;
+        if (data.reindexNeeded) docStatus.textContent = 'Модель эмбеддингов изменилась: нажмите «Переиндексировать».';
+        (data.docs || []).forEach(function (d) {
+          var li = document.createElement('li');
+          var name = document.createElement('span');
+          name.className = 'd-name';
+          name.textContent = d.name;
+          name.title = d.name;
+          var info = document.createElement('span');
+          info.className = 'd-info';
+          info.textContent = d.chunks + ' фрагм.';
+          var del = document.createElement('button');
+          del.type = 'button';
+          del.textContent = '×';
+          del.setAttribute('aria-label', 'Удалить документ ' + d.name);
+          del.addEventListener('click', function () {
+            if (!window.confirm('Удалить «' + d.name + '» из знаний Яэри?')) return;
+            api('docs/delete', { id: d.id }).then(loadDocs).catch(function (error) { docStatus.textContent = error.message; });
+          });
+          li.appendChild(name);
+          li.appendChild(info);
+          li.appendChild(del);
+          docList.appendChild(li);
+        });
+        if (!data.reindexNeeded && !(data.docs || []).length && !docStatus.textContent) docStatus.textContent = 'Документов пока нет.';
+      }
+      function loadDocs() {
+        return api('docs').then(renderDocs).catch(function (error) { docStatus.textContent = error.message; });
+      }
+      function readText(file) {
+        if (file.text) return file.text();
+        return new Promise(function (resolve, reject) {
+          var reader = new FileReader();
+          reader.onload = function () { resolve(String(reader.result)); };
+          reader.onerror = function () { reject(reader.error); };
+          reader.readAsText(file, 'utf-8');
+        });
+      }
+      $('doc-add').addEventListener('click', function () { docFile.click(); });
+      docFile.addEventListener('change', function () {
+        var files = Array.prototype.slice.call(docFile.files || []);
+        docFile.value = '';
+        var ok = 0;
+        var chain = Promise.resolve();
+        files.forEach(function (file, i) {
+          chain = chain.then(function () {
+            docStatus.textContent = 'Индексирую «' + file.name + '» (' + (i + 1) + ' из ' + files.length + ')…';
+            return readText(file).then(function (text) {
+              if (text.length > 1000000) throw new Error('«' + file.name + '» больше 1 000 000 символов.');
+              return api('docs', { name: file.name, text: text });
+            }).then(function () { ok++; }).catch(function (error) {
+              docStatus.textContent = error.message;
+              throw error;
+            });
+          });
+        });
+        chain.then(function () {
+          docStatus.textContent = ok ? 'Готово: добавлено документов — ' + ok + '.' : '';
+        }).catch(function () { /* Сообщение уже показано. */ }).then(loadDocs);
+      });
+      reindexBtn.addEventListener('click', function () {
+        reindexBtn.disabled = true;
+        docStatus.textContent = 'Пересчитываю эмбеддинги…';
+        api('reindex', {}).then(function () { docStatus.textContent = 'Индекс обновлён.'; })
+          .catch(function (error) { docStatus.textContent = error.message; })
+          .then(function () { reindexBtn.disabled = false; loadDocs(); });
+      });
+
       /* ---------- Старт ---------- */
       syncControls();
       applySettings();
-      if (history.length) {
-        history.forEach(function (m) { bubble(m, false); });
-        // Страницу закрыли до ответа: отвечаем на последнее сообщение сейчас.
-        if (history[history.length - 1].role === 'user') reply();
+
+      function startDemo() {
+        online = false;
+        applyMode();
+        resetView();
+        var saved = load(CHAT_KEY);
+        if (Array.isArray(saved)) history = saved.filter(valid).slice(-100);
+        if (history.length) {
+          history.forEach(function (m) { bubble(m, false); });
+          // Страницу закрыли до ответа: отвечаем на последнее сообщение сейчас.
+          if (history[history.length - 1].role === 'user') demoReply();
+        } else {
+          greet();
+        }
+      }
+      function startOnline() {
+        online = true;
+        applyMode();
+        loadModels();
+        loadDocs();
+        return api('history').then(function (data) {
+          resetView();
+          history = (data.messages || []).filter(valid);
+          if (history.length) history.forEach(function (m) { bubble(m, false); });
+          else greet();
+        });
+      }
+
+      if (location.protocol === 'file:') {
+        startDemo();
       } else {
-        greet();
+        api('status').then(function (st) {
+          serverStatus = st;
+          if (st.configured) return startOnline();
+          startDemo();
+        }).catch(function () {
+          startDemo();
+        });
       }
     }());
   </script>

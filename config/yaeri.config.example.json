@@ -1,0 +1,14 @@
+{
+  "apiKey": "",
+  "baseUrl": "https://foundation-models.api.cloud.ru/v1",
+  "chatModel": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+  "chatModels": [],
+  "embeddingModel": "Qwen/Qwen3-Embedding-0.6B",
+  "temperature": 0.6,
+  "maxTokens": 2000,
+  "historyTurns": 20,
+  "ragTopK": 5,
+  "memoryTopK": 3,
+  "minScore": 0.3,
+  "systemPrompt": ""
+}

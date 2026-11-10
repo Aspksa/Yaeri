@@ -1,5 +1,5 @@
 ﻿#requires -Version 5.1
-# Yaeri: локальный сайт без Python и без установки зависимостей.
+# Yaeri: локальный сайт и API без Python и без установки зависимостей.
 $ErrorActionPreference = 'Stop'
 
 try {
@@ -11,6 +11,9 @@ try {
 $siteRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\site'))
 $indexFile = Join-Path $siteRoot 'index.html'
 $utf8 = [System.Text.UTF8Encoding]::new($false)
+$maxBody = 8MB
+
+. (Join-Path $PSScriptRoot 'yaeri-api.ps1')
 
 function Send-HttpResponse {
     param(
@@ -38,10 +41,89 @@ function Send-HttpResponse {
     $Stream.Flush()
 }
 
+function Send-Json([System.IO.Stream]$Stream, [int]$Code, $Value) {
+    $reason = switch ($Code) {
+        200 { 'OK' } 400 { 'Bad Request' } 403 { 'Forbidden' } 404 { 'Not Found' }
+        405 { 'Method Not Allowed' } 409 { 'Conflict' } 413 { 'Payload Too Large' }
+        502 { 'Bad Gateway' } 503 { 'Service Unavailable' } default { 'Internal Server Error' }
+    }
+    $body = $utf8.GetBytes((ConvertTo-YJson $Value))
+    Send-HttpResponse $Stream $Code $reason $body 'application/json; charset=utf-8'
+}
+
+function Read-HttpRequest([System.Net.Sockets.TcpClient]$Client, [System.IO.Stream]$Stream) {
+    # Читаем заголовки до пустой строки, затем тело по Content-Length.
+    $buffer = New-Object byte[] 16384
+    $data = New-Object System.IO.MemoryStream
+    $headerEnd = -1
+    while ($headerEnd -lt 0) {
+        $n = $Stream.Read($buffer, 0, $buffer.Length)
+        if ($n -le 0) { break }
+        # Соединение «ожило»: дальше ждём данные дольше, чем у пустых запасных соединений.
+        $Client.ReceiveTimeout = 15000
+        $data.Write($buffer, 0, $n)
+        $text = [System.Text.Encoding]::ASCII.GetString($data.GetBuffer(), 0, [int]$data.Length)
+        $headerEnd = $text.IndexOf("`r`n`r`n")
+        if ($headerEnd -lt 0 -and $data.Length -gt 65536) { throw (New-YError 400 'Слишком большие заголовки.') }
+    }
+    if ($headerEnd -lt 0) { return $null }
+
+    $lines = $text.Substring(0, $headerEnd) -split "`r`n"
+    $headers = @{}
+    for ($i = 1; $i -lt $lines.Length; $i++) {
+        $pos = $lines[$i].IndexOf(':')
+        if ($pos -gt 0) { $headers[$lines[$i].Substring(0, $pos).Trim().ToLowerInvariant()] = $lines[$i].Substring($pos + 1).Trim() }
+    }
+
+    $length = 0
+    if ($headers.ContainsKey('content-length')) {
+        if (-not [int]::TryParse($headers['content-length'], [ref]$length) -or $length -lt 0) {
+            throw (New-YError 400 'Некорректный Content-Length.')
+        }
+    }
+    if ($length -gt $maxBody) { throw (New-YError 413 'Слишком большой запрос.') }
+
+    $bodyStart = $headerEnd + 4
+    while ($data.Length -lt $bodyStart + $length) {
+        $n = $Stream.Read($buffer, 0, $buffer.Length)
+        if ($n -le 0) { break }
+        $data.Write($buffer, 0, $n)
+    }
+    $bodyText = ''
+    if ($length -gt 0) {
+        $available = [Math]::Min($length, [int]$data.Length - $bodyStart)
+        $bodyText = $utf8.GetString($data.GetBuffer(), $bodyStart, $available)
+    }
+    return @{ Line = $lines[0]; Headers = $headers; Body = $bodyText }
+}
+
 $listener = $null
 try {
     if (-not (Test-Path -LiteralPath $indexFile -PathType Leaf)) {
         throw 'Не найден сайт: site\index.html'
+    }
+
+    Import-YConfig
+    Import-YStore
+
+    Write-Host ''
+    if (-not (Test-YConfigured)) {
+        Write-Host 'API-ключ Cloud.ru пока не задан.' -ForegroundColor Yellow
+        Write-Host 'Ключ сохранится только на этом компьютере: config\yaeri.config.json (в git не попадает).'
+        Write-Host 'Вставьте ключ (Ctrl+V или правый клик) и нажмите Enter. Пустой Enter — демо-режим без AI.'
+        $secure = Read-Host 'API-ключ Cloud.ru' -AsSecureString
+        $ptr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
+        try {
+            $plain = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
+        } finally {
+            [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)
+        }
+        if (-not [string]::IsNullOrWhiteSpace($plain)) {
+            Save-YApiKey $plain.Trim()
+            Import-YConfig
+            Write-Host 'Ключ сохранён.' -ForegroundColor Green
+        }
+        $plain = $null
     }
 
     # 127.0.0.1: только текущий компьютер. Порт 0 выбирается системой.
@@ -51,11 +133,17 @@ try {
     $listener.Start()
     $port = ([System.Net.IPEndPoint]$listener.LocalEndpoint).Port
     $address = 'http://127.0.0.1:' + $port + '/'
+    $allowedHosts = @('127.0.0.1:' + $port, 'localhost:' + $port)
 
     Write-Host ''
     Write-Host 'Яэри запущена!' -ForegroundColor Magenta
     Write-Host ('Адрес сайта: ' + $address) -ForegroundColor Cyan
-    Write-Host 'Порт выбран автоматически. Python не нужен.'
+    if (Test-YConfigured) {
+        Write-Host ('AI: Cloud.ru, модель по умолчанию ' + $script:Config.chatModel) -ForegroundColor Green
+    } else {
+        Write-Host 'AI: не подключён (демо-режим).' -ForegroundColor Yellow
+    }
+    Write-Host ('Данные: ' + $script:DataDir)
     Write-Host 'Для остановки закройте это окно или нажмите Ctrl+C.'
     Write-Host ''
 
@@ -74,28 +162,24 @@ try {
             continue
         }
         $client = $listener.AcceptTcpClient()
-        $reader = $null
+        $stream = $null
         try {
             # Браузеры открывают «запасные» пустые соединения; короткий таймаут
             # не даёт им надолго задерживать загрузку страницы.
             $client.ReceiveTimeout = 1000
             $client.SendTimeout = 5000
             $stream = $client.GetStream()
-            $reader = [System.IO.StreamReader]::new(
-                $stream, [System.Text.Encoding]::ASCII, $false, 1024, $true
-            )
-            $requestLine = $reader.ReadLine()
-            if ([string]::IsNullOrWhiteSpace($requestLine)) {
+            try {
+                $request = Read-HttpRequest $client $stream
+            } catch [YaeriHttpException] {
+                Send-Json $stream $_.Exception.Code @{ error = $_.Exception.Message }
+                continue
+            }
+            if ($null -eq $request -or [string]::IsNullOrWhiteSpace($request.Line)) {
                 continue
             }
 
-            # Прочитать заголовки запроса до пустой строки.
-            for ($i = 0; $i -lt 100; $i++) {
-                $line = $reader.ReadLine()
-                if ($null -eq $line -or $line.Length -eq 0) { break }
-            }
-
-            if ($requestLine -notmatch '^(GET|HEAD) (\S+) HTTP/1\.[01]$') {
+            if ($request.Line -notmatch '^(GET|HEAD|POST) (\S+) HTTP/1\.[01]$') {
                 $body = $utf8.GetBytes('Метод не поддерживается.')
                 Send-HttpResponse $stream 405 'Method Not Allowed' $body 'text/plain; charset=utf-8'
                 continue
@@ -104,6 +188,44 @@ try {
             $method = $Matches[1]
             $target = $Matches[2]
             $pathPart = ($target -split '\?', 2)[0]
+
+            # ---------- API ----------
+            if ($pathPart.StartsWith('/api/')) {
+                # Защита: только запросы со страницы самой Яэри.
+                # Host отсекает DNS rebinding, Origin и JSON — запросы с чужих сайтов.
+                $hostHeader = [string]$request.Headers['host']
+                $origin = [string]$request.Headers['origin']
+                $contentType = [string]$request.Headers['content-type']
+                $okHost = $allowedHosts -contains $hostHeader.ToLowerInvariant()
+                $okOrigin = (-not $origin) -or ($allowedHosts | Where-Object { $origin -eq ('http://' + $_) })
+                $okType = ($method -ne 'POST') -or $contentType.StartsWith('application/json', [System.StringComparison]::OrdinalIgnoreCase)
+                if (-not ($okHost -and $okOrigin -and $okType)) {
+                    Send-Json $stream 403 @{ error = 'Запрос отклонён.' }
+                    continue
+                }
+                if ($method -eq 'HEAD') {
+                    Send-Json $stream 405 @{ error = 'Метод не поддерживается.' }
+                    continue
+                }
+                $client.SendTimeout = 30000
+                try {
+                    $result = Invoke-YApi $method $pathPart $request.Body
+                    Send-Json $stream 200 $result
+                } catch [YaeriHttpException] {
+                    Send-Json $stream $_.Exception.Code @{ error = $_.Exception.Message }
+                } catch {
+                    Write-Host ('Ошибка API: ' + $_.Exception.Message) -ForegroundColor Yellow
+                    Send-Json $stream 500 @{ error = ('Внутренняя ошибка: ' + $_.Exception.Message) }
+                }
+                continue
+            }
+
+            # ---------- Статические файлы ----------
+            if ($method -eq 'POST') {
+                $body = $utf8.GetBytes('Метод не поддерживается.')
+                Send-HttpResponse $stream 405 'Method Not Allowed' $body 'text/plain; charset=utf-8'
+                continue
+            }
             $decoded = [System.Uri]::UnescapeDataString($pathPart)
             if ($decoded -eq '/') { $decoded = '/index.html' }
             $headOnly = ($method -eq 'HEAD')
@@ -151,7 +273,6 @@ try {
         } catch {
             Write-Host ('Ошибка запроса: ' + $_.Exception.Message) -ForegroundColor Yellow
         } finally {
-            if ($null -ne $reader) { $reader.Dispose() }
             $client.Dispose()
         }
     }
