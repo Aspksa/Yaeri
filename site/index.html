@@ -105,12 +105,14 @@
       animation: unfurl 1.4s cubic-bezier(.2, .8, .25, 1) both;
       animation-delay: calc(var(--i) * 80ms + 150ms);
     }
+    /* unfurl остаётся в списке: иначе после ухода курсора он запускается заново
+       и хвосты на мгновение исчезают. */
     html[data-motion="on"] .brand:hover .logo .tail {
-      animation: sway 1.6s ease-in-out infinite alternate;
-      animation-delay: calc(var(--i) * -120ms);
+      animation: unfurl 1.4s cubic-bezier(.2, .8, .25, 1) both, sway 1.6s ease-in-out infinite alternate;
+      animation-delay: calc(var(--i) * 80ms + 150ms), calc(var(--i) * -120ms);
     }
     @keyframes unfurl {
-      from { transform: rotate(calc(var(--a) * -1deg)); opacity: 0; }
+      from { transform: rotate(calc(var(--rot) * -1deg)); opacity: 0; }
       to   { transform: rotate(0deg); opacity: 1; }
     }
     @keyframes sway {
@@ -281,14 +283,14 @@
 <radialGradient id="yPearl"><stop offset="0" style="stop-color:var(--a-glow)"/><stop offset="0.45" style="stop-color:var(--a)"/><stop offset="1" style="stop-color:var(--a);stop-opacity:0"/></radialGradient>
 </defs>
 <g class="tails">
-<g transform="rotate(-70 64 84)"><g class="tail" style="--a:-70;--i:0"><path d="M64 84 C49 72 44 46 63 20 C66 20 69 26 72 34 C80 52 78 72 64 84Z" fill="url(#yTailA)" style="stroke:var(--bg)" stroke-width="1.4" stroke-linejoin="round"/></g></g>
-<g transform="rotate(-50 64 84)"><g class="tail" style="--a:-50;--i:1"><path d="M64 84 C49 72 44 46 63 20 C66 20 69 26 72 34 C80 52 78 72 64 84Z" fill="url(#yTailB)" style="stroke:var(--bg)" stroke-width="1.4" stroke-linejoin="round"/></g></g>
-<g transform="rotate(-30 64 84)"><g class="tail" style="--a:-30;--i:2"><path d="M64 84 C49 72 44 46 63 20 C66 20 69 26 72 34 C80 52 78 72 64 84Z" fill="url(#yTailA)" style="stroke:var(--bg)" stroke-width="1.4" stroke-linejoin="round"/></g></g>
-<g transform="rotate(-10 64 84)"><g class="tail" style="--a:-10;--i:3"><path d="M64 84 C49 72 44 46 63 20 C66 20 69 26 72 34 C80 52 78 72 64 84Z" fill="url(#yTailB)" style="stroke:var(--bg)" stroke-width="1.4" stroke-linejoin="round"/></g></g>
-<g transform="rotate(10 64 84)"><g class="tail" style="--a:10;--i:4"><path d="M64 84 C49 72 44 46 63 20 C66 20 69 26 72 34 C80 52 78 72 64 84Z" fill="url(#yTailA)" style="stroke:var(--bg)" stroke-width="1.4" stroke-linejoin="round"/></g></g>
-<g transform="rotate(30 64 84)"><g class="tail" style="--a:30;--i:5"><path d="M64 84 C49 72 44 46 63 20 C66 20 69 26 72 34 C80 52 78 72 64 84Z" fill="url(#yTailB)" style="stroke:var(--bg)" stroke-width="1.4" stroke-linejoin="round"/></g></g>
-<g transform="rotate(50 64 84)"><g class="tail" style="--a:50;--i:6"><path d="M64 84 C49 72 44 46 63 20 C66 20 69 26 72 34 C80 52 78 72 64 84Z" fill="url(#yTailA)" style="stroke:var(--bg)" stroke-width="1.4" stroke-linejoin="round"/></g></g>
-<g transform="rotate(70 64 84)"><g class="tail" style="--a:70;--i:7"><path d="M64 84 C49 72 44 46 63 20 C66 20 69 26 72 34 C80 52 78 72 64 84Z" fill="url(#yTailB)" style="stroke:var(--bg)" stroke-width="1.4" stroke-linejoin="round"/></g></g>
+<g transform="rotate(-70 64 84)"><g class="tail" style="--rot:-70;--i:0"><path d="M64 84 C49 72 44 46 63 20 C66 20 69 26 72 34 C80 52 78 72 64 84Z" fill="url(#yTailA)" style="stroke:var(--bg)" stroke-width="1.4" stroke-linejoin="round"/></g></g>
+<g transform="rotate(-50 64 84)"><g class="tail" style="--rot:-50;--i:1"><path d="M64 84 C49 72 44 46 63 20 C66 20 69 26 72 34 C80 52 78 72 64 84Z" fill="url(#yTailB)" style="stroke:var(--bg)" stroke-width="1.4" stroke-linejoin="round"/></g></g>
+<g transform="rotate(-30 64 84)"><g class="tail" style="--rot:-30;--i:2"><path d="M64 84 C49 72 44 46 63 20 C66 20 69 26 72 34 C80 52 78 72 64 84Z" fill="url(#yTailA)" style="stroke:var(--bg)" stroke-width="1.4" stroke-linejoin="round"/></g></g>
+<g transform="rotate(-10 64 84)"><g class="tail" style="--rot:-10;--i:3"><path d="M64 84 C49 72 44 46 63 20 C66 20 69 26 72 34 C80 52 78 72 64 84Z" fill="url(#yTailB)" style="stroke:var(--bg)" stroke-width="1.4" stroke-linejoin="round"/></g></g>
+<g transform="rotate(10 64 84)"><g class="tail" style="--rot:10;--i:4"><path d="M64 84 C49 72 44 46 63 20 C66 20 69 26 72 34 C80 52 78 72 64 84Z" fill="url(#yTailA)" style="stroke:var(--bg)" stroke-width="1.4" stroke-linejoin="round"/></g></g>
+<g transform="rotate(30 64 84)"><g class="tail" style="--rot:30;--i:5"><path d="M64 84 C49 72 44 46 63 20 C66 20 69 26 72 34 C80 52 78 72 64 84Z" fill="url(#yTailB)" style="stroke:var(--bg)" stroke-width="1.4" stroke-linejoin="round"/></g></g>
+<g transform="rotate(50 64 84)"><g class="tail" style="--rot:50;--i:6"><path d="M64 84 C49 72 44 46 63 20 C66 20 69 26 72 34 C80 52 78 72 64 84Z" fill="url(#yTailA)" style="stroke:var(--bg)" stroke-width="1.4" stroke-linejoin="round"/></g></g>
+<g transform="rotate(70 64 84)"><g class="tail" style="--rot:70;--i:7"><path d="M64 84 C49 72 44 46 63 20 C66 20 69 26 72 34 C80 52 78 72 64 84Z" fill="url(#yTailB)" style="stroke:var(--bg)" stroke-width="1.4" stroke-linejoin="round"/></g></g>
 </g>
 <g class="head">
 <path d="M42 66 L56 78 Q64 73.5 72 78 L86 66 L89 92 C89 104 77 114 64 116 C51 114 39 104 39 92 Z" fill="url(#yHead)" style="stroke:var(--bg)" stroke-width="2" stroke-linejoin="round"/>
@@ -575,7 +577,7 @@
         save();
       }
       function greet() {
-        add('assistant', 'С возвращением, ' + settings.name + '! Я Яэри, ваша восьмихвостая лисица. Сейчас чат работает в демонстрационном режиме: я принимаю сообщения, а настоящий AI мы подключим на следующем этапе.');
+        add('assistant', 'Здравствуйте, ' + settings.name + '! Я Яэри, ваша восьмихвостая лисица. Сейчас чат работает в демонстрационном режиме: я принимаю сообщения, а настоящий AI мы подключим на следующем этапе.');
       }
       function showTyping() {
         if (typingNode) return;
@@ -646,6 +648,8 @@
       applySettings();
       if (history.length) {
         history.forEach(function (m) { bubble(m, false); });
+        // Страницу закрыли до ответа: отвечаем на последнее сообщение сейчас.
+        if (history[history.length - 1].role === 'user') reply();
       } else {
         greet();
       }
