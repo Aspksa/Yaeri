@@ -1153,6 +1153,27 @@
             <div class="t-legend" id="soul-chart-legend"></div>
           </div>
         </section>
+        <section class="card" aria-labelledby="soul-evolution-title">
+          <div class="card-head">
+            <h2 id="soul-evolution-title">Автономная жизнь</h2>
+            <span class="card-meta" id="soul-evo-meta">Ожидание</span>
+          </div>
+          <div class="card-body">
+            <label class="toggle server-only">
+              <span class="t-text"><span class="t-name">Фоновое обучение и память</span><span class="t-desc">Пока запущен локальный сервер: обдумывает опыт, проверяет знания и записывает перемены</span></span>
+              <input class="vh" type="checkbox" role="switch" id="soul-evo-enabled"><span class="track" aria-hidden="true"></span>
+            </label>
+            <p class="soul-small" id="soul-evo-state" role="status"></p>
+            <button type="button" class="mini-btn server-only" id="soul-evo-clear">Очистить автономную память</button>
+            <span class="soul-lbl">Внутренние события</span>
+            <ul class="journal" id="soul-evo-events"></ul>
+            <span class="soul-lbl soul-gap">История личности</span>
+            <ul class="journal" id="soul-evo-timeline"></ul>
+            <span class="soul-lbl soul-gap">Знания и уверенность</span>
+            <ul class="journal" id="soul-evo-facts"></ul>
+          </div>
+          <div class="card-foot"><span>Непроверенные факты не считаются достоверными. Фоновые задачи работают при запущенном сервере.</span></div>
+        </section>
         <section class="card grow" aria-labelledby="soul-lessons-title">
           <div class="card-head">
             <h2 id="soul-lessons-title">Что она поняла</h2>
@@ -1423,7 +1444,13 @@
         r.addEventListener('change', function () { if (r.checked) { settings.size = r.value; changed(); } });
       });
       Object.keys(boxes).forEach(function (k) {
-        boxes[k].addEventListener('change', function () { settings[k] = boxes[k].checked; changed(); });
+        boxes[k].addEventListener('change', function () {
+          settings[k] = boxes[k].checked;
+          changed();
+          if (k === 'soul' && online) {
+            api('soul/evolution', { enabled: settings.soul }).then(loadEvolution).catch(function () {});
+          }
+        });
       });
       $('reset-settings').addEventListener('click', function () {
         settings = normalize(null);
@@ -1494,7 +1521,7 @@
           if (location.hash !== hash) history_.replaceState(null, '', hash || location.pathname + location.search);
         }
         if (window.YBrain) YBrain.onShow(name);
-        if (name === 'soul') renderSoul();
+        if (name === 'soul') { renderSoul(); if (online) loadEvolution(); }
         syncFab();
         if (!fromHash && window.scrollY) window.scrollTo(0, 0);
       }
@@ -2986,8 +3013,67 @@
       }, 60000);
       $('soul-sleep').addEventListener('click', function () { soulSleep('force'); });
 
+      /* ---------- Soul Evolution: history and activity ---------- */
+      function fillEvolutionList(id, items, format, empty) {
+        var target = $(id);
+        target.textContent = '';
+        if (!Array.isArray(items) || !items.length) {
+          target.appendChild(el('li', 'soul-small', empty));
+          return;
+        }
+        items.slice(-10).reverse().forEach(function (item) {
+          var li = el('li');
+          li.appendChild(el('span', 'soul-small', format(item)));
+          target.appendChild(li);
+        });
+      }
+      function loadEvolution() {
+        if (!online) return Promise.resolve();
+        return api('soul/evolution').then(function (data) {
+          $('soul-evo-enabled').checked = !!data.enabled;
+          $('soul-evo-meta').textContent = (data.counts && data.counts.episodes || 0) + ' событий памяти';
+          $('soul-evo-state').textContent = (data.enabled ? 'Активна' : 'Приостановлена') +
+            ' · очередь: ' + data.queued +
+            (data.lastTask ? ' · последняя задача: ' + data.lastTask : '') +
+            (data.lastError ? ' · ошибка: ' + data.lastError : '');
+          fillEvolutionList('soul-evo-events', data.events, function (x) {
+            return (x.kind || 'событие') + ': ' + (x.text || '');
+          }, 'Внутренних событий пока нет.');
+          fillEvolutionList('soul-evo-timeline', data.timeline, function (x) {
+            return (x.field || '') + ': ' + (x.before || '—') + ' → ' + (x.after || '') +
+              (x.reason ? ' (' + x.reason + ')' : '');
+          }, 'Изменений личности пока нет.');
+          fillEvolutionList('soul-evo-facts', data.facts, function (x) {
+            return (x.status === 'active' ? '✓ ' : '? ') + (x.key || '') + ': ' + (x.value || '') +
+              ' · уверенность ' + Math.round((x.confidence || 0) * 100) + '% · ' + (x.status || '');
+          }, 'Проверенных знаний пока нет.');
+        }).catch(function (err) {
+          $('soul-evo-state').textContent = 'Ошибка получения состояния: ' + err.message;
+        });
+      }
+      $('soul-evo-clear').addEventListener('click', function () {
+        if (!window.confirm('Очистить эпизоды, знания, исправления и историю автономной жизни? Другие воспоминания и дневник души останутся.')) return;
+        api('soul/evolution/clear', {}).then(loadEvolution).catch(function (err) {
+          $('soul-evo-state').textContent = err.message;
+        });
+      });
+      $('soul-evo-enabled').addEventListener('change', function () {
+        var control = this;
+        control.disabled = true;
+        api('soul/evolution', { enabled: control.checked })
+          .then(loadEvolution)
+          .catch(function (err) { $('soul-evo-state').textContent = err.message; })
+          .then(function () { control.disabled = false; });
+      });
+      setInterval(function () {
+        if (online && currentView === 'soul' && !document.hidden) loadEvolution();
+      }, 60000);
+
       function loadSoul() {
-        return api('soul').then(setSoul);
+        return api('soul').then(function (data) {
+          setSoul(data);
+          loadEvolution();
+        });
       }
       function shareThought() {
         // Мысль, которую Яэри придумала, пока размышляла, она говорит первой.
@@ -3117,6 +3203,7 @@
       function startOnline() {
         online = true;
         applyMode();
+        if (!settings.soul) api('soul/evolution', { enabled: false }).catch(function () {});
         loadModels();
         loadDocs();
         return api('history').then(function (data) {

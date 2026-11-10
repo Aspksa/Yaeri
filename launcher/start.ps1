@@ -141,10 +141,20 @@ try {
         Write-Host ('Откройте адрес вручную: ' + $address)
     }
 
+    # All writes remain on this one server thread. Background work continues
+    # while the browser is closed (but the Yaeri server must stay running).
+    $lastEvolutionPoll = 0L
     while ($true) {
-        # Pending() и короткая пауза вместо блокирующего AcceptTcpClient():
-        # так Ctrl+C срабатывает сразу, а не при следующем запросе.
+        # Keep the scheduler independent of browser timers. Only run one task
+        # while no request is waiting; never race against another JSON writer.
         if (-not $listener.Pending()) {
+            $clock = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+            if ($clock - $lastEvolutionPoll -ge 60000) {
+                $lastEvolutionPoll = $clock
+                try { Invoke-YEvolutionTick } catch {
+                    Write-Host ('Ошибка фоновой задачи: ' + $_.Exception.Message) -ForegroundColor Yellow
+                }
+            }
             Start-Sleep -Milliseconds 100
             continue
         }
