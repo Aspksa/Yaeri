@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="ru" data-accent="moon" data-size="md" data-motion="on" data-time="on">
+<html lang="ru" data-accent="forest" data-size="md" data-motion="on" data-time="on">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0f0d1a">
-  <title>Яэри — восьмихвостая лисица</title>
+  <meta name="theme-color" content="#071113">
+  <title>Яэри — командный центр</title>
   <link rel="icon" type="image/svg+xml" href="logo.svg">
   <script>
     /* Применяем сохранённые настройки до отрисовки, чтобы страница не мигала. */
@@ -23,81 +23,93 @@
   <style>
     :root {
       color-scheme: dark;
-      --h: 262;
-      --bg: hsl(var(--h) 38% 6%);
-      --surface: hsl(var(--h) 30% 11% / .78);
-      --surface-solid: hsl(var(--h) 30% 10%);
-      --line: hsl(var(--h) 22% 24%);
-      --ink: hsl(var(--h) 30% 94%);
+      --h: 168;
+      --bg: hsl(var(--h) 30% 4.5%);
+      --bg-2: hsl(var(--h) 26% 6.5%);
+      --surface: hsl(var(--h) 24% 8% / .88);
+      --surface-solid: hsl(var(--h) 24% 8%);
+      --surface-2: hsl(var(--h) 22% 11%);
+      --line: hsl(var(--h) 18% 17%);
+      --line-2: hsl(var(--h) 20% 24%);
+      --ink: hsl(var(--h) 18% 92%);
       --ink-dark: hsl(var(--h) 40% 9%);
-      --muted: hsl(var(--h) 14% 70%);
-      --a: hsl(var(--h) 70% 74%);
-      --a-strong: hsl(var(--h) 60% 62%);
-      --a-deep: hsl(var(--h) 46% 30%);
-      --a-glow: hsl(var(--h) 100% 91%);
-      --on-a: hsl(var(--h) 50% 10%);
+      --muted: hsl(var(--h) 10% 62%);
+      --faint: hsl(var(--h) 10% 42%);
+      --a: hsl(var(--h) 68% 62%);
+      --a-strong: hsl(var(--h) 60% 50%);
+      --a-deep: hsl(var(--h) 46% 26%);
+      --a-glow: hsl(var(--h) 100% 86%);
+      --a-soft: hsl(var(--h) 60% 50% / .14);
+      --on-a: hsl(var(--h) 50% 8%);
+      --warn: hsl(40 90% 62%);
+      --danger: hsl(4 80% 68%);
       --serif: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, "Times New Roman", serif;
       --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+      --mono: "Cascadia Mono", "Cascadia Code", Consolas, "JetBrains Mono", "SFMono-Regular", Menlo, ui-monospace, monospace;
     }
+    html[data-accent="moon"]   { --h: 262; }
     html[data-accent="fire"]   { --h: 24; }
     html[data-accent="sakura"] { --h: 338; }
     html[data-accent="forest"] { --h: 168; }
     html[data-accent="sky"]    { --h: 208; }
-    html[data-size="sm"] { font-size: 15px; }
-    html[data-size="md"] { font-size: 16px; }
-    html[data-size="lg"] { font-size: 18px; }
+    html[data-size="sm"] { font-size: 14px; }
+    html[data-size="md"] { font-size: 15px; }
+    html[data-size="lg"] { font-size: 17px; }
 
     * { box-sizing: border-box; }
+    html, body { height: 100%; }
     body {
       margin: 0;
-      min-height: 100vh;
       color: var(--ink);
-      font: 400 1rem/1.6 var(--sans);
+      font: 400 1rem/1.55 var(--sans);
       background:
-        radial-gradient(52rem 34rem at 10% -10%, hsl(var(--h) 55% 24% / .55), transparent 62%),
-        radial-gradient(38rem 26rem at 100% 0, hsl(var(--h) 50% 17% / .5), transparent 66%),
+        radial-gradient(60rem 40rem at 50% -20%, hsl(var(--h) 50% 14% / .45), transparent 65%),
         var(--bg);
-      background-attachment: fixed;
-      transition: background-color .3s;
+      overflow: hidden;
     }
-    ::selection { background: hsl(var(--h) 60% 42%); color: #fff; }
+    ::selection { background: hsl(var(--h) 60% 36%); color: #fff; }
     :focus-visible { outline: 2px solid var(--a); outline-offset: 2px; }
     button { font: inherit; color: inherit; cursor: pointer; }
+    input, select, textarea { font: inherit; }
     .vh { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
+    [hidden] { display: none !important; }
+    .mono { font-family: var(--mono); }
 
-    /* Раскладка */
-    .app {
-      max-width: 880px;
-      height: 100vh;
-      height: 100dvh;
-      margin: 0 auto;
-      padding: 20px 20px 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
+    /* ---------- Верхняя панель ---------- */
+    .shell { height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
+    .topbar {
+      flex: none; display: flex; align-items: center; gap: 18px; height: 58px; padding: 0 16px;
+      border-bottom: 1px solid var(--line); background: hsl(var(--h) 28% 5% / .9);
     }
-    .top { display: flex; align-items: center; gap: 16px; }
-    .brand { display: flex; align-items: center; gap: 18px; min-width: 0; }
-    .logo { width: 104px; height: auto; flex: none; overflow: visible; filter: drop-shadow(0 8px 26px hsl(var(--h) 80% 60% / .32)); }
-    .wordmark { margin: 0; font: 600 2.5rem/1 var(--serif); letter-spacing: .01em; }
-    .tagline { margin: 8px 0 0; color: var(--muted); font-size: .92rem; }
-    .top-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+    .brand { display: flex; align-items: center; gap: 11px; min-width: 0; text-decoration: none; color: inherit; }
+    .logo { width: 40px; height: auto; flex: none; overflow: visible; filter: drop-shadow(0 4px 14px hsl(var(--h) 80% 55% / .35)); }
+    .brand-text { display: flex; flex-direction: column; min-width: 0; }
+    .wordmark { margin: 0; font: 700 1rem/1.1 var(--mono); letter-spacing: .14em; text-transform: uppercase; white-space: nowrap; }
+    .wordmark b { color: var(--a); font-weight: 500; letter-spacing: .02em; text-transform: none; font-family: var(--sans); font-size: 1.02rem; margin-left: 4px; }
+    .tagline { margin: 3px 0 0; color: var(--faint); font: 500 .62rem/1 var(--mono); letter-spacing: .2em; text-transform: uppercase; white-space: nowrap; }
+    .tabs { display: flex; gap: 4px; margin-left: 10px; }
+    .tab {
+      padding: 6px 12px; border: 1px solid transparent; border-radius: 8px; background: none;
+      color: var(--muted); font: 600 .7rem/1 var(--mono); letter-spacing: .14em; text-transform: uppercase;
+    }
+    .tab:hover { color: var(--ink); border-color: var(--line); }
+    .tab[aria-selected="true"] { color: var(--a); border-color: hsl(var(--h) 50% 40% / .6); background: var(--a-soft); }
+    .top-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
     .status {
-      display: inline-flex; align-items: center; gap: 8px; padding: 7px 13px;
-      border: 1px solid var(--line); border-radius: 999px; background: var(--surface);
-      color: var(--muted); font-size: .8rem; white-space: nowrap;
+      display: inline-flex; align-items: center; gap: 8px; padding: 6px 11px;
+      border: 1px solid var(--line); border-radius: 8px; color: var(--muted);
+      font: 600 .64rem/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; white-space: nowrap;
     }
-    .status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--a); box-shadow: 0 0 10px var(--a); }
+    .status .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+    .status.online .dot { background: var(--a); box-shadow: 0 0 10px var(--a); }
+    .status.warn .dot { background: var(--warn); box-shadow: 0 0 10px var(--warn); }
     .icon-btn {
-      width: 46px; height: 46px; flex: none; display: grid; place-items: center; padding: 0;
-      border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--ink);
-      transition: border-color .2s, background-color .2s, transform .35s;
+      width: 34px; height: 34px; flex: none; display: grid; place-items: center; padding: 0;
+      border: 1px solid var(--line); border-radius: 8px; background: none; color: var(--muted);
+      transition: border-color .2s, color .2s;
     }
-    .icon-btn:hover { border-color: var(--a); background: hsl(var(--h) 30% 16% / .9); }
-    .icon-btn:hover svg { transform: rotate(45deg); }
-    .icon-btn svg { width: 22px; height: 22px; transition: transform .35s; }
-    .icon-btn.small { width: 38px; height: 38px; }
-    .icon-btn.small:hover svg { transform: none; }
+    .icon-btn:hover { border-color: var(--a); color: var(--ink); }
+    .icon-btn svg { width: 17px; height: 17px; }
 
     /* Логотип: один раз раскрываем восемь хвостов */
     .logo .tail { transform-box: view-box; transform-origin: 64px 84px; }
@@ -105,141 +117,291 @@
       animation: unfurl 1.4s cubic-bezier(.2, .8, .25, 1) both;
       animation-delay: calc(var(--i) * 80ms + 150ms);
     }
-    /* unfurl остаётся в списке: иначе после ухода курсора он запускается заново
-       и хвосты на мгновение исчезают. */
     html[data-motion="on"] .brand:hover .logo .tail {
       animation: unfurl 1.4s cubic-bezier(.2, .8, .25, 1) both, sway 1.6s ease-in-out infinite alternate;
       animation-delay: calc(var(--i) * 80ms + 150ms), calc(var(--i) * -120ms);
     }
-    @keyframes unfurl {
-      from { transform: rotate(calc(var(--rot) * -1deg)); opacity: 0; }
-      to   { transform: rotate(0deg); opacity: 1; }
+    @keyframes unfurl { from { transform: rotate(calc(var(--rot) * -1deg)); opacity: 0; } to { transform: rotate(0deg); opacity: 1; } }
+    @keyframes sway { from { transform: rotate(-2.5deg); } to { transform: rotate(2.5deg); } }
+
+    /* ---------- Командный центр ---------- */
+    .view { flex: 1; min-height: 0; }
+    .deck {
+      display: grid; gap: 10px; padding: 10px;
+      grid-template-columns: minmax(250px, 300px) minmax(0, 1fr) minmax(260px, 320px);
     }
-    @keyframes sway {
-      from { transform: rotate(-2.5deg); }
-      to   { transform: rotate(2.5deg); }
+    .col { min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+    .card {
+      min-height: 0; display: flex; flex-direction: column;
+      border: 1px solid var(--line); border-radius: 12px; background: var(--surface);
     }
+    .card-head {
+      flex: none; display: flex; align-items: center; gap: 8px; padding: 10px 12px 9px;
+      border-bottom: 1px solid var(--line);
+    }
+    .card-head h2, .card-head h3 {
+      margin: 0; display: flex; align-items: center; gap: 8px;
+      font: 700 .68rem/1.2 var(--mono); letter-spacing: .18em; text-transform: uppercase;
+    }
+    .card-head h2::before, .card-head h3::before {
+      content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--a); box-shadow: 0 0 8px var(--a);
+    }
+    .card-meta { margin-left: auto; color: var(--faint); font: 500 .6rem/1.2 var(--mono); letter-spacing: .12em; text-transform: uppercase; white-space: nowrap; }
+    .card-body { min-height: 0; overflow-y: auto; padding: 10px 12px; scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
+    .card-foot {
+      flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px;
+      border-top: 1px solid var(--line); color: var(--faint); font: 500 .62rem/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase;
+    }
+    .card-foot b { color: var(--a); font-weight: 600; }
+    .mini-btn {
+      padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: none; color: var(--muted);
+      font: 600 .6rem/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; white-space: nowrap;
+    }
+    .mini-btn:hover { color: var(--ink); border-color: var(--a); }
+    .mini-btn.solid { background: var(--a); border-color: var(--a); color: var(--on-a); }
+    .mini-btn.solid:hover { background: var(--a-glow); }
+
+    /* Рабочая память */
+    .mem-card { flex: 1; }
+    .mem-add { display: grid; grid-template-columns: 1fr auto; gap: 6px; padding: 10px 12px 0; }
+    .mem-add .field { grid-column: 1 / -1; }
+    .field, .model-select {
+      width: 100%; min-width: 0; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; outline: none;
+      background: var(--bg-2); color: var(--ink); font-size: .84rem; transition: border-color .2s, box-shadow .2s;
+    }
+    .field:focus, .model-select:focus { border-color: var(--a); box-shadow: 0 0 0 3px var(--a-soft); }
+    ::placeholder { color: var(--faint); }
+    .mem-tools { display: flex; gap: 6px; padding: 8px 12px 0; }
+    .mem-list { list-style: none; margin: 0; padding: 0; }
+    .mem-group { margin: 0 0 10px; }
+    .mem-group-head {
+      display: flex; align-items: center; gap: 7px; margin: 4px 0 4px; color: var(--muted);
+      font: 700 .62rem/1.3 var(--mono); letter-spacing: .14em; text-transform: uppercase;
+    }
+    .mem-group-head i { width: 7px; height: 7px; border-radius: 2px; flex: none; }
+    .mem-group-head span:last-child { margin-left: auto; color: var(--faint); font-weight: 500; }
+    .mem-item {
+      position: relative; display: flex; align-items: flex-start; gap: 6px; padding: 6px 4px 6px 9px;
+      border-left: 2px solid var(--line); font-size: .84rem; line-height: 1.4;
+    }
+    .mem-item:hover { background: hsl(var(--h) 20% 12% / .6); border-left-color: var(--a); }
+    .mem-item.pinned { border-left-color: var(--a); }
+    .mem-item .m-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+    .mem-item .m-src { display: block; margin-top: 2px; color: var(--faint); font: 500 .58rem/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .mem-item button {
+      flex: none; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 5px; background: none;
+      color: var(--faint); font-size: .85rem; line-height: 1; opacity: .5;
+    }
+    .mem-item:hover button, .mem-item button:focus-visible { opacity: 1; }
+    .mem-item button:hover { color: var(--ink); background: var(--surface-2); }
+    .mem-item.pinned .pin { color: var(--a); opacity: 1; }
+    .mem-item .del:hover { color: var(--danger); }
+    .empty { margin: 6px 0; color: var(--faint); font-size: .82rem; line-height: 1.5; }
+
+    /* Сейчас: часы и календарь */
+    .now-clock { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+    .now-time { color: var(--a); font: 600 2.1rem/1 var(--mono); letter-spacing: .02em; text-shadow: 0 0 22px hsl(var(--h) 80% 50% / .35); }
+    .now-date { color: var(--muted); font: 500 .66rem/1.4 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-top: 10px; text-align: center; font: 500 .66rem/1 var(--mono); }
+    .cal span { padding: 5px 0; border-radius: 4px; color: var(--muted); position: relative; }
+    .cal .wd { color: var(--faint); font-size: .56rem; letter-spacing: .1em; padding: 2px 0 4px; }
+    .cal .out { opacity: .25; }
+    .cal .has::after { content: ""; position: absolute; left: 50%; bottom: 1px; width: 3px; height: 3px; margin-left: -1.5px; border-radius: 50%; background: var(--a); }
+    .cal .today { background: var(--a); color: var(--on-a); font-weight: 700; }
+    .cal .today::after { background: var(--on-a); }
 
     /* Чат */
-    .panel {
-      flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
-      border: 1px solid var(--line); border-radius: 22px; background: var(--surface);
-      box-shadow: 0 30px 80px hsl(var(--h) 60% 3% / .55);
-      -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    .chat-card { flex: 1; overflow: hidden; }
+    .chat-card .card-head { padding: 8px 12px; }
+    .head-actions { margin-left: auto; display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .model-select {
+      max-width: 220px; padding: 5px 26px 5px 9px; font: 500 .7rem/1.2 var(--mono);
+      background: var(--bg-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23999' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 9px center;
+      text-overflow: ellipsis; -webkit-appearance: none; appearance: none;
     }
-    .panel-head {
-      display: flex; align-items: center; justify-content: space-between; gap: 12px;
-      padding: 16px 22px; border-bottom: 1px solid var(--line);
-    }
-    .panel-head h2 { margin: 0; font: 600 1.15rem/1.3 var(--serif); }
-    .hint { margin: 2px 0 0; color: var(--muted); font-size: .8rem; }
-    .ghost {
-      padding: 7px 13px; border: 1px solid var(--line); border-radius: 10px; background: transparent;
-      color: var(--muted); font-size: .8rem; white-space: nowrap; transition: color .2s, border-color .2s;
-    }
-    .ghost:hover { color: var(--ink); border-color: var(--a); }
+    .model-select option { background: var(--surface-solid); color: var(--ink); }
     .chat {
-      flex: 1; min-height: 0; overflow-y: auto; padding: 24px 26px;
-      display: flex; flex-direction: column; gap: 20px;
-      scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+      flex: 1; min-height: 0; overflow-y: auto; padding: 20px 22px;
+      display: flex; flex-direction: column; gap: 18px;
+      scrollbar-width: thin; scrollbar-color: var(--line-2) transparent;
     }
-    .msg { max-width: min(86%, 640px); display: flex; flex-direction: column; gap: 5px; }
+    .msg { max-width: min(88%, 680px); display: flex; flex-direction: column; gap: 4px; }
+    .msg .who { color: var(--faint); font: 700 .58rem/1 var(--mono); letter-spacing: .18em; text-transform: uppercase; }
+    .msg.assistant .who { color: var(--a); }
     .msg .text { white-space: pre-wrap; overflow-wrap: anywhere; }
-    .msg .time { color: var(--muted); font-size: .75rem; }
+    .msg .time { color: var(--faint); font: 500 .64rem/1 var(--mono); letter-spacing: .06em; }
     html[data-time="off"] .msg .time { display: none; }
     .msg.assistant {
-      align-self: flex-start; padding-left: 16px;
-      background: linear-gradient(var(--a), hsl(var(--h) 60% 62% / 0)) left top / 2px 100% no-repeat;
-      font-family: var(--serif); font-size: 1.07rem; line-height: 1.7;
+      align-self: flex-start; padding-left: 14px;
+      background: linear-gradient(var(--a), hsl(var(--h) 60% 50% / 0)) left top / 2px 100% no-repeat;
+      font-family: var(--serif); font-size: 1.06rem; line-height: 1.65;
     }
-    .msg.assistant .time { font-family: var(--sans); }
     .msg.user { align-self: flex-end; align-items: flex-end; }
-    .msg.user .text {
-      padding: 10px 15px; border: 1px solid hsl(var(--h) 40% 40%); border-radius: 16px 16px 4px 16px;
-      background: hsl(var(--h) 44% 30%);
+    .msg.user .text { padding: 9px 14px; border: 1px solid var(--line-2); border-radius: 12px 12px 3px 12px; background: var(--surface-2); }
+    .msg .meta { color: var(--faint); font: 500 .66rem/1.45 var(--mono); }
+    .msg .remembered {
+      display: inline-flex; align-items: flex-start; gap: 6px; margin-top: 2px; padding: 5px 9px; border: 1px dashed hsl(var(--h) 50% 40% / .6);
+      border-radius: 8px; color: var(--a); font: 500 .7rem/1.45 var(--mono);
     }
     .msg.enter { animation: rise .28s ease-out both; }
     @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-    .msg.assistant.typing { padding-top: 4px; padding-bottom: 4px; flex-direction: row; gap: 6px; align-items: center; background: none; }
-    .typing i {
-      width: 6px; height: 6px; border-radius: 50%; background: var(--a); opacity: .55;
-      animation: glow 1.4s ease-in-out infinite; animation-delay: calc(var(--n) * 110ms);
-    }
+    .msg.typing { padding-top: 4px; padding-bottom: 4px; flex-direction: row; gap: 6px; align-items: center; background: none; }
+    .typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--a); opacity: .55; animation: glow 1.4s ease-in-out infinite; animation-delay: calc(var(--n) * 110ms); }
     @keyframes glow { 0%, 100% { opacity: .2; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.15); } }
+    .msg.error .text { color: var(--danger); font-family: var(--sans); font-size: .92rem; }
+    .msg.error { background: linear-gradient(var(--danger), transparent) left top / 2px 100% no-repeat; }
 
-    form { display: flex; gap: 10px; align-items: flex-end; padding: 14px 16px 6px; border-top: 1px solid var(--line); }
-    textarea, .field {
-      width: 100%; border: 1px solid var(--line); border-radius: 14px; outline: none;
-      background: hsl(var(--h) 30% 8% / .85); color: var(--ink); font: inherit;
+    form.composer { flex: none; display: flex; gap: 8px; align-items: flex-end; padding: 10px 12px 4px; border-top: 1px solid var(--line); }
+    textarea {
+      flex: 1; min-width: 0; height: 46px; min-height: 46px; max-height: 180px; padding: 11px 13px; resize: none;
+      border: 1px solid var(--line); border-radius: 10px; outline: none; background: var(--bg-2); color: var(--ink);
       transition: border-color .2s, box-shadow .2s;
     }
-    textarea { flex: 1; min-width: 0; height: 52px; min-height: 52px; max-height: 180px; padding: 13px 15px; resize: none; }
-    .field { padding: 11px 14px; }
-    textarea:focus, .field:focus { border-color: var(--a); box-shadow: 0 0 0 3px hsl(var(--h) 70% 74% / .16); }
-    ::placeholder { color: hsl(var(--h) 12% 55%); }
+    textarea:focus { border-color: var(--a); box-shadow: 0 0 0 3px var(--a-soft); }
     .send {
-      height: 52px; padding: 0 22px; border: 0; border-radius: 14px;
-      background: var(--a); color: var(--on-a); font-weight: 700; transition: background-color .2s, transform .15s;
+      height: 46px; padding: 0 18px; border: 0; border-radius: 10px; background: var(--a); color: var(--on-a);
+      font: 700 .72rem/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; transition: background-color .2s, transform .15s;
     }
     .send:hover { background: var(--a-glow); }
     .send:active { transform: scale(.97); }
-    .composer-hint { margin: 0; padding: 4px 18px 12px; color: var(--muted); font-size: .76rem; }
     .send:disabled { opacity: .55; cursor: progress; }
-    .head-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }
-    .model-select {
-      max-width: 230px; min-width: 0; padding: 7px 28px 7px 11px; border: 1px solid var(--line); border-radius: 10px;
-      background: hsl(var(--h) 30% 8% / .85) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23aaa' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 10px center;
-      color: var(--ink); font: inherit; font-size: .8rem; text-overflow: ellipsis; -webkit-appearance: none; appearance: none;
-    }
-    .model-select:focus { border-color: var(--a); outline: none; }
-    .model-select option { background: var(--surface-solid); color: var(--ink); }
-    .msg .meta { color: var(--muted); font-family: var(--sans); font-size: .74rem; line-height: 1.4; }
-    .msg.error .text { color: hsl(8 80% 74%); font-family: var(--sans); font-size: .92rem; }
-    .msg.error { background: linear-gradient(hsl(8 80% 64%), hsl(8 80% 64% / 0)) left top / 2px 100% no-repeat; }
-    .status.online .dot { background: hsl(140 60% 60%); box-shadow: 0 0 10px hsl(140 60% 60%); }
-    .status.warn .dot { background: hsl(40 90% 62%); box-shadow: 0 0 10px hsl(40 90% 62%); }
-    .doc-list { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-    .doc-list li { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 12px; font-size: .86rem; }
-    .doc-list .d-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .doc-list .d-info { color: var(--muted); font-size: .76rem; white-space: nowrap; }
-    .doc-list button { padding: 2px 8px; border: 0; background: none; color: var(--muted); font-size: 1rem; line-height: 1; }
-    .doc-list button:hover { color: hsl(8 80% 74%); }
-    .doc-status { margin: 10px 0 0; color: var(--muted); font-size: .82rem; min-height: 1.2em; }
-    .server-only[hidden] { display: none; }
-    .foot { margin: 0; color: var(--muted); font-size: .78rem; }
+    .composer-hint { flex: none; margin: 0; padding: 3px 14px 8px; color: var(--faint); font: 500 .64rem/1.4 var(--mono); }
 
-    /* Панель настроек */
-    .scrim {
-      position: fixed; inset: 0; z-index: 10; background: hsl(var(--h) 40% 3% / .62);
-      opacity: 0; pointer-events: none; transition: opacity .25s;
+    /* Мини-мозг, навыки, журнал */
+    .mini-brain { position: relative; height: 210px; flex: none; padding: 0; overflow: hidden; cursor: pointer; }
+    .mini-brain canvas { display: block; width: 100%; height: 100%; }
+    .mini-brain .open-hint {
+      position: absolute; right: 8px; bottom: 8px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px;
+      background: hsl(var(--h) 28% 5% / .8); color: var(--muted); font: 600 .58rem/1.2 var(--mono); letter-spacing: .12em; text-transform: uppercase;
     }
+    .mini-brain:hover .open-hint { color: var(--a); border-color: var(--a); }
+    .skills { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .skill { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 9px; background: var(--bg-2); min-width: 0; }
+    .skill:hover { border-color: var(--line-2); }
+    .skill-name { font: 600 .72rem/1.25 var(--mono); overflow-wrap: anywhere; }
+    .skill-desc { color: var(--faint); font: 500 .56rem/1.3 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .skill-row { display: flex; align-items: center; gap: 5px; margin-top: auto; }
+    .skill .run { width: 24px; height: 22px; padding: 0; border: 0; border-radius: 5px; background: var(--a); color: var(--on-a); font-size: .7rem; line-height: 1; }
+    .skill .run:hover { background: var(--a-glow); }
+    .skill .rm { width: 22px; height: 22px; padding: 0; border: 1px solid var(--line); border-radius: 5px; background: none; color: var(--faint); font-size: .8rem; line-height: 1; }
+    .skill .rm:hover { color: var(--danger); border-color: var(--danger); }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .stat { padding: 7px 6px; border: 1px solid var(--line); border-radius: 8px; text-align: center; }
+    .stat b { display: block; color: var(--a); font: 600 1.15rem/1.1 var(--mono); }
+    .stat span { color: var(--faint); font: 500 .52rem/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .feed { list-style: none; margin: 0; padding: 0; }
+    .feed li { display: grid; grid-template-columns: 44px 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: .8rem; line-height: 1.35; }
+    .feed li:last-child { border-bottom: 0; }
+    .feed time { color: var(--faint); font: 500 .62rem/1.6 var(--mono); }
+    .feed .f-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .feed .f-kind { color: var(--a); font: 600 .56rem/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; margin-right: 6px; }
+    .grow { flex: 1; }
+
+    /* ---------- Второй мозг ---------- */
+    .brain-view { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 300px; }
+    .stage { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--bg); }
+    .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+    .stage canvas.dragging { cursor: grabbing; }
+    .stage canvas.pointing { cursor: pointer; }
+    .overlay { position: absolute; pointer-events: none; }
+    .stage-info { left: 14px; top: 12px; display: flex; flex-direction: column; gap: 6px; max-width: min(60%, 520px); }
+    .stage-title { font: 700 .74rem/1.2 var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--stage-ink, var(--ink)); }
+    .stage-title b { color: var(--stage-accent, var(--a)); font-weight: 600; }
+    .stage-sub { color: var(--stage-muted, var(--muted)); font: 500 .6rem/1.4 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    .legend { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 2px; }
+    .legend span { display: inline-flex; align-items: center; gap: 5px; color: var(--stage-muted, var(--muted)); font: 500 .6rem/1.3 var(--mono); letter-spacing: .06em; }
+    .legend i { width: 7px; height: 7px; border-radius: 50%; }
+    .tooltip {
+      z-index: 3; max-width: 280px; padding: 8px 10px; border: 1px solid var(--line-2); border-radius: 8px;
+      background: hsl(var(--h) 28% 6% / .95); box-shadow: 0 10px 30px rgb(0 0 0 / .4); font-size: .8rem; line-height: 1.4;
+      transform: translate(14px, 14px);
+    }
+    .tooltip b { display: block; font: 600 .74rem/1.3 var(--mono); overflow-wrap: anywhere; }
+    .tooltip span { display: block; margin-top: 3px; color: var(--muted); font: 500 .6rem/1.3 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .detail {
+      left: 14px; bottom: 14px; width: min(400px, calc(100% - 28px)); max-height: 46%; display: flex; flex-direction: column;
+      pointer-events: auto; border: 1px solid var(--line-2); border-radius: 12px; background: hsl(var(--h) 28% 6% / .94);
+      box-shadow: 0 20px 50px rgb(0 0 0 / .45);
+    }
+    .detail .card-body { font-size: .86rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .detail .d-actions { display: flex; gap: 6px; padding: 8px 12px; border-top: 1px solid var(--line); }
+    .stage-empty {
+      inset: 0; display: grid; place-items: center; text-align: center; padding: 20px;
+      color: var(--stage-muted, var(--muted)); font: 500 .74rem/1.6 var(--mono); letter-spacing: .08em;
+    }
+    .zoom { right: 12px; bottom: 12px; display: flex; flex-direction: column; gap: 4px; pointer-events: auto; }
+    .zoom button { width: 30px; height: 30px; padding: 0; border: 1px solid var(--line-2); border-radius: 7px; background: hsl(var(--h) 28% 6% / .85); color: var(--muted); font: 600 .9rem/1 var(--mono); }
+    .zoom button:hover { color: var(--ink); border-color: var(--a); }
+
+    .controls { min-height: 0; overflow-y: auto; border-left: 1px solid var(--line); background: var(--surface-solid); padding: 12px; scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
+    .ctl { padding: 10px 0; border-bottom: 1px solid var(--line); }
+    .ctl:first-child { padding-top: 0; }
+    .ctl:last-child { border-bottom: 0; }
+    .ctl-title { margin: 0 0 7px; color: var(--faint); font: 700 .58rem/1.2 var(--mono); letter-spacing: .18em; text-transform: uppercase; }
+    .search-wrap { position: relative; }
+    .search-wrap kbd {
+      position: absolute; right: 7px; top: 50%; transform: translateY(-50%); padding: 1px 6px; border: 1px solid var(--line-2); border-radius: 4px;
+      color: var(--faint); font: 500 .62rem/1.4 var(--mono);
+    }
+    .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+    .chip-btn {
+      padding: 5px 9px; border: 1px solid var(--line); border-radius: 6px; background: none; color: var(--muted);
+      font: 600 .64rem/1.2 var(--mono); letter-spacing: .06em;
+    }
+    .chip-btn:hover { color: var(--ink); border-color: var(--line-2); }
+    .chip-btn[aria-pressed="true"] { background: var(--a); border-color: var(--a); color: var(--on-a); }
+    .range { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 8px; margin: 6px 0; }
+    .range label { color: var(--muted); font: 500 .6rem/1.3 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .range output { color: var(--faint); font: 500 .62rem/1 var(--mono); }
+    .range input { grid-column: 1 / -1; width: 100%; accent-color: var(--a); margin: 0; }
+    .check { display: flex; align-items: center; gap: 8px; margin: 7px 0 0; color: var(--muted); font-size: .8rem; cursor: pointer; }
+    .check input { accent-color: var(--a); margin: 0; }
+    .btn-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+    .btn-row.two { grid-template-columns: 1fr 1fr; }
+    .btn {
+      padding: 8px 6px; border: 1px solid var(--line); border-radius: 7px; background: none; color: var(--muted);
+      font: 600 .64rem/1.2 var(--mono); letter-spacing: .06em;
+    }
+    .btn:hover { color: var(--ink); border-color: var(--line-2); }
+    .btn.primary { background: var(--a); border-color: var(--a); color: var(--on-a); letter-spacing: .14em; text-transform: uppercase; }
+    .btn.primary:hover { background: var(--a-glow); }
+    .themes { display: flex; flex-direction: column; gap: 6px; }
+    .theme {
+      display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 9px;
+      background: none; text-align: left;
+    }
+    .theme:hover { border-color: var(--line-2); }
+    .theme[aria-pressed="true"] { border-color: var(--a); box-shadow: 0 0 0 1px var(--a) inset; }
+    .theme-swatch { display: flex; gap: 4px; padding: 6px 8px; border-radius: 6px; }
+    .theme-swatch i { width: 10px; height: 10px; border-radius: 2px; }
+    .theme-name { color: var(--ink); font: 600 .7rem/1.2 var(--mono); }
+    .theme-name small { display: block; margin-top: 2px; color: var(--a); font-size: .58rem; letter-spacing: .1em; text-transform: uppercase; }
+    .theme:not([aria-pressed="true"]) .theme-name small { display: none; }
+    .saved-note { min-height: 1.2em; margin: 6px 0 0; color: var(--a); font: 500 .62rem/1.2 var(--mono); }
+
+    /* ---------- Настройки (выдвижная панель) ---------- */
+    .scrim { position: fixed; inset: 0; z-index: 10; background: rgb(0 0 0 / .55); opacity: 0; pointer-events: none; transition: opacity .25s; }
     .drawer {
       position: fixed; top: 0; right: 0; bottom: 0; z-index: 20; width: min(410px, 100vw);
       display: flex; flex-direction: column; border-left: 1px solid var(--line); background: var(--surface-solid);
-      box-shadow: -30px 0 80px hsl(var(--h) 60% 2% / .5);
-      visibility: hidden; transform: translateX(100%);
+      box-shadow: -30px 0 80px rgb(0 0 0 / .5); visibility: hidden; transform: translateX(100%);
       transition: transform .32s cubic-bezier(.2, .8, .2, 1), visibility 0s linear .32s;
     }
     body.settings-open .scrim { opacity: 1; pointer-events: auto; }
-    body.settings-open .drawer {
-      visibility: visible; transform: none;
-      transition: transform .32s cubic-bezier(.2, .8, .2, 1), visibility 0s linear 0s;
-    }
-    .drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 22px; border-bottom: 1px solid var(--line); }
-    .drawer-head h2 { margin: 0; font: 600 1.2rem/1.3 var(--serif); }
-    .drawer-body { flex: 1; overflow-y: auto; padding: 4px 22px 28px; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
-    .group { margin: 0; padding: 20px 0; border: 0; border-bottom: 1px solid var(--line); min-width: 0; }
+    body.settings-open .drawer { visibility: visible; transform: none; transition: transform .32s cubic-bezier(.2, .8, .2, 1), visibility 0s linear 0s; }
+    .drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+    .drawer-head h2 { margin: 0; font: 700 .78rem/1.3 var(--mono); letter-spacing: .18em; text-transform: uppercase; }
+    .drawer-body { flex: 1; overflow-y: auto; padding: 4px 20px 28px; scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
+    .group { margin: 0; padding: 18px 0; border: 0; border-bottom: 1px solid var(--line); min-width: 0; }
     .group:last-child { border-bottom: 0; }
-    .group h3, .group legend { margin: 0 0 4px; padding: 0; font: 600 1.02rem/1.4 var(--serif); }
-    .note { margin: 0 0 12px; color: var(--muted); font-size: .85rem; }
-    /* legend по умолчанию «садится» на рамку fieldset; float возвращает ей обычный отступ */
+    .group h3, .group legend { margin: 0 0 4px; padding: 0; font: 700 .66rem/1.4 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+    .note { margin: 0 0 12px; color: var(--muted); font-size: .84rem; }
     .group legend { float: left; width: 100%; margin-bottom: 12px; }
     .group legend + * { clear: both; }
-
     .swatches { display: flex; flex-wrap: wrap; gap: 10px 8px; }
-    .swatch { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 62px; cursor: pointer; font-size: .76rem; color: var(--muted); text-align: center; }
+    .swatch { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 62px; cursor: pointer; font-size: .74rem; color: var(--muted); text-align: center; }
     .swatch .chip {
-      width: 38px; height: 38px; border-radius: 50%; border: 2px solid transparent;
+      width: 34px; height: 34px; border-radius: 50%; border: 2px solid transparent;
       background: radial-gradient(circle at 32% 28%, hsl(var(--sw) 90% 82%), hsl(var(--sw) 62% 56%) 60%, hsl(var(--sw) 50% 32%));
       outline: 2px solid transparent; outline-offset: 3px; transition: outline-color .2s, transform .2s;
     }
@@ -247,58 +409,71 @@
     .swatch input:checked + .chip { outline-color: var(--ink); }
     .swatch input:checked ~ .sw-name { color: var(--ink); }
     .swatch input:focus-visible + .chip { outline-color: var(--a); }
-
-    .segmented { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+    .segmented { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
     .segmented label { position: relative; cursor: pointer; }
-    .segmented span { display: block; padding: 9px 6px; text-align: center; font-size: .88rem; color: var(--muted); transition: background-color .2s, color .2s; }
+    .segmented span { display: block; padding: 8px 6px; text-align: center; font-size: .84rem; color: var(--muted); transition: background-color .2s, color .2s; }
     .segmented label + label span { border-left: 1px solid var(--line); }
     .segmented input:checked + span { background: var(--a); color: var(--on-a); font-weight: 600; }
     .segmented input:focus-visible + span { outline: 2px solid var(--a); outline-offset: -3px; }
-
-    .toggle { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+    .toggle { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
     .toggle:last-child { border-bottom: 0; padding-bottom: 0; }
     .t-text { display: flex; flex-direction: column; gap: 2px; }
-    .t-name { font-weight: 600; font-size: .95rem; }
-    .t-desc { color: var(--muted); font-size: .8rem; }
-    .track { position: relative; flex: none; width: 46px; height: 26px; border: 1px solid var(--line); border-radius: 999px; background: hsl(var(--h) 20% 16%); transition: background-color .2s, border-color .2s; }
-    .track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--muted); transition: transform .2s, background-color .2s; }
+    .t-name { font-weight: 600; font-size: .92rem; }
+    .t-desc { color: var(--muted); font-size: .78rem; }
+    .track { position: relative; flex: none; width: 42px; height: 24px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--surface-2); transition: background-color .2s, border-color .2s; }
+    .track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--muted); transition: transform .2s, background-color .2s; }
     .toggle input:checked + .track { background: var(--a-strong); border-color: var(--a-strong); }
-    .toggle input:checked + .track::after { transform: translateX(20px); background: #fff; }
+    .toggle input:checked + .track::after { transform: translateX(18px); background: #fff; }
     .toggle input:focus-visible + .track { outline: 2px solid var(--a); outline-offset: 2px; }
-
-    .about { display: grid; grid-template-columns: auto 1fr; gap: 8px 18px; margin: 0; font-size: .88rem; }
+    .about { display: grid; grid-template-columns: auto 1fr; gap: 8px 18px; margin: 0; font-size: .86rem; }
     .about dt { color: var(--muted); }
     .about dd { margin: 0; overflow-wrap: anywhere; }
-    .actions { display: flex; flex-wrap: wrap; gap: 10px; }
-    .actions .ghost { padding: 9px 15px; font-size: .88rem; color: var(--ink); }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .ghost { padding: 8px 13px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--ink); font-size: .84rem; white-space: nowrap; transition: border-color .2s; }
+    .ghost:hover { border-color: var(--a); }
+    .doc-list { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+    .doc-list li { display: flex; align-items: center; gap: 10px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 9px; font-size: .84rem; }
+    .doc-list .d-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .doc-list .d-info { color: var(--muted); font-size: .74rem; white-space: nowrap; }
+    .doc-list button { padding: 2px 8px; border: 0; background: none; color: var(--muted); font-size: 1rem; line-height: 1; }
+    .doc-list button:hover { color: var(--danger); }
+    .doc-status { margin: 10px 0 0; color: var(--muted); font-size: .8rem; min-height: 1.2em; }
+    code { font-family: var(--mono); font-size: .9em; }
 
     html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="off"] *::after {
       animation: none !important; transition: none !important; scroll-behavior: auto !important;
     }
 
-    @media (max-width: 600px) {
-      .app { padding: 12px 12px 10px; gap: 12px; }
-      .logo { width: 64px; }
-      .brand { gap: 12px; }
-      .wordmark { font-size: 2rem; }
-      .tagline { font-size: .82rem; margin-top: 5px; }
-      .panel { border-radius: 18px; }
-      .panel-head { padding: 12px 14px; }
-      .chat { padding: 16px 14px; gap: 16px; }
-      .msg { max-width: 94%; }
-      form { padding: 10px 10px 4px; gap: 8px; }
-      .send { padding: 0 16px; }
-      .model-select { max-width: 150px; }
-      .panel-head .hint { display: none; }
-      .composer-hint { padding: 4px 12px 10px; }
+    /* ---------- Узкие экраны ---------- */
+    @media (max-width: 1180px) {
+      .deck { grid-template-columns: minmax(240px, 280px) minmax(0, 1fr); }
+      .col-right { display: none; }
     }
-    @media (max-width: 480px) { .status { display: none; } }
+    @media (max-width: 820px) {
+      body { overflow: auto; }
+      .shell { height: auto; min-height: 100vh; }
+      .topbar { position: sticky; top: 0; z-index: 5; height: auto; background: var(--bg); flex-wrap: wrap; gap: 8px 12px; padding: 8px 12px; }
+      .tabs { order: 3; width: 100%; margin: 0; }
+      .tab { flex: 1; }
+      .tagline, .status { display: none; }
+      .deck { display: flex; flex-direction: column; padding: 8px; gap: 8px; }
+      .col-center { order: -1; }
+      .chat-card { height: calc(100dvh - 120px); min-height: 420px; flex: none; }
+      .col-right { display: flex; }
+      .mem-card .card-body { max-height: 60vh; }
+      .brain-view { display: flex; flex-direction: column; }
+      .stage { height: 64vh; flex: none; }
+      .controls { border-left: 0; border-top: 1px solid var(--line); }
+      .chat { padding: 14px 12px; }
+      .msg { max-width: 94%; }
+      .model-select { max-width: 140px; }
+    }
   </style>
 </head>
 <body>
-  <main class="app" id="app">
-    <header class="top">
-      <div class="brand">
+  <div class="shell" id="app">
+    <header class="topbar">
+      <a class="brand" href="#" id="brand">
         <svg class="logo" viewBox="0 0 128 124" role="img" aria-label="Логотип Яэри">
 <defs>
 <linearGradient id="yTailA" x1="0" y1="1" x2="0" y2="0"><stop offset="0" style="stop-color:var(--a-deep)"/><stop offset="0.45" style="stop-color:var(--a-strong)"/><stop offset="0.8" style="stop-color:var(--a)"/><stop offset="1" style="stop-color:var(--a-glow)"/></linearGradient>
@@ -330,11 +505,15 @@
 <circle cx="64" cy="83" r="2.3" style="fill:var(--a-glow)"/>
 </g>
         </svg>
-        <div>
-          <h1 class="wordmark">Яэри</h1>
-          <p class="tagline">Восьмихвостая лисица, ваша помощница</p>
-        </div>
-      </div>
+        <span class="brand-text">
+          <span class="wordmark">Яэри<b id="view-name">Командный центр</b></span>
+          <span class="tagline">восьмихвостая лисица · помощница</span>
+        </span>
+      </a>
+      <nav class="tabs" role="tablist" aria-label="Разделы">
+        <button class="tab" type="button" role="tab" id="tab-deck" aria-controls="deck" aria-selected="true">Командный центр</button>
+        <button class="tab" type="button" role="tab" id="tab-brain" aria-controls="brain" aria-selected="false">Второй мозг</button>
+      </nav>
       <div class="top-actions">
         <span class="status" id="status" title="Подключение к AI ещё не настроено"><i class="dot"></i><span id="status-text">Демо-режим</span></span>
         <button class="icon-btn" id="open-settings" type="button" aria-label="Настройки проекта" aria-haspopup="dialog" aria-expanded="false" aria-controls="settings">
@@ -346,32 +525,179 @@
       </div>
     </header>
 
-    <section class="panel" aria-label="Чат с Яэри">
-      <div class="panel-head">
-        <div>
-          <h2>Разговор с Яэри</h2>
-          <p class="hint" id="panel-hint">Ответы пока заготовленные: AI-модель не подключена</p>
-        </div>
-        <div class="head-actions">
-          <select class="model-select server-only" id="model" aria-label="Модель Cloud.ru" title="Модель Cloud.ru" hidden></select>
-          <button class="ghost" type="button" id="clear">Очистить чат</button>
-        </div>
+    <!-- Командный центр -->
+    <main class="view deck" id="deck" role="tabpanel" aria-labelledby="tab-deck">
+      <div class="col col-left">
+        <section class="card mem-card" aria-labelledby="mem-title">
+          <div class="card-head">
+            <h2 id="mem-title">Рабочая память</h2>
+            <span class="card-meta" id="mem-count">0 заметок</span>
+          </div>
+          <form class="mem-add" id="mem-form" autocomplete="off">
+            <input class="field" id="mem-text" type="text" maxlength="500" placeholder="Что запомнить?" aria-label="Текст заметки">
+            <input class="field" id="mem-cat" type="text" maxlength="40" list="mem-cats" placeholder="Раздел: Задачи, Планы…" aria-label="Раздел заметки">
+            <button class="mini-btn solid" type="submit">+ В память</button>
+            <datalist id="mem-cats"></datalist>
+          </form>
+          <div class="mem-tools">
+            <input class="field" id="mem-filter" type="search" placeholder="Фильтр" aria-label="Фильтр заметок">
+          </div>
+          <div class="card-body grow" id="mem-body"><ul class="mem-list" id="mem-list"></ul></div>
+          <div class="card-foot"><span id="mem-foot">Яэри видит эти заметки в каждом ответе</span></div>
+        </section>
+        <section class="card" aria-labelledby="now-title">
+          <div class="card-head">
+            <h2 id="now-title">Сейчас</h2>
+            <span class="card-meta" id="now-zone"></span>
+          </div>
+          <div class="card-body">
+            <div class="now-clock"><span class="now-time" id="now-time">00:00:00</span><span class="now-date" id="now-date"></span></div>
+            <div class="cal" id="cal" aria-label="Календарь месяца"></div>
+          </div>
+        </section>
       </div>
-      <div class="chat" id="chat" role="log" aria-live="polite" aria-relevant="additions"></div>
-      <form id="message-form">
-        <textarea id="message" name="message" rows="1" maxlength="4000" aria-label="Ваше сообщение"></textarea>
-        <button class="send" id="send" type="submit">Отправить</button>
-      </form>
-      <p class="composer-hint" id="composer-hint"></p>
-    </section>
-    <p class="foot" id="foot">Сайт работает локально и не требует интернета. Сообщения хранятся только в этом браузере.</p>
-  </main>
+
+      <div class="col col-center">
+        <section class="card chat-card" aria-label="Чат с Яэри">
+          <div class="card-head">
+            <h2>Разговор</h2>
+            <span class="card-meta" id="panel-hint">демо-режим</span>
+            <div class="head-actions">
+              <select class="model-select server-only" id="model" aria-label="Модель Cloud.ru" title="Модель Cloud.ru" hidden></select>
+              <button class="mini-btn" type="button" id="clear">Очистить</button>
+            </div>
+          </div>
+          <div class="chat" id="chat" role="log" aria-live="polite" aria-relevant="additions"></div>
+          <form class="composer" id="message-form">
+            <textarea id="message" name="message" rows="1" maxlength="4000" aria-label="Ваше сообщение"></textarea>
+            <button class="send" id="send" type="submit">Отправить</button>
+          </form>
+          <p class="composer-hint" id="composer-hint"></p>
+        </section>
+      </div>
+
+      <div class="col col-right">
+        <section class="card" aria-labelledby="mini-title">
+          <div class="card-head">
+            <h2 id="mini-title">Второй мозг</h2>
+            <span class="card-meta" id="mini-meta"></span>
+          </div>
+          <div class="mini-brain" id="mini-brain" role="button" tabindex="0" aria-label="Открыть второй мозг">
+            <canvas id="mini-canvas"></canvas>
+            <span class="open-hint">Открыть →</span>
+          </div>
+          <div class="card-body">
+            <div class="stats">
+              <div class="stat"><b id="st-notes">0</b><span>заметок</span></div>
+              <div class="stat"><b id="st-mem">0</b><span>воспом.</span></div>
+              <div class="stat"><b id="st-docs">0</b><span>докум.</span></div>
+              <div class="stat"><b id="st-msgs">0</b><span>сообщ.</span></div>
+            </div>
+          </div>
+        </section>
+        <section class="card" aria-labelledby="skills-title">
+          <div class="card-head">
+            <h2 id="skills-title">Навыки</h2>
+            <span class="card-meta" id="skills-count"></span>
+            <button class="mini-btn" type="button" id="skill-add">+ Навык</button>
+          </div>
+          <div class="card-body"><div class="skills" id="skills"></div></div>
+        </section>
+        <section class="card grow" aria-labelledby="feed-title">
+          <div class="card-head">
+            <h2 id="feed-title">Журнал</h2>
+            <span class="card-meta">последнее</span>
+          </div>
+          <div class="card-body grow"><ul class="feed" id="feed"></ul></div>
+        </section>
+      </div>
+    </main>
+
+    <!-- Второй мозг -->
+    <main class="view brain-view" id="brain" role="tabpanel" aria-labelledby="tab-brain" hidden>
+      <div class="stage" id="stage">
+        <canvas id="brain-canvas" aria-label="Граф памяти Яэри" role="img"></canvas>
+        <div class="overlay stage-info">
+          <div class="stage-title">Второй мозг <b>Яэри</b></div>
+          <div class="stage-sub" id="brain-sub"></div>
+          <div class="legend" id="legend"></div>
+        </div>
+        <div class="overlay stage-empty" id="brain-empty" hidden></div>
+        <div class="overlay tooltip" id="tooltip" hidden></div>
+        <div class="overlay zoom">
+          <button type="button" id="zoom-in" aria-label="Приблизить">+</button>
+          <button type="button" id="zoom-out" aria-label="Отдалить">−</button>
+          <button type="button" id="zoom-fit" aria-label="Показать всё">⌖</button>
+        </div>
+        <section class="overlay detail" id="detail" hidden aria-live="polite">
+          <div class="card-head">
+            <h3 id="d-kind">Заметка</h3>
+            <span class="card-meta" id="d-meta"></span>
+            <button class="mini-btn" type="button" id="d-close" aria-label="Закрыть">×</button>
+          </div>
+          <div class="card-body" id="d-text"></div>
+          <div class="d-actions" id="d-actions"></div>
+        </section>
+      </div>
+      <aside class="controls" aria-label="Настройки графа">
+        <div class="ctl">
+          <div class="search-wrap">
+            <input class="field" id="brain-search" type="search" placeholder="Искать в памяти" aria-label="Поиск по памяти">
+            <kbd>/</kbd>
+          </div>
+        </div>
+        <div class="ctl">
+          <p class="ctl-title">Раскладка</p>
+          <div class="chips" id="layout-chips">
+            <button class="chip-btn" type="button" data-layout="rings">Кольца</button>
+            <button class="chip-btn" type="button" data-layout="stars">Созвездие</button>
+            <button class="chip-btn" type="button" data-layout="hex">Соты</button>
+            <button class="chip-btn" type="button" data-layout="force">Силы</button>
+            <button class="chip-btn" type="button" data-layout="time">Время</button>
+          </div>
+        </div>
+        <div class="ctl">
+          <p class="ctl-title">Группировка</p>
+          <div class="chips" id="group-chips">
+            <button class="chip-btn" type="button" data-group="sections">По разделам</button>
+            <button class="chip-btn" type="button" data-group="types">По типам</button>
+          </div>
+        </div>
+        <div class="ctl">
+          <p class="ctl-title">Вид</p>
+          <div class="range"><label for="r-links">Яркость связей</label><output id="o-links"></output><input type="range" id="r-links" min="0" max="1" step="0.05"></div>
+          <div class="range"><label for="r-nodes">Размер узлов</label><output id="o-nodes"></output><input type="range" id="r-nodes" min="0.5" max="2.5" step="0.1"></div>
+          <div class="range"><label for="r-labels">Размер подписей</label><output id="o-labels"></output><input type="range" id="r-labels" min="0.6" max="2" step="0.1"></div>
+          <label class="check"><input type="checkbox" id="c-names"> Названия узлов (при приближении)</label>
+          <label class="check"><input type="checkbox" id="c-semantic"> Связи по смыслу</label>
+        </div>
+        <div class="ctl">
+          <div class="btn-row">
+            <button class="btn" type="button" id="b-expand">Развернуть всё</button>
+            <button class="btn" type="button" id="b-collapse">Свернуть всё</button>
+            <button class="btn" type="button" id="b-center">В центр</button>
+          </div>
+        </div>
+        <div class="ctl">
+          <div class="btn-row two">
+            <button class="btn primary" type="button" id="b-save">Сохранить вид</button>
+            <button class="btn" type="button" id="b-png">Скачать PNG</button>
+          </div>
+          <p class="saved-note" id="saved-note" role="status"></p>
+        </div>
+        <div class="ctl">
+          <p class="ctl-title">Тема</p>
+          <div class="themes" id="themes"></div>
+        </div>
+      </aside>
+    </main>
+  </div>
 
   <div class="scrim" id="scrim"></div>
   <aside class="drawer" id="settings" role="dialog" aria-modal="true" aria-labelledby="settings-title">
     <div class="drawer-head">
       <h2 id="settings-title">Настройки проекта</h2>
-      <button class="icon-btn small" id="close-settings" type="button" aria-label="Закрыть настройки">
+      <button class="icon-btn" id="close-settings" type="button" aria-label="Закрыть настройки">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
       </button>
     </div>
@@ -385,10 +711,10 @@
       <fieldset class="group">
         <legend>Цвет оформления</legend>
         <div class="swatches">
+          <label class="swatch" style="--sw:168"><input class="vh" type="radio" name="accent" value="forest"><span class="chip"></span><span class="sw-name">Бирюза</span></label>
           <label class="swatch" style="--sw:262"><input class="vh" type="radio" name="accent" value="moon"><span class="chip"></span><span class="sw-name">Лунный</span></label>
           <label class="swatch" style="--sw:24"><input class="vh" type="radio" name="accent" value="fire"><span class="chip"></span><span class="sw-name">Лисий огонь</span></label>
           <label class="swatch" style="--sw:338"><input class="vh" type="radio" name="accent" value="sakura"><span class="chip"></span><span class="sw-name">Сакура</span></label>
-          <label class="swatch" style="--sw:168"><input class="vh" type="radio" name="accent" value="forest"><span class="chip"></span><span class="sw-name">Лесной огонь</span></label>
           <label class="swatch" style="--sw:208"><input class="vh" type="radio" name="accent" value="sky"><span class="chip"></span><span class="sw-name">Небо</span></label>
         </div>
       </fieldset>
@@ -405,7 +731,7 @@
       <section class="group">
         <h3>Поведение</h3>
         <label class="toggle">
-          <span class="t-text"><span class="t-name">Анимации</span><span class="t-desc">Хвосты логотипа, появление сообщений, набор ответа</span></span>
+          <span class="t-text"><span class="t-name">Анимации</span><span class="t-desc">Хвосты логотипа, сообщения, движение графа памяти</span></span>
           <input class="vh" type="checkbox" role="switch" id="set-motion"><span class="track" aria-hidden="true"></span>
         </label>
         <label class="toggle">
@@ -422,6 +748,10 @@
         <h3>AI и знания</h3>
         <p class="note" id="ai-note">AI не подключён. Добавьте ключ Cloud.ru в файл <code>config\yaeri.config.json</code> (или введите его в окне запуска) и перезапустите Яэри.</p>
         <div class="server-only" id="ai-toggles" hidden>
+          <label class="toggle">
+            <span class="t-text"><span class="t-name">Яэри ведёт рабочую память</span><span class="t-desc">Сама записывает важные факты из разговора: планы, задачи, людей, предпочтения</span></span>
+            <input class="vh" type="checkbox" role="switch" id="set-autonotes"><span class="track" aria-hidden="true"></span>
+          </label>
           <label class="toggle">
             <span class="t-text"><span class="t-name">Искать в знаниях (RAG)</span><span class="t-desc">Перед ответом Яэри ищет подходящие фрагменты в ваших документах и прошлых разговорах</span></span>
             <input class="vh" type="checkbox" role="switch" id="set-rag"><span class="track" aria-hidden="true"></span>
@@ -448,7 +778,7 @@
       <section class="group">
         <h3>О проекте</h3>
         <dl class="about">
-          <dt>Версия</dt><dd>0.3</dd>
+          <dt>Версия</dt><dd>0.4</dd>
           <dt>AI-модель</dt><dd id="about-model">не подключена</dd>
           <dt>Эмбеддинги</dt><dd id="about-embed">—</dd>
           <dt>Хранение</dt><dd id="about-storage">только в этом браузере</dd>
@@ -458,10 +788,10 @@
 
       <section class="group">
         <h3>Данные</h3>
-        <p class="note">Настройки и переписка хранятся на этом компьютере.</p>
+        <p class="note">Настройки, переписка и память хранятся на этом компьютере.</p>
         <div class="actions">
           <button class="ghost" type="button" id="clear-from-settings">Очистить чат</button>
-          <button class="ghost server-only" type="button" id="clear-memory" hidden>Забыть память</button>
+          <button class="ghost server-only" type="button" id="clear-memory" hidden>Забыть разговоры</button>
           <button class="ghost" type="button" id="reset-settings">Сбросить настройки</button>
         </div>
       </section>
@@ -473,12 +803,22 @@
       'use strict';
       var CHAT_KEY = 'yaeri_demo_chat_v1';
       var SET_KEY = 'yaeri_settings_v1';
+      var NOTES_KEY = 'yaeri_notes_v1';
+      var SKILLS_KEY = 'yaeri_skills_v1';
+      var BRAIN_KEY = 'yaeri_brain_v1';
       var ACCENTS = ['moon', 'fire', 'sakura', 'forest', 'sky'];
       var SIZES = ['sm', 'md', 'lg'];
       var reduce = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
-      var DEFAULTS = { name: 'Хозяин', accent: 'moon', size: 'md', motion: !reduce, enter: true, time: true, rag: true, remember: true, model: '' };
+      var DEFAULTS = { name: 'Хозяин', accent: 'forest', size: 'md', motion: !reduce, enter: true, time: true, rag: true, remember: true, autoNotes: true, model: '' };
 
       function $(id) { return document.getElementById(id); }
+      function each(list, fn) { Array.prototype.forEach.call(list, fn); }
+      function el(tag, cls, text) {
+        var node = document.createElement(tag);
+        if (cls) node.className = cls;
+        if (text !== undefined) node.textContent = text;
+        return node;
+      }
       var html = document.documentElement;
       var body = document.body;
       var app = $('app');
@@ -493,31 +833,39 @@
       function store(key, value) {
         try { localStorage.setItem(key, JSON.stringify(value)); } catch (error) { /* Хранилище недоступно. */ }
       }
+      function plural(n, one, few, many) {
+        var a = Math.abs(n) % 100, b = a % 10;
+        if (a > 10 && a < 20) return many;
+        if (b > 1 && b < 5) return few;
+        if (b === 1) return one;
+        return many;
+      }
+      function pad(n) { return (n < 10 ? '0' : '') + n; }
+      function hhmm(t) { var d = new Date(t); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+      function dmy(t) {
+        try { return new Date(t).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }); }
+        catch (error) { return ''; }
+      }
+      function cut(text, n) { text = String(text || '').replace(/\s+/g, ' ').trim(); return text.length > n ? text.slice(0, n - 1) + '…' : text; }
 
       /* ---------- Настройки ---------- */
       function normalize(s) {
         s = s && typeof s === 'object' ? s : {};
         var name = typeof s.name === 'string' ? s.name.trim().slice(0, 30) : '';
+        function bool(k) { return typeof s[k] === 'boolean' ? s[k] : DEFAULTS[k]; }
         return {
           name: name || DEFAULTS.name,
           accent: ACCENTS.indexOf(s.accent) > -1 ? s.accent : DEFAULTS.accent,
           size: SIZES.indexOf(s.size) > -1 ? s.size : DEFAULTS.size,
-          motion: typeof s.motion === 'boolean' ? s.motion : DEFAULTS.motion,
-          enter: typeof s.enter === 'boolean' ? s.enter : DEFAULTS.enter,
-          time: typeof s.time === 'boolean' ? s.time : DEFAULTS.time,
-          rag: typeof s.rag === 'boolean' ? s.rag : DEFAULTS.rag,
-          remember: typeof s.remember === 'boolean' ? s.remember : DEFAULTS.remember,
+          motion: bool('motion'), enter: bool('enter'), time: bool('time'),
+          rag: bool('rag'), remember: bool('remember'), autoNotes: bool('autoNotes'),
           model: typeof s.model === 'string' ? s.model.slice(0, 120) : DEFAULTS.model
         };
       }
       var settings = normalize(load(SET_KEY));
 
       var nameField = $('set-name');
-      var motionBox = $('set-motion');
-      var enterBox = $('set-enter');
-      var timeBox = $('set-time');
-      var ragBox = $('set-rag');
-      var rememberBox = $('set-remember');
+      var boxes = { motion: $('set-motion'), enter: $('set-enter'), time: $('set-time'), rag: $('set-rag'), remember: $('set-remember'), autoNotes: $('set-autonotes') };
 
       function applySettings() {
         html.dataset.accent = settings.accent;
@@ -528,16 +876,13 @@
         hint.textContent = settings.enter
           ? 'Enter отправляет, Shift+Enter переносит строку.'
           : 'Enter переносит строку, Ctrl+Enter отправляет.';
+        if (window.YBrain) YBrain.restyle();
       }
       function syncControls() {
         nameField.value = settings.name;
-        motionBox.checked = settings.motion;
-        enterBox.checked = settings.enter;
-        timeBox.checked = settings.time;
-        ragBox.checked = settings.rag;
-        rememberBox.checked = settings.remember;
-        Array.prototype.forEach.call(document.querySelectorAll('input[name="accent"]'), function (r) { r.checked = r.value === settings.accent; });
-        Array.prototype.forEach.call(document.querySelectorAll('input[name="size"]'), function (r) { r.checked = r.value === settings.size; });
+        Object.keys(boxes).forEach(function (k) { boxes[k].checked = settings[k]; });
+        each(document.querySelectorAll('input[name="accent"]'), function (r) { r.checked = r.value === settings.accent; });
+        each(document.querySelectorAll('input[name="size"]'), function (r) { r.checked = r.value === settings.size; });
       }
       function changed() { store(SET_KEY, settings); applySettings(); }
 
@@ -545,17 +890,15 @@
         settings.name = nameField.value.trim().slice(0, 30) || DEFAULTS.name;
         changed();
       });
-      Array.prototype.forEach.call(document.querySelectorAll('input[name="accent"]'), function (r) {
+      each(document.querySelectorAll('input[name="accent"]'), function (r) {
         r.addEventListener('change', function () { if (r.checked) { settings.accent = r.value; changed(); } });
       });
-      Array.prototype.forEach.call(document.querySelectorAll('input[name="size"]'), function (r) {
+      each(document.querySelectorAll('input[name="size"]'), function (r) {
         r.addEventListener('change', function () { if (r.checked) { settings.size = r.value; changed(); } });
       });
-      motionBox.addEventListener('change', function () { settings.motion = motionBox.checked; changed(); });
-      enterBox.addEventListener('change', function () { settings.enter = enterBox.checked; changed(); });
-      timeBox.addEventListener('change', function () { settings.time = timeBox.checked; changed(); });
-      ragBox.addEventListener('change', function () { settings.rag = ragBox.checked; changed(); });
-      rememberBox.addEventListener('change', function () { settings.remember = rememberBox.checked; changed(); });
+      Object.keys(boxes).forEach(function (k) {
+        boxes[k].addEventListener('change', function () { settings[k] = boxes[k].checked; changed(); });
+      });
       $('reset-settings').addEventListener('click', function () {
         settings = normalize(null);
         syncControls();
@@ -590,7 +933,7 @@
         if (event.key !== 'Tab') return;
         var items = Array.prototype.filter.call(
           drawer.querySelectorAll('button, input, [href], [tabindex]:not([tabindex="-1"])'),
-          function (el) { return !el.disabled; }
+          function (node) { return !node.disabled && node.offsetParent !== null; }
         );
         if (!items.length) return;
         var first = items[0];
@@ -599,8 +942,34 @@
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
       });
 
+      /* ---------- Разделы: командный центр и второй мозг ---------- */
+      var views = { deck: { tab: $('tab-deck'), panel: $('deck'), name: 'Командный центр' }, brain: { tab: $('tab-brain'), panel: $('brain'), name: 'Второй мозг' } };
+      var currentView = 'deck';
+      function showView(name, fromHash) {
+        if (!views[name]) name = 'deck';
+        currentView = name;
+        Object.keys(views).forEach(function (k) {
+          var v = views[k];
+          v.tab.setAttribute('aria-selected', k === name ? 'true' : 'false');
+          v.panel.hidden = k !== name;
+        });
+        $('view-name').textContent = views[name].name;
+        document.title = 'Яэри — ' + views[name].name.toLowerCase();
+        if (!fromHash) {
+          var hash = name === 'brain' ? '#brain' : '';
+          if (location.hash !== hash) history_.replaceState(null, '', hash || location.pathname + location.search);
+        }
+        if (window.YBrain) YBrain.onShow(name);
+        if (!fromHash && window.scrollY) window.scrollTo(0, 0);
+      }
+      var history_ = window.history;
+      $('tab-deck').addEventListener('click', function () { showView('deck'); });
+      $('tab-brain').addEventListener('click', function () { showView('brain'); });
+      $('brand').addEventListener('click', function (event) { event.preventDefault(); showView('deck'); });
+      window.addEventListener('hashchange', function () { showView(location.hash === '#brain' ? 'brain' : 'deck', true); });
+
       /* ---------- Режим работы ---------- */
-      // online: сервер Яэри отвечает и ключ Cloud.ru задан; иначе демо-режим как раньше.
+      // online: сервер Яэри отвечает и ключ Cloud.ru задан; иначе демо-режим.
       var online = false;
       var serverStatus = null;
       var statusPill = $('status');
@@ -609,12 +978,12 @@
       var modelSelect = $('model');
       var sendBtn = $('send');
 
-      function api(path, body) {
+      function api(path, payload) {
         var opts = { method: 'GET', cache: 'no-store' };
-        if (body !== undefined) {
+        if (payload !== undefined) {
           opts.method = 'POST';
           opts.headers = { 'Content-Type': 'application/json' };
-          opts.body = JSON.stringify(body);
+          opts.body = JSON.stringify(payload);
         }
         return fetch('/api/' + path, opts).then(function (r) {
           return r.json().catch(function () { return {}; }).then(function (data) {
@@ -628,7 +997,7 @@
         return id.slice(id.lastIndexOf('/') + 1) || id;
       }
       function showServerParts(on) {
-        Array.prototype.forEach.call(document.querySelectorAll('.server-only'), function (el) { el.hidden = !on; });
+        each(document.querySelectorAll('.server-only'), function (node) { node.hidden = !on; });
       }
       function setStatus(kind, text, title) {
         statusPill.classList.toggle('online', kind === 'online');
@@ -639,18 +1008,320 @@
       function applyMode() {
         showServerParts(online);
         if (online) {
-          setStatus('online', 'Cloud.ru', 'AI подключён: Cloud.ru Foundation Models');
-          panelHint.textContent = 'Отвечает модель Cloud.ru. Выберите модель справа.';
+          setStatus('online', 'Cloud.ru · онлайн', 'AI подключён: Cloud.ru Foundation Models');
+          panelHint.textContent = 'Cloud.ru';
           $('ai-note').textContent = 'Подключено: Cloud.ru Foundation Models. Ключ хранится только в config\\yaeri.config.json на этом компьютере и не передаётся в браузер.';
           $('about-model').textContent = modelSelect.value || serverStatus.chatModel;
           $('about-embed').textContent = serverStatus.embeddingModel;
           $('about-storage').textContent = 'папка data на этом компьютере';
-          $('foot').textContent = 'Сообщения, память и документы хранятся в папке data на этом компьютере. В интернет уходят только запросы к Cloud.ru.';
-        } else if (serverStatus) {
-          setStatus('warn', 'Демо-режим', 'Ключ Cloud.ru не задан');
-          panelHint.textContent = 'Ключ Cloud.ru не задан: ответы заготовленные.';
+          $('mem-foot').textContent = 'Яэри видит эти заметки в каждом ответе';
+        } else {
+          setStatus(serverStatus ? 'warn' : '', 'Демо-режим', serverStatus ? 'Ключ Cloud.ru не задан' : 'Сервер Яэри не найден');
+          panelHint.textContent = 'демо-режим';
+          $('mem-foot').textContent = 'Хранится в этом браузере';
         }
       }
+
+      /* ---------- Данные памяти ---------- */
+      // notes: рабочая память; memory: воспоминания о разговорах; docs: документы RAG.
+      var brainData = { notes: [], memory: [], docs: [], links: [], messages: 0, memoryTotal: 0 };
+
+      function localNotes() {
+        var list = load(NOTES_KEY);
+        return Array.isArray(list) ? list.filter(function (n) { return n && typeof n.text === 'string' && n.id; }) : [];
+      }
+      function saveLocalNotes() { if (!online) store(NOTES_KEY, brainData.notes); }
+      function newId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+      function normCat(cat) {
+        cat = String(cat || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+        if (!cat) return 'Общее';
+        for (var i = 0; i < brainData.notes.length; i++) {
+          if (brainData.notes[i].cat.toLowerCase() === cat.toLowerCase()) return brainData.notes[i].cat;
+        }
+        return cat.charAt(0).toUpperCase() + cat.slice(1);
+      }
+      function demoMemory() {
+        // В демо-режиме «воспоминания» — пары реплик из локального чата.
+        var out = [];
+        for (var i = 0; i < history.length; i++) {
+          var m = history[i];
+          if (m.role !== 'user') continue;
+          var next = history[i + 1];
+          out.push({ id: 'local' + i, t: m.t || Date.now(), text: 'Пользователь: ' + m.text + (next && next.role === 'assistant' ? '\nЯэри: ' + next.text : '') });
+        }
+        return out;
+      }
+      var refreshTimer = 0;
+      function refreshBrain(delay) {
+        clearTimeout(refreshTimer);
+        refreshTimer = setTimeout(function () {
+          if (!online) {
+            brainData.memory = demoMemory();
+            brainData.messages = history.length;
+            brainData.memoryTotal = brainData.memory.length;
+            brainData.links = [];
+            dataChanged();
+            return;
+          }
+          api('brain').then(function (data) {
+            brainData = {
+              notes: Array.isArray(data.notes) ? data.notes : [],
+              memory: Array.isArray(data.memory) ? data.memory : [],
+              docs: Array.isArray(data.docs) ? data.docs : [],
+              links: Array.isArray(data.links) ? data.links : [],
+              messages: data.messages || 0,
+              memoryTotal: data.memoryTotal || 0,
+              note: data.note || ''
+            };
+            dataChanged();
+          }).catch(function () { /* Покажем то, что уже есть. */ });
+        }, delay || 0);
+      }
+      function dataChanged() {
+        renderNotes();
+        renderStats();
+        renderFeed();
+        renderCalendar();
+        if (window.YBrain) YBrain.setData(brainData);
+      }
+
+      /* ---------- Рабочая память: список ---------- */
+      var memList = $('mem-list');
+      var memFilter = $('mem-filter');
+      function catColor(cat) { return window.YBrain ? YBrain.colorFor('note', cat) : 'var(--a)'; }
+      function renderNotes() {
+        var q = memFilter.value.trim().toLowerCase();
+        var notes = brainData.notes.slice().sort(function (a, b) {
+          return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (b.t || 0) - (a.t || 0);
+        });
+        var groups = {};
+        var order = [];
+        notes.forEach(function (n) {
+          if (q && (n.text + ' ' + n.cat).toLowerCase().indexOf(q) < 0) return;
+          if (!groups[n.cat]) { groups[n.cat] = []; order.push(n.cat); }
+          groups[n.cat].push(n);
+        });
+        order.sort(function (a, b) { return a.localeCompare(b, 'ru'); });
+        memList.textContent = '';
+        $('mem-count').textContent = brainData.notes.length + ' ' + plural(brainData.notes.length, 'заметка', 'заметки', 'заметок');
+        if (!order.length) {
+          var empty = el('li', 'empty', q ? 'Ничего не найдено.' : (online
+            ? 'Пока пусто. Добавьте заметку выше или просто расскажите Яэри о планах — она запишет важное сама.'
+            : 'Пока пусто. Добавьте заметку выше: что Яэри стоит помнить о вас и ваших делах.'));
+          memList.appendChild(empty);
+        }
+        order.forEach(function (cat) {
+          var li = el('li', 'mem-group');
+          var head = el('div', 'mem-group-head');
+          var dot = el('i');
+          dot.style.background = catColor(cat);
+          head.appendChild(dot);
+          head.appendChild(el('span', '', cat));
+          head.appendChild(el('span', '', String(groups[cat].length)));
+          li.appendChild(head);
+          groups[cat].forEach(function (n) {
+            var row = el('div', 'mem-item' + (n.pinned ? ' pinned' : ''));
+            var text = el('span', 'm-text', n.text);
+            text.appendChild(el('span', 'm-src', (n.src === 'yaeri' ? 'записала Яэри · ' : '') + dmy(n.t)));
+            var pin = el('button', 'pin', n.pinned ? '★' : '☆');
+            pin.type = 'button';
+            pin.title = n.pinned ? 'Открепить' : 'Закрепить: всегда в начале памяти';
+            pin.setAttribute('aria-label', pin.title);
+            pin.addEventListener('click', function () { updateNote(n, { pinned: !n.pinned }); });
+            var del = el('button', 'del', '×');
+            del.type = 'button';
+            del.title = 'Удалить заметку';
+            del.setAttribute('aria-label', 'Удалить заметку: ' + n.text);
+            del.addEventListener('click', function () { deleteNote(n); });
+            row.appendChild(text);
+            row.appendChild(pin);
+            row.appendChild(del);
+            li.appendChild(row);
+          });
+          memList.appendChild(li);
+        });
+        var cats = $('mem-cats');
+        cats.textContent = '';
+        var seen = {};
+        ['Задачи', 'Планы', 'Профиль', 'Люди', 'Проекты', 'Предпочтения'].concat(order).forEach(function (c) {
+          if (seen[c]) return;
+          seen[c] = 1;
+          var o = document.createElement('option');
+          o.value = c;
+          cats.appendChild(o);
+        });
+      }
+      memFilter.addEventListener('input', renderNotes);
+
+      function addNote(cat, text) {
+        text = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 500);
+        if (!text) return Promise.resolve();
+        if (online) {
+          return api('notes', { cat: cat, text: text }).then(function () { refreshBrain(); });
+        }
+        var dup = brainData.notes.some(function (n) { return n.text.toLowerCase() === text.toLowerCase(); });
+        if (dup) return Promise.reject(new Error('Такая заметка уже есть.'));
+        brainData.notes.push({ id: newId(), cat: normCat(cat), text: text, t: Date.now(), src: 'user', pinned: false });
+        saveLocalNotes();
+        dataChanged();
+        return Promise.resolve();
+      }
+      function updateNote(n, patch) {
+        if (online) {
+          patch.id = n.id;
+          return api('notes/update', patch).then(function () { refreshBrain(); }).catch(function (e) { window.alert(e.message); });
+        }
+        Object.keys(patch).forEach(function (k) { n[k] = k === 'cat' ? normCat(patch[k]) : patch[k]; });
+        saveLocalNotes();
+        dataChanged();
+        return Promise.resolve();
+      }
+      function deleteNote(n) {
+        if (!window.confirm('Удалить из рабочей памяти: «' + cut(n.text, 80) + '»?')) return Promise.resolve(false);
+        if (online) {
+          return api('notes/delete', { id: n.id }).then(function () { refreshBrain(); return true; }).catch(function (e) { window.alert(e.message); return false; });
+        }
+        brainData.notes = brainData.notes.filter(function (x) { return x !== n; });
+        saveLocalNotes();
+        dataChanged();
+        return Promise.resolve(true);
+      }
+      $('mem-form').addEventListener('submit', function (event) {
+        event.preventDefault();
+        var text = $('mem-text');
+        var cat = $('mem-cat');
+        if (!text.value.trim()) { text.focus(); return; }
+        addNote(cat.value, text.value).then(function () { text.value = ''; text.focus(); })
+          .catch(function (e) { window.alert(e.message); });
+      });
+
+      /* ---------- Сводка, журнал, часы ---------- */
+      function renderStats() {
+        $('st-notes').textContent = brainData.notes.length;
+        $('st-mem').textContent = brainData.memoryTotal || brainData.memory.length;
+        $('st-docs').textContent = brainData.docs.length;
+        $('st-msgs').textContent = brainData.messages || history.length;
+        $('mini-meta').textContent = 'синхр. ' + hhmm(Date.now());
+      }
+      function renderFeed() {
+        var items = [];
+        brainData.notes.forEach(function (n) { items.push({ t: n.t, kind: n.src === 'yaeri' ? 'Яэри' : 'заметка', text: n.text }); });
+        brainData.docs.forEach(function (d) { items.push({ t: d.added, kind: 'документ', text: d.name }); });
+        brainData.memory.slice(-20).forEach(function (m) {
+          items.push({ t: m.t, kind: 'разговор', text: String(m.text).replace(/^Пользователь:\s*/, '').split('\n')[0] });
+        });
+        items.sort(function (a, b) { return (b.t || 0) - (a.t || 0); });
+        var feed = $('feed');
+        feed.textContent = '';
+        if (!items.length) { feed.appendChild(el('li', 'empty', 'Здесь появятся новые заметки, документы и разговоры.')); return; }
+        items.slice(0, 14).forEach(function (it) {
+          var li = el('li');
+          var time = el('time', '', it.t ? (Date.now() - it.t < 864e5 ? hhmm(it.t) : dmy(it.t).slice(0, 5)) : '');
+          var text = el('span', 'f-text');
+          text.appendChild(el('span', 'f-kind', it.kind));
+          text.appendChild(document.createTextNode(it.text));
+          text.title = it.text;
+          li.appendChild(time);
+          li.appendChild(text);
+          feed.appendChild(li);
+        });
+      }
+      var WEEK = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
+      var calKey = '';
+      function renderCalendar(force) {
+        var now = new Date();
+        var days = {};
+        brainData.notes.concat(brainData.memory).forEach(function (x) {
+          var d = new Date(x.t || 0);
+          if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) days[d.getDate()] = 1;
+        });
+        var key = now.toDateString() + Object.keys(days).join(',');
+        if (key === calKey && !force) return;
+        calKey = key;
+        var cal = $('cal');
+        cal.textContent = '';
+        WEEK.forEach(function (w) { cal.appendChild(el('span', 'wd', w)); });
+        var first = new Date(now.getFullYear(), now.getMonth(), 1);
+        var lead = (first.getDay() + 6) % 7;
+        var total = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        var prevTotal = new Date(now.getFullYear(), now.getMonth(), 0).getDate();
+        for (var i = 0; i < lead; i++) cal.appendChild(el('span', 'out', String(prevTotal - lead + i + 1)));
+        for (var d = 1; d <= total; d++) {
+          var cls = (d === now.getDate() ? 'today' : '') + (days[d] ? ' has' : '');
+          cal.appendChild(el('span', cls.trim(), String(d)));
+        }
+        var tail = (7 - (lead + total) % 7) % 7;
+        for (var j = 1; j <= tail; j++) cal.appendChild(el('span', 'out', String(j)));
+      }
+      function tick() {
+        var now = new Date();
+        $('now-time').textContent = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+        try {
+          $('now-date').textContent = now.toLocaleDateString('ru-RU', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+        } catch (error) { $('now-date').textContent = dmy(now); }
+        if (now.getSeconds() === 0) renderCalendar();
+      }
+      try { $('now-zone').textContent = (Intl.DateTimeFormat().resolvedOptions().timeZone || '').split('/').pop().replace(/_/g, ' '); } catch (error) { /* Без часового пояса. */ }
+      tick();
+      setInterval(tick, 1000);
+
+      /* ---------- Навыки ---------- */
+      var DEFAULT_SKILLS = [
+        { id: 'plan', name: '/план-дня', desc: 'по памяти', text: 'Составь мне план на сегодня, опираясь на рабочую память: задачи, планы и договорённости. Коротко, по пунктам.' },
+        { id: 'remember', name: '/что-помнишь', desc: 'обо мне', text: 'Расскажи коротко, что ты обо мне помнишь из рабочей памяти, по разделам. Если чего-то не хватает, спроси.' },
+        { id: 'sum', name: '/итоги', desc: 'разговора', text: 'Подведи итоги нашего разговора: главное, принятые решения и что осталось сделать.' },
+        { id: 'ideas', name: '/идеи', desc: 'на неделю', text: 'Предложи 5 идей, чем ты можешь помочь мне на этой неделе, исходя из того, что знаешь обо мне.' }
+      ];
+      function loadSkills() {
+        var custom = load(SKILLS_KEY);
+        custom = Array.isArray(custom) ? custom.filter(function (s) { return s && s.name && s.text; }) : [];
+        return DEFAULT_SKILLS.concat(custom.map(function (s) { s.custom = true; return s; }));
+      }
+      function renderSkills() {
+        var list = loadSkills();
+        var box = $('skills');
+        box.textContent = '';
+        $('skills-count').textContent = list.length + ' ' + plural(list.length, 'навык', 'навыка', 'навыков');
+        list.forEach(function (s) {
+          var card = el('div', 'skill');
+          card.title = s.text;
+          card.appendChild(el('span', 'skill-name', s.name));
+          card.appendChild(el('span', 'skill-desc', s.desc || 'свой навык'));
+          var row = el('div', 'skill-row');
+          var run = el('button', 'run', '▶');
+          run.type = 'button';
+          run.setAttribute('aria-label', 'Запустить навык ' + s.name);
+          run.addEventListener('click', function () { send(s.text); });
+          row.appendChild(run);
+          if (s.custom) {
+            var rm = el('button', 'rm', '×');
+            rm.type = 'button';
+            rm.setAttribute('aria-label', 'Удалить навык ' + s.name);
+            rm.addEventListener('click', function () {
+              if (!window.confirm('Удалить навык ' + s.name + '?')) return;
+              var custom = (load(SKILLS_KEY) || []).filter(function (x) { return x.id !== s.id; });
+              store(SKILLS_KEY, custom);
+              renderSkills();
+            });
+            row.appendChild(rm);
+          }
+          card.appendChild(row);
+          box.appendChild(card);
+        });
+      }
+      $('skill-add').addEventListener('click', function () {
+        var name = window.prompt('Название навыка (например, «письмо-клиенту»):');
+        if (!name || !name.trim()) return;
+        var text = window.prompt('Что Яэри должна сделать по этому навыку? Этот текст уйдёт в чат.');
+        if (!text || !text.trim()) return;
+        name = name.trim().replace(/\s+/g, '-').slice(0, 30);
+        if (name.charAt(0) !== '/') name = '/' + name;
+        var custom = load(SKILLS_KEY);
+        custom = Array.isArray(custom) ? custom : [];
+        custom.push({ id: newId(), name: name, desc: 'свой навык', text: text.trim().slice(0, 2000) });
+        store(SKILLS_KEY, custom);
+        renderSkills();
+      });
 
       /* ---------- Чат ---------- */
       var history = [];
@@ -670,30 +1341,20 @@
         chat.scrollTo({ top: chat.scrollHeight, behavior: settings.motion ? 'smooth' : 'auto' });
       }
       function bubble(m, animate) {
-        var row = document.createElement('div');
-        row.className = 'msg ' + (m.role === 'user' ? 'user' : 'assistant') + (m.error ? ' error' : '') + (animate ? ' enter' : '');
-        var text = document.createElement('div');
-        text.className = 'text';
-        text.textContent = m.text;
-        row.appendChild(text);
+        var row = el('div', 'msg ' + (m.role === 'user' ? 'user' : 'assistant') + (m.error ? ' error' : '') + (animate ? ' enter' : ''));
+        row.appendChild(el('div', 'who', m.role === 'user' ? settings.name : 'Яэри'));
+        row.appendChild(el('div', 'text', m.text));
+        if (Array.isArray(m.remembered) && m.remembered.length) {
+          row.appendChild(el('div', 'remembered', '✦ Записала в память: ' + m.remembered.join('; ')));
+        }
         var parts = [];
         if (m.model) parts.push(shortModel(m.model));
         if (Array.isArray(m.sources) && m.sources.length) {
           parts.push('источники: ' + m.sources.map(function (x) { return x && x.label; }).filter(Boolean).join(', '));
         }
         if (m.note) parts.push(m.note);
-        if (parts.length) {
-          var meta = document.createElement('div');
-          meta.className = 'meta';
-          meta.textContent = parts.join(' · ');
-          row.appendChild(meta);
-        }
-        if (typeof m.t === 'number') {
-          var time = document.createElement('div');
-          time.className = 'time';
-          time.textContent = clock(m.t);
-          row.appendChild(time);
-        }
+        if (parts.length) row.appendChild(el('div', 'meta', parts.join(' · ')));
+        if (typeof m.t === 'number') row.appendChild(el('div', 'time', clock(m.t)));
         if (typingNode) chat.insertBefore(row, typingNode); else chat.appendChild(row);
         toBottom();
       }
@@ -702,22 +1363,22 @@
         history.push(m);
         bubble(m, true);
         save();
+        refreshBrain(300);
       }
       function greet() {
         if (online) {
           // Приветствие только на экране: в базу и в контекст модели оно не попадает.
-          bubble({ role: 'assistant', text: 'Здравствуйте, ' + settings.name + '! Я Яэри, ваша восьмихвостая лисица. Я подключена к Cloud.ru и помню наши разговоры. Спрашивайте, а если добавите документы в настройках, я буду опираться и на них.', t: Date.now() }, true);
+          bubble({ role: 'assistant', text: 'Здравствуйте, ' + settings.name + '! Я Яэри, ваша восьмихвостая лисица. Я подключена к Cloud.ru, веду рабочую память и помню наши разговоры. Всё, что я знаю, видно слева и во «Втором мозге».', t: Date.now() }, true);
           return;
         }
-        add('assistant', 'Здравствуйте, ' + settings.name + '! Я Яэри, ваша восьмихвостая лисица. Сейчас чат работает в демонстрационном режиме: чтобы я отвечала по-настоящему, добавьте API-ключ Cloud.ru при запуске Yaeri.bat.');
+        add('assistant', 'Здравствуйте, ' + settings.name + '! Я Яэри, ваша восьмихвостая лисица. Сейчас чат работает в демонстрационном режиме: чтобы я отвечала по-настоящему, добавьте API-ключ Cloud.ru при запуске Yaeri.bat. Рабочую память слева можно заполнять уже сейчас.');
       }
       function showTyping() {
         if (typingNode) return;
-        typingNode = document.createElement('div');
-        typingNode.className = 'msg assistant typing';
+        typingNode = el('div', 'msg assistant typing');
         typingNode.setAttribute('aria-hidden', 'true');
         for (var n = 0; n < 8; n++) {
-          var dot = document.createElement('i');
+          var dot = el('i');
           dot.style.setProperty('--n', n);
           typingNode.appendChild(dot);
         }
@@ -734,7 +1395,7 @@
           timers = timers.filter(function (x) { return x !== id; });
           pending--;
           if (!pending) hideTyping();
-          add('assistant', settings.name + ', я получила ваше сообщение. Пока ключ Cloud.ru не задан, отвечать по-настоящему я не могу, зато интерфейс и локальный запуск уже работают.');
+          add('assistant', settings.name + ', я получила ваше сообщение. Пока ключ Cloud.ru не задан, отвечать по-настоящему я не могу, зато интерфейс, рабочая память и второй мозг уже работают.');
         }, settings.motion ? 900 : 250);
         timers.push(id);
       }
@@ -747,7 +1408,7 @@
         pending++;
         sendBtn.disabled = true;
         showTyping();
-        api('chat', { text: message, model: modelSelect.value, rag: settings.rag, remember: settings.remember, name: settings.name })
+        api('chat', { text: message, model: modelSelect.value, rag: settings.rag, remember: settings.remember, autoNotes: settings.autoNotes, name: settings.name })
           .then(function (data) {
             if (epoch !== chatEpoch) return;
             var m = data.reply;
@@ -755,6 +1416,7 @@
             history.push(m);
             hideTyping();
             bubble(m, true);
+            refreshBrain();
           })
           .catch(function (error) {
             if (epoch !== chatEpoch) return;
@@ -777,13 +1439,14 @@
       }
       function clearChat() {
         if (history.length > 1 && !window.confirm(online
-          ? 'Очистить переписку? Долговременная память при этом сохранится, её можно стереть отдельно в настройках.'
+          ? 'Очистить переписку? Рабочая память и воспоминания сохранятся, их можно стереть отдельно.'
           : 'Очистить весь разговор?')) return;
         var done = function () {
           chatEpoch++;
           resetView();
           save();
           greet();
+          refreshBrain();
           if (!isOpen()) input.focus();
         };
         if (online) {
@@ -795,8 +1458,8 @@
       $('clear').addEventListener('click', clearChat);
       $('clear-from-settings').addEventListener('click', clearChat);
       $('clear-memory').addEventListener('click', function () {
-        if (!window.confirm('Стереть долговременную память Яэри о прошлых разговорах? Документы останутся.')) return;
-        api('memory/clear', {}).then(function () { window.alert('Память очищена.'); })
+        if (!window.confirm('Стереть долговременную память Яэри о прошлых разговорах? Рабочая память и документы останутся.')) return;
+        api('memory/clear', {}).then(function () { window.alert('Воспоминания о разговорах стёрты.'); refreshBrain(); })
           .catch(function (error) { window.alert(error.message); });
       });
 
@@ -804,18 +1467,24 @@
         input.style.height = 'auto';
         input.style.height = Math.min(input.scrollHeight + 2, 180) + 'px';
       }
-      function submit() {
-        var message = input.value.trim();
-        if (!message) return;
-        if (online && pending) return;
-        input.value = '';
-        grow();
+      function send(message) {
+        message = String(message || '').trim();
+        if (!message) return false;
+        if (online && pending) return false;
+        if (currentView !== 'deck') showView('deck');
         if (online) {
           aiReply(message);
         } else {
           add('user', message);
           demoReply();
         }
+        return true;
+      }
+      function submit() {
+        if (!input.value.trim()) return;
+        if (!send(input.value)) return;
+        input.value = '';
+        grow();
         input.focus();
       }
       form.addEventListener('submit', function (event) { event.preventDefault(); submit(); });
@@ -823,8 +1492,8 @@
       input.addEventListener('keydown', function (event) {
         // Enter во время ввода через IME (японский, китайский) подтверждает слово, а не отправляет.
         if (event.key !== 'Enter' || event.isComposing || event.keyCode === 229) return;
-        var send = settings.enter ? !event.shiftKey : (event.ctrlKey || event.metaKey);
-        if (send) { event.preventDefault(); submit(); }
+        var go = settings.enter ? !event.shiftKey : (event.ctrlKey || event.metaKey);
+        if (go) { event.preventDefault(); submit(); }
       });
 
       /* ---------- Модели ---------- */
@@ -865,31 +1534,28 @@
         reindexBtn.hidden = !data.reindexNeeded;
         if (data.reindexNeeded) docStatus.textContent = 'Модель эмбеддингов изменилась: нажмите «Переиндексировать».';
         (data.docs || []).forEach(function (d) {
-          var li = document.createElement('li');
-          var name = document.createElement('span');
-          name.className = 'd-name';
-          name.textContent = d.name;
+          var li = el('li');
+          var name = el('span', 'd-name', d.name);
           name.title = d.name;
-          var info = document.createElement('span');
-          info.className = 'd-info';
-          info.textContent = d.chunks + ' фрагм.';
-          var del = document.createElement('button');
+          var del = el('button', '', '×');
           del.type = 'button';
-          del.textContent = '×';
           del.setAttribute('aria-label', 'Удалить документ ' + d.name);
-          del.addEventListener('click', function () {
-            if (!window.confirm('Удалить «' + d.name + '» из знаний Яэри?')) return;
-            api('docs/delete', { id: d.id }).then(loadDocs).catch(function (error) { docStatus.textContent = error.message; });
-          });
+          del.addEventListener('click', function () { deleteDoc(d); });
           li.appendChild(name);
-          li.appendChild(info);
+          li.appendChild(el('span', 'd-info', d.chunks + ' фрагм.'));
           li.appendChild(del);
           docList.appendChild(li);
         });
         if (!data.reindexNeeded && !(data.docs || []).length && !docStatus.textContent) docStatus.textContent = 'Документов пока нет.';
       }
       function loadDocs() {
+        refreshBrain(100);
         return api('docs').then(renderDocs).catch(function (error) { docStatus.textContent = error.message; });
+      }
+      function deleteDoc(d) {
+        if (!window.confirm('Удалить «' + d.name + '» из знаний Яэри?')) return Promise.resolve(false);
+        return api('docs/delete', { id: d.id }).then(function () { loadDocs(); return true; })
+          .catch(function (error) { docStatus.textContent = error.message; window.alert(error.message); return false; });
       }
       function readText(file) {
         if (file.text) return file.text();
@@ -930,14 +1596,36 @@
           .then(function () { reindexBtn.disabled = false; loadDocs(); });
       });
 
+      /* Действия, которые нужны графу памяти. */
+      window.YaeriApp = {
+        isOnline: function () { return online; },
+        motion: function () { return settings.motion; },
+        updateNote: updateNote,
+        deleteNote: deleteNote,
+        deleteDoc: deleteDoc,
+        deleteMemory: function (m) {
+          if (!online) return Promise.resolve(false);
+          if (!window.confirm('Забыть это воспоминание о разговоре?')) return Promise.resolve(false);
+          return api('memory/delete', { id: m.id }).then(function () { refreshBrain(); return true; })
+            .catch(function (e) { window.alert(e.message); return false; });
+        },
+        ask: function (text) { input.value = text; showView('deck'); grow(); input.focus(); },
+        showView: showView,
+        currentView: function () { return currentView; },
+        renderNotes: renderNotes
+      };
+
       /* ---------- Старт ---------- */
       syncControls();
       applySettings();
+      renderSkills();
+      renderCalendar(true);
 
       function startDemo() {
         online = false;
         applyMode();
         resetView();
+        brainData = { notes: localNotes(), memory: [], docs: [], links: [], messages: 0, memoryTotal: 0 };
         var saved = load(CHAT_KEY);
         if (Array.isArray(saved)) history = saved.filter(valid).slice(-100);
         if (history.length) {
@@ -947,6 +1635,7 @@
         } else {
           greet();
         }
+        refreshBrain();
       }
       function startOnline() {
         online = true;
@@ -961,6 +1650,7 @@
         });
       }
 
+      window.addEventListener('DOMContentLoaded', function () { showView(location.hash === '#brain' ? 'brain' : 'deck', true); });
       if (location.protocol === 'file:') {
         startDemo();
       } else {
@@ -972,6 +1662,1072 @@
           startDemo();
         });
       }
+    }());
+  </script>
+  <script>
+    /* ===================== Второй мозг: граф памяти на canvas ===================== */
+    (function () {
+      'use strict';
+      var App = window.YaeriApp;
+      function $(id) { return document.getElementById(id); }
+      function each(list, fn) { Array.prototype.forEach.call(list, fn); }
+      var TAU = Math.PI * 2;
+      var GOLD = Math.PI * (3 - Math.sqrt(5));
+
+      /* ---------- Темы ---------- */
+      var THEMES = [
+        { id: 'site', name: 'Яэри (цвет сайта)', site: true },
+        { id: 'metal', name: 'Металлик', bg: '#0c1013', grid: '#1b242a', ink: '#d5dde2', muted: '#7d8a93', core: '#e4eaee', colors: ['#a7bccf', '#e3b25e', '#79d1a0', '#c799f2', '#f29a5a', '#6fc3df', '#e7e2d6'] },
+        { id: 'ruby', name: 'Рубин', bg: '#110709', grid: '#2a1418', ink: '#f6e3e6', muted: '#a07f86', core: '#ff5d73', colors: ['#ff5d73', '#ffb36b', '#f3e7e9', '#c77dff', '#ff8fab', '#ffd166', '#e85d04'] },
+        { id: 'ocean', name: 'Океан', bg: '#061115', grid: '#11262c', ink: '#d2eeea', muted: '#6f9590', core: '#3ddbc0', colors: ['#3ddbc0', '#5ab8ff', '#8b7dff', '#e8f1f2', '#ffb454', '#7ee081', '#ff7b9c'] },
+        { id: 'neon', name: 'Неон', bg: '#06050b', grid: '#17142a', ink: '#f2f2ff', muted: '#8a86a8', core: '#00e5ff', colors: ['#39ff14', '#ff2bd6', '#00e5ff', '#fff200', '#ff6b00', '#9d4dff', '#ffffff'] },
+        { id: 'bordeaux', name: 'Бордо', bg: '#13060a', grid: '#2b1219', ink: '#f3dde2', muted: '#a07a84', core: '#e2a0a8', colors: ['#e2a0a8', '#c24d5f', '#f5d0a9', '#b08ba0', '#ffffff', '#d98a5b', '#8fb5a3'] },
+        { id: 'paper', name: 'Бумага', bg: '#f3efe6', grid: '#ddd5c6', ink: '#29241f', muted: '#7b7266', core: '#1f6f8b', colors: ['#1f6f8b', '#c0392b', '#d68910', '#6c3483', '#1e8449', '#2e4053', '#b9770e'], light: true }
+      ];
+      function siteTheme() {
+        var cs = getComputedStyle(document.documentElement);
+        var h = parseFloat(cs.getPropertyValue('--h')) || 168;
+        function hsl(hh, s, l) { return 'hsl(' + ((hh % 360) + 360) % 360 + ',' + s + '%,' + l + '%)'; }
+        return {
+          id: 'site', name: 'Яэри (цвет сайта)', site: true,
+          bg: hsl(h, 30, 4.5), grid: hsl(h, 18, 13), ink: hsl(h, 18, 90), muted: hsl(h, 10, 55), core: hsl(h, 68, 62),
+          colors: [hsl(h, 68, 62), hsl(h + 50, 70, 66), hsl(h - 60, 70, 68), hsl(h + 140, 65, 70), hsl(h + 190, 75, 68), hsl(h + 100, 55, 72), hsl(h, 15, 85)]
+        };
+      }
+
+      /* ---------- Состояние и настройки вида ---------- */
+      var defaults = { layout: 'rings', group: 'sections', links: 0.45, nodes: 1, labels: 1, names: true, semantic: true, theme: 'site', collapsed: [] };
+      var view = (function () {
+        var saved = null;
+        try { saved = JSON.parse(localStorage.getItem('yaeri_brain_v1')); } catch (error) { saved = null; }
+        var v = {};
+        Object.keys(defaults).forEach(function (k) { v[k] = saved && saved[k] !== undefined && typeof saved[k] === typeof defaults[k] ? saved[k] : defaults[k]; });
+        if (['rings', 'stars', 'hex', 'force', 'time'].indexOf(v.layout) < 0) v.layout = 'rings';
+        if (['sections', 'types'].indexOf(v.group) < 0) v.group = 'sections';
+        if (!THEMES.some(function (t) { return t.id === v.theme; })) v.theme = 'site';
+        if (!Array.isArray(v.collapsed)) v.collapsed = [];
+        return v;
+      }());
+      var theme = null;
+      function pickTheme() {
+        var t = THEMES.filter(function (x) { return x.id === view.theme; })[0] || THEMES[0];
+        theme = t.site ? siteTheme() : t;
+        var stage = $('stage');
+        stage.style.background = theme.bg;
+        stage.style.setProperty('--stage-ink', theme.ink);
+        stage.style.setProperty('--stage-muted', theme.muted);
+        stage.style.setProperty('--stage-accent', theme.core);
+      }
+
+      var data = { notes: [], memory: [], docs: [], links: [], messages: 0 };
+      var graph = { nodes: [], links: [], groups: [], byId: {} };
+      var groupColor = {};
+
+      var MONTHS = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
+      var KIND = { note: 'Заметка', memory: 'Воспоминание', doc: 'Документ' };
+      function monthName(t) { var d = new Date(t || 0); return MONTHS[d.getMonth()] + ' ' + d.getFullYear(); }
+      function cut(text, n) { text = String(text || '').replace(/\s+/g, ' ').trim(); return text.length > n ? text.slice(0, n - 1) + '…' : text; }
+      function memTitle(text) { return cut(String(text || '').replace(/^Пользователь:\s*/, '').split('\n')[0], 48); }
+
+      function groupKey(kind, item) {
+        if (view.group === 'types') return kind === 'note' ? 'Рабочая память' : kind === 'memory' ? 'Разговоры' : 'Документы';
+        if (kind === 'note') return item.cat || 'Общее';
+        if (kind === 'memory') return 'Разговоры · ' + monthName(item.t);
+        return 'Документы';
+      }
+      function hashStr(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
+      function colorFor(kind, key) {
+        // Запасной цвет, пока граф ещё не построен (обычно цвет берётся из groupColor).
+        if (!theme) pickTheme();
+        if (groupColor[key]) return groupColor[key];
+        if (kind === 'memory') return theme.colors[3 % theme.colors.length];
+        if (kind === 'doc') return theme.colors[4 % theme.colors.length];
+        return theme.colors[hashStr(key) % theme.colors.length];
+      }
+
+      function build() {
+        groupColor = {};
+        var nodes = [];
+        var byId = {};
+        var groups = {};
+        var gList = [];
+        var core = { id: 'core', type: 'core', label: 'ЯЭРИ', r: 40, x: 0, y: 0 };
+        nodes.push(core);
+        byId.core = core;
+        function addItem(kind, item, title) {
+          var key = groupKey(kind, item);
+          var g = groups[key];
+          if (!g) {
+            g = { id: 'g:' + key, type: 'group', key: key, label: key, kind: kind, items: [], x: 0, y: 0, t: 0 };
+            groups[key] = g;
+            gList.push(g);
+          }
+          var t = kind === 'doc' ? item.added : item.t;
+          var n = { id: (kind === 'note' ? 'n:' : kind === 'memory' ? 'm:' : 'd:') + item.id, type: 'leaf', kind: kind, item: item, group: g, label: title, t: t || 0, x: 0, y: 0 };
+          g.items.push(n);
+          g.t = Math.max(g.t, n.t);
+          nodes.push(n);
+          byId[n.id] = n;
+        }
+        data.notes.forEach(function (n) { addItem('note', n, cut(n.text, 48)); });
+        data.memory.forEach(function (m) { addItem('memory', m, memTitle(m.text)); });
+        data.docs.forEach(function (d) { addItem('doc', d, cut(d.name, 48)); });
+
+        // Порядок групп: заметки по алфавиту, затем документы, затем разговоры по времени.
+        var rank = { note: 0, doc: 1, memory: 2 };
+        gList.sort(function (a, b) {
+          if (view.group === 'types') return rank[a.kind] - rank[b.kind];
+          return rank[a.kind] - rank[b.kind] || (a.kind === 'memory' ? a.t - b.t : a.key.localeCompare(b.key, 'ru'));
+        });
+        var ci = 0;
+        gList.forEach(function (g) {
+          if (view.group === 'types') groupColor[g.key] = theme.colors[{ note: 0, memory: 3, doc: 4 }[g.kind] % theme.colors.length];
+          else if (g.kind === 'memory') groupColor[g.key] = theme.colors[3 % theme.colors.length];
+          else if (g.kind === 'doc') groupColor[g.key] = theme.colors[4 % theme.colors.length];
+          else { groupColor[g.key] = theme.colors[[0, 1, 2, 5, 6][ci % 5] % theme.colors.length]; ci++; }
+          g.color = groupColor[g.key];
+          g.collapsed = view.collapsed.indexOf(g.key) > -1;
+          g.items.sort(function (a, b) { return (a.t || 0) - (b.t || 0); });
+          g.items.forEach(function (n) { n.color = g.color; });
+          nodes.push(g);
+          byId[g.id] = g;
+        });
+        // Ядро рисуется последним, чтобы быть поверх.
+        nodes.push(nodes.shift());
+
+        var links = [];
+        gList.forEach(function (g) {
+          links.push({ a: core, b: g, kind: 'core' });
+          g.items.forEach(function (n) { links.push({ a: g, b: n, kind: 'group' }); });
+        });
+        (data.links || []).forEach(function (l) {
+          var a = byId[l[0]];
+          var b = byId[l[1]];
+          if (a && b) links.push({ a: a, b: b, kind: 'sem', w: +l[2] || 0.5 });
+        });
+        var old = graph.byId;
+        nodes.forEach(function (n) {
+          var o = old[n.id];
+          if (o) { n.x = o.x; n.y = o.y; n.seen = true; }
+        });
+        graph = { nodes: nodes, links: links, groups: gList, byId: byId };
+      }
+      function visible(n) { return n.type !== 'leaf' || !n.group.collapsed; }
+
+      /* ---------- Раскладки ---------- */
+      function phyllo(n, j, spacing) {
+        var r = spacing * Math.sqrt(j + 0.6);
+        return { x: Math.cos(j * GOLD) * r, y: Math.sin(j * GOLD) * r, r: r };
+      }
+      var deco = { rings: [], hexes: [], axis: null };
+      function layout() {
+        var G = graph.groups;
+        deco = { rings: [], hexes: [], axis: null };
+        var targets = {};
+        function set(n, x, y) { targets[n.id] = { x: x, y: y }; }
+        set(graph.byId.core, 0, 0);
+        if (!G.length) { apply(targets); return; }
+        var sp = 15;
+
+        if (view.layout === 'rings') {
+          // Сектора вокруг ядра, внутри сектора узлы идут рядами наружу.
+          var weights = G.map(function (g) { return Math.max(3, g.collapsed ? 3 : g.items.length); });
+          var total = weights.reduce(function (s, w) { return s + w; }, 0);
+          var R0 = Math.max(170, Math.min(420, total * 2.2));
+          var a = -Math.PI / 2;
+          var outer = R0;
+          G.forEach(function (g, i) {
+            var span = TAU * weights[i] / total;
+            var padA = Math.min(span * 0.12, 0.08);
+            var mid = a + span / 2;
+            set(g, Math.cos(mid) * (R0 - 46), Math.sin(mid) * (R0 - 46));
+            g.angle = mid;
+            var cols = Math.max(1, Math.floor((span - 2 * padA) * R0 / sp));
+            g.items.forEach(function (n, j) {
+              var row = Math.floor(j / cols);
+              var col = j % cols;
+              var rr = R0 + row * sp;
+              var cAt = Math.max(1, Math.floor((span - 2 * padA) * rr / sp));
+              var useCols = Math.min(cAt, cols);
+              var ang = a + padA + (col + 0.5) / useCols * (span - 2 * padA);
+              set(n, Math.cos(ang) * rr, Math.sin(ang) * rr);
+              outer = Math.max(outer, rr);
+            });
+            g.labelR = R0 + Math.ceil(g.items.length / cols) * sp + 26;
+            if (g.collapsed) g.labelR = R0 + 10;
+            a += span;
+          });
+          deco.rings = [R0 - 90, R0 - 46, outer + 70];
+          deco.orbit = outer + 70;
+        } else if (view.layout === 'stars' || view.layout === 'force') {
+          // Созвездия: группы по кругу, узлы — спиралью вокруг центра группы.
+          var maxR = 0;
+          G.forEach(function (g) { maxR = Math.max(maxR, phyllo(g.items.length, g.items.length, sp * 0.9).r); });
+          var Rg = Math.max(230, (G.length * (maxR * 2 + 60)) / TAU);
+          G.forEach(function (g, i) {
+            var ang = -Math.PI / 2 + TAU * i / G.length;
+            var gx = Math.cos(ang) * Rg;
+            var gy = Math.sin(ang) * Rg;
+            set(g, gx, gy);
+            g.angle = ang;
+            g.items.forEach(function (n, j) { var p = phyllo(n, j, sp * 0.9); set(n, gx + p.x, gy + p.y); });
+            g.labelR = null;
+          });
+          deco.rings = [Rg];
+          if (view.layout === 'force') { force(targets); }
+        } else if (view.layout === 'hex') {
+          // Соты: каждая группа — шестиугольная ячейка вокруг ячейки ядра.
+          var need = 0;
+          G.forEach(function (g) { need = Math.max(need, phyllo(g.items.length, g.items.length, sp * 0.8).r); });
+          var S = Math.max(120, need + 46);
+          var cells = hexSpiral(G.length + 1).slice(1);
+          deco.hexes.push({ x: 0, y: 0, s: S, color: theme.core, core: true });
+          G.forEach(function (g, i) {
+            var c = cells[i];
+            var hx = S * Math.sqrt(3) * (c.q + c.r / 2);
+            var hy = S * 1.5 * c.r;
+            set(g, hx, hy);
+            g.items.forEach(function (n, j) { var p = phyllo(n, j, sp * 0.8); set(n, hx + p.x, hy + p.y + 10); });
+            deco.hexes.push({ x: hx, y: hy, s: S, color: g.color, label: g.label });
+          });
+        } else if (view.layout === 'time') {
+          // Лента времени: по горизонтали дата, по вертикали группы.
+          var all = graph.nodes.filter(function (n) { return n.type === 'leaf' && n.t; });
+          var tMin = Infinity, tMax = -Infinity;
+          all.forEach(function (n) { tMin = Math.min(tMin, n.t); tMax = Math.max(tMax, n.t); });
+          if (!isFinite(tMin)) { tMin = Date.now() - 864e5; tMax = Date.now(); }
+          if (tMax - tMin < 36e5) { tMin -= 18e5; tMax += 18e5; }
+          var W = Math.max(900, Math.min(4000, all.length * 14));
+          var rowH = 64;
+          var top = -(G.length - 1) * rowH / 2;
+          G.forEach(function (g, i) {
+            var y = top + i * rowH;
+            set(g, -W / 2 - 150, y);
+            var lastX = -Infinity, stack = 0;
+            g.items.forEach(function (n) {
+              var x = -W / 2 + (n.t ? (n.t - tMin) / (tMax - tMin) : 0) * W;
+              if (x - lastX < 9) { stack++; } else { stack = 0; }
+              lastX = x;
+              set(n, x, y + ((stack % 5) - 2) * 7);
+            });
+          });
+          set(graph.byId.core, -W / 2 - 330, 0);
+          deco.axis = { x0: -W / 2, x1: W / 2, y0: top - rowH / 2, y1: top + (G.length - 0.5) * rowH, tMin: tMin, tMax: tMax, rows: G.map(function (g, i) { return top + i * rowH; }) };
+        }
+        apply(targets);
+      }
+      function hexSpiral(count) {
+        var out = [{ q: 0, r: 0 }];
+        var dirs = [[1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, -1]];
+        for (var k = 1; out.length < count; k++) {
+          var q = -k, r = k; // старт: k шагов в направлении 4 (низ-лево)
+          q = dirs[4][0] * k; r = dirs[4][1] * k;
+          for (var side = 0; side < 6 && out.length < count; side++) {
+            for (var s = 0; s < k && out.length < count; s++) {
+              out.push({ q: q, r: r });
+              q += dirs[side][0];
+              r += dirs[side][1];
+            }
+          }
+        }
+        return out;
+      }
+      function force(t) {
+        // Простая силовая укладка: пружины по связям, отталкивание по сетке, ядро в центре.
+        var ns = graph.nodes.filter(visible);
+        var P = {};
+        ns.forEach(function (n) { P[n.id] = { x: t[n.id].x + (Math.random() - 0.5) * 4, y: t[n.id].y + (Math.random() - 0.5) * 4, vx: 0, vy: 0, n: n }; });
+        var L = graph.links.filter(function (l) { return P[l.a.id] && P[l.b.id]; });
+        var cell = 46;
+        for (var it = 0; it < 220; it++) {
+          var alpha = 1 - it / 220;
+          var grid = {};
+          ns.forEach(function (n) {
+            var p = P[n.id];
+            var k = Math.floor(p.x / cell) + ':' + Math.floor(p.y / cell);
+            (grid[k] = grid[k] || []).push(p);
+          });
+          ns.forEach(function (n) {
+            var p = P[n.id];
+            var cx = Math.floor(p.x / cell), cy = Math.floor(p.y / cell);
+            for (var dx = -1; dx <= 1; dx++) for (var dy = -1; dy <= 1; dy++) {
+              var list = grid[(cx + dx) + ':' + (cy + dy)];
+              if (!list) continue;
+              for (var i = 0; i < list.length; i++) {
+                var q = list[i];
+                if (q === p) continue;
+                var ddx = p.x - q.x, ddy = p.y - q.y;
+                var d2 = ddx * ddx + ddy * ddy || 0.01;
+                if (d2 > cell * cell) continue;
+                var f = (cell * cell - d2) / (cell * cell) * 1.6 * alpha;
+                var d = Math.sqrt(d2);
+                p.vx += ddx / d * f;
+                p.vy += ddy / d * f;
+              }
+            }
+          });
+          // Группы отталкиваются друг от друга сильнее и издалека.
+          graph.groups.forEach(function (g1) {
+            graph.groups.forEach(function (g2) {
+              if (g1 === g2) return;
+              var a = P[g1.id], b = P[g2.id];
+              var ddx = a.x - b.x, ddy = a.y - b.y;
+              var d = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
+              var f = Math.min(8, 9000 / (d * d)) * alpha;
+              a.vx += ddx / d * f;
+              a.vy += ddy / d * f;
+            });
+          });
+          L.forEach(function (l) {
+            var a = P[l.a.id], b = P[l.b.id];
+            var want = l.kind === 'core' ? 260 : l.kind === 'group' ? 30 + Math.sqrt(l.a.items.length) * 9 : 90;
+            var str = l.kind === 'sem' ? 0.01 : l.kind === 'core' ? 0.04 : 0.06;
+            var ddx = b.x - a.x, ddy = b.y - a.y;
+            var d = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
+            var f = (d - want) * str * alpha;
+            var fx = ddx / d * f, fy = ddy / d * f;
+            if (a.n.type !== 'core') { a.vx += fx; a.vy += fy; }
+            if (b.n.type !== 'core') { b.vx -= fx; b.vy -= fy; }
+          });
+          ns.forEach(function (n) {
+            var p = P[n.id];
+            if (n.type === 'core') { p.x = 0; p.y = 0; return; }
+            p.vx *= 0.6; p.vy *= 0.6;
+            p.x += Math.max(-30, Math.min(30, p.vx));
+            p.y += Math.max(-30, Math.min(30, p.vy));
+          });
+        }
+        ns.forEach(function (n) { t[n.id] = { x: P[n.id].x, y: P[n.id].y }; });
+      }
+
+      /* Плавный переход к новым позициям. */
+      var anim = null;
+      function apply(targets) {
+        var motion = App.motion();
+        graph.nodes.forEach(function (n) {
+          var tg = targets[n.id];
+          if (!tg) {
+            // Свёрнутые узлы прячутся в свою группу.
+            var g = n.group && targets[n.group.id];
+            tg = g ? { x: g.x, y: g.y } : { x: 0, y: 0 };
+          }
+          if (!n.seen) { var src = n.group && targets[n.group.id]; n.x = src ? src.x : 0; n.y = src ? src.y : 0; n.seen = true; }
+          n.x0 = n.x; n.y0 = n.y; n.tx = tg.x; n.ty = tg.y;
+        });
+        anim = motion ? { start: performance.now(), dur: 650 } : null;
+        if (!motion) graph.nodes.forEach(function (n) { n.x = n.tx; n.y = n.ty; });
+        needFit = true;
+        dirty = true;
+      }
+      function ease(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+
+      /* ---------- Отрисовка ---------- */
+      function Renderer(canvas, mini) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.mini = mini;
+        this.cam = { x: 0, y: 0, k: 1 };
+        this.camTo = null;
+        this.w = 0; this.h = 0; this.dpr = 1;
+      }
+      Renderer.prototype.resize = function () {
+        var r = this.canvas.getBoundingClientRect();
+        var dpr = Math.min(window.devicePixelRatio || 1, 2);
+        if (r.width < 2 || r.height < 2) return false;
+        if (r.width !== this.w || r.height !== this.h || dpr !== this.dpr) {
+          this.w = r.width; this.h = r.height; this.dpr = dpr;
+          this.canvas.width = Math.round(r.width * dpr);
+          this.canvas.height = Math.round(r.height * dpr);
+          return true;
+        }
+        return false;
+      };
+      Renderer.prototype.bounds = function (final) {
+        var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        graph.nodes.forEach(function (n) {
+          if (!visible(n)) return;
+          var x = final ? n.tx : n.x, y = final ? n.ty : n.y;
+          if (x === undefined) return;
+          var pad = n.type === 'group' ? 120 : 30;
+          x0 = Math.min(x0, x - pad); y0 = Math.min(y0, y - pad); x1 = Math.max(x1, x + pad); y1 = Math.max(y1, y + pad);
+        });
+        if (deco.orbit) { x0 = Math.min(x0, -deco.orbit - 20); x1 = Math.max(x1, deco.orbit + 20); y0 = Math.min(y0, -deco.orbit - 20); y1 = Math.max(y1, deco.orbit + 20); }
+        deco.hexes.forEach(function (h) { x0 = Math.min(x0, h.x - h.s); x1 = Math.max(x1, h.x + h.s); y0 = Math.min(y0, h.y - h.s); y1 = Math.max(y1, h.y + h.s); });
+        if (!isFinite(x0)) return { x0: -200, y0: -200, x1: 200, y1: 200 };
+        return { x0: x0, y0: y0, x1: x1, y1: y1 };
+      };
+      Renderer.prototype.fit = function (instant) {
+        if (!this.w) return;
+        var b = this.bounds(true);
+        var k = Math.min(this.w / (b.x1 - b.x0), this.h / (b.y1 - b.y0)) * (this.mini ? 1 : 0.92);
+        k = Math.max(0.05, Math.min(this.mini ? 1.2 : 2.2, k));
+        var to = { x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2, k: k };
+        if (instant || !App.motion()) { this.cam = to; this.camTo = null; } else { this.camTo = to; }
+      };
+      Renderer.prototype.toWorld = function (sx, sy) {
+        return { x: (sx - this.w / 2) / this.cam.k + this.cam.x, y: (sy - this.h / 2) / this.cam.k + this.cam.y };
+      };
+      Renderer.prototype.nodeR = function (n) {
+        var s = view.nodes;
+        if (n.type === 'core') return 40;
+        if (n.type === 'group') return (n.collapsed ? 9 + Math.min(14, Math.sqrt(n.items.length) * 2.2) : 6) * Math.sqrt(s);
+        var base = n.kind === 'doc' ? 5.5 : n.kind === 'note' ? 4.6 : 3.4;
+        if (n.kind === 'note' && n.item.pinned) base += 1.2;
+        return base * s;
+      };
+      function alpha(color, a) {
+        if (color.charAt(0) === '#') {
+          var c = color.length === 4 ? color.replace(/#(.)(.)(.)/, '#$1$1$2$2$3$3') : color;
+          var r = parseInt(c.slice(1, 3), 16), g = parseInt(c.slice(3, 5), 16), b = parseInt(c.slice(5, 7), 16);
+          return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+        }
+        if (color.indexOf('hsl(') === 0) return color.replace('hsl(', 'hsla(').replace(')', ',' + a + ')');
+        return color;
+      }
+      var MONO = '"Cascadia Mono", Consolas, "JetBrains Mono", Menlo, ui-monospace, monospace';
+      Renderer.prototype.draw = function (now) {
+        var ctx = this.ctx, cam = this.cam, mini = this.mini;
+        var w = this.w, h = this.h, dpr = this.dpr;
+        if (!w) return;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.fillStyle = theme.bg;
+        ctx.fillRect(0, 0, w, h);
+        // Сетка точек на фоне.
+        if (!mini) {
+          var stepS = 28;
+          ctx.fillStyle = alpha(theme.grid, 0.9);
+          var ox = ((-cam.x * cam.k + w / 2) % stepS + stepS) % stepS;
+          var oy = ((-cam.y * cam.k + h / 2) % stepS + stepS) % stepS;
+          for (var gx = ox; gx < w; gx += stepS) for (var gy = oy; gy < h; gy += stepS) ctx.fillRect(gx, gy, 1, 1);
+        }
+        ctx.setTransform(dpr * cam.k, 0, 0, dpr * cam.k, dpr * (w / 2 - cam.x * cam.k), dpr * (h / 2 - cam.y * cam.k));
+        var k = cam.k;
+        var t = now / 1000;
+        var motion = App.motion();
+        var focus = state.focus; // подсвеченные узлы (наведение, выбор, поиск)
+        var dimOthers = !!focus;
+
+        // Декор: кольца, соты, ось времени.
+        ctx.lineWidth = 1 / k;
+        deco.rings.forEach(function (r, i) {
+          ctx.strokeStyle = alpha(theme.grid, i === deco.rings.length - 1 ? 1 : 0.8);
+          ctx.setLineDash(i === deco.rings.length - 1 ? [2 / k, 6 / k] : []);
+          ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.stroke();
+        });
+        ctx.setLineDash([]);
+        if (deco.orbit && view.layout === 'rings') {
+          // Орбита сообщений: по точке на каждые несколько реплик, медленно вращается.
+          var count = Math.min(240, Math.max(24, data.messages || 0));
+          var rot = motion ? t * 0.02 : 0;
+          ctx.fillStyle = alpha(theme.muted, 0.55);
+          for (var i = 0; i < count; i++) {
+            var a = rot + TAU * i / count;
+            var rr = deco.orbit + (i % 3) * 6;
+            ctx.beginPath(); ctx.arc(Math.cos(a) * rr, Math.sin(a) * rr, (i % 7 === 0 ? 2.2 : 1.2), 0, TAU); ctx.fill();
+          }
+        }
+        deco.hexes.forEach(function (hx) {
+          ctx.beginPath();
+          for (var s = 0; s < 6; s++) {
+            var ang = Math.PI / 6 + s * Math.PI / 3;
+            var px = hx.x + Math.cos(ang) * (hx.s - 4), py = hx.y + Math.sin(ang) * (hx.s - 4);
+            if (s) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+          }
+          ctx.closePath();
+          ctx.fillStyle = alpha(hx.color, theme.light ? 0.07 : 0.05);
+          ctx.fill();
+          ctx.strokeStyle = alpha(hx.color, 0.35);
+          ctx.lineWidth = 1.2 / k;
+          ctx.stroke();
+          if (hx.label && !mini) {
+            ctx.fillStyle = hx.color;
+            ctx.font = '600 ' + (13 * view.labels) + 'px ' + MONO;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(cut(hx.label, 26).toUpperCase(), hx.x, hx.y - hx.s * 0.62);
+          }
+        });
+        if (deco.axis && !mini) {
+          var ax = deco.axis;
+          ctx.strokeStyle = alpha(theme.grid, 1);
+          ctx.lineWidth = 1 / k;
+          ax.rows.forEach(function (y) { ctx.beginPath(); ctx.moveTo(ax.x0, y); ctx.lineTo(ax.x1, y); ctx.stroke(); });
+          var ticks = 6;
+          ctx.fillStyle = theme.muted;
+          ctx.font = (10 / Math.sqrt(k)) * view.labels + 'px ' + MONO;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          for (var ti = 0; ti <= ticks; ti++) {
+            var tx = ax.x0 + (ax.x1 - ax.x0) * ti / ticks;
+            var tt = ax.tMin + (ax.tMax - ax.tMin) * ti / ticks;
+            ctx.beginPath(); ctx.moveTo(tx, ax.y0); ctx.lineTo(tx, ax.y1); ctx.stroke();
+            var d = new Date(tt);
+            var lab = ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + (ax.tMax - ax.tMin < 2 * 864e5 ? ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) : '');
+            ctx.fillText(lab, tx, ax.y1 + 8);
+          }
+        }
+
+        // Связи.
+        var la = view.links;
+        graph.links.forEach(function (l) {
+          if (!visible(l.a) || !visible(l.b)) return;
+          if (l.kind === 'sem' && !view.semantic) return;
+          if (view.layout === 'time' && l.kind !== 'core') return;
+          var hot = focus && (focus[l.a.id] && focus[l.b.id]);
+          var base = l.kind === 'core' ? 0.5 : l.kind === 'group' ? 0.28 : 0.55;
+          var aa = la * base * (dimOthers ? (hot ? 2.2 : 0.25) : 1);
+          if (aa <= 0.01) return;
+          var col = l.kind === 'core' ? l.b.color : l.kind === 'group' ? l.b.color : theme.core;
+          ctx.strokeStyle = alpha(col, Math.min(1, aa));
+          ctx.lineWidth = (l.kind === 'sem' ? 1.2 : l.kind === 'core' ? 1.1 : 0.7) / k * (hot ? 1.8 : 1);
+          ctx.beginPath();
+          ctx.moveTo(l.a.x, l.a.y);
+          if (l.kind === 'sem') {
+            var mx = (l.a.x + l.b.x) / 2, my = (l.a.y + l.b.y) / 2;
+            ctx.quadraticCurveTo(mx * 0.75, my * 0.75, l.b.x, l.b.y);
+          } else {
+            ctx.lineTo(l.b.x, l.b.y);
+          }
+          ctx.stroke();
+        });
+
+        // Узлы.
+        var self = this;
+        var q = state.query;
+        graph.nodes.forEach(function (n) {
+          if (!visible(n) || n.type === 'core') return;
+          var r = self.nodeR(n);
+          var on = !dimOthers || focus[n.id];
+          ctx.globalAlpha = on ? 1 : 0.18;
+          if (n.type === 'group') {
+            ctx.fillStyle = theme.bg;
+            ctx.strokeStyle = n.color;
+            ctx.lineWidth = 1.6 / k;
+            ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, TAU); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = n.color;
+            ctx.beginPath(); ctx.arc(n.x, n.y, r * 0.45, 0, TAU); ctx.fill();
+            if (n.collapsed && !mini) {
+              ctx.fillStyle = theme.ink;
+              ctx.font = '600 ' + (Math.max(8, r * 0.7)) + 'px ' + MONO;
+              ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+              ctx.fillStyle = theme.bg;
+              ctx.fillText(String(n.items.length), n.x, n.y + 0.5);
+            }
+          } else {
+            if (n.kind === 'doc') {
+              ctx.fillStyle = n.color;
+              ctx.beginPath(); ctx.rect(n.x - r, n.y - r, r * 2, r * 2); ctx.fill();
+            } else if (n.kind === 'note') {
+              ctx.fillStyle = n.color;
+              ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, TAU); ctx.fill();
+              if (n.item.pinned) { ctx.strokeStyle = n.color; ctx.lineWidth = 1.2 / k; ctx.beginPath(); ctx.arc(n.x, n.y, r + 3, 0, TAU); ctx.stroke(); }
+            } else {
+              ctx.fillStyle = alpha(n.color, 0.85);
+              ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, TAU); ctx.fill();
+            }
+            if (q && state.matches[n.id]) {
+              ctx.strokeStyle = theme.ink; ctx.lineWidth = 1.5 / k;
+              ctx.beginPath(); ctx.arc(n.x, n.y, r + 4 / k + 2, 0, TAU); ctx.stroke();
+            }
+          }
+          if (state.sel === n || state.hover === n) {
+            ctx.strokeStyle = theme.ink; ctx.lineWidth = 2 / k;
+            ctx.beginPath(); ctx.arc(n.x, n.y, r + 5 / k, 0, TAU); ctx.stroke();
+          }
+        });
+        ctx.globalAlpha = 1;
+
+        // Ядро — Яэри.
+        var core = graph.byId.core;
+        if (core) {
+          var pulse = motion ? (Math.sin(t * 1.6) + 1) / 2 : 0.5;
+          var R = 40;
+          var glow = ctx.createRadialGradient(core.x, core.y, R * 0.6, core.x, core.y, R * 2.4);
+          glow.addColorStop(0, alpha(theme.core, 0.22 + pulse * 0.1));
+          glow.addColorStop(1, alpha(theme.core, 0));
+          ctx.fillStyle = glow;
+          ctx.beginPath(); ctx.arc(core.x, core.y, R * 2.4, 0, TAU); ctx.fill();
+          ctx.fillStyle = theme.light ? '#ffffff' : '#05080a';
+          ctx.strokeStyle = theme.core;
+          ctx.lineWidth = 2.4 / Math.max(k, 0.4);
+          ctx.beginPath(); ctx.arc(core.x, core.y, R, 0, TAU); ctx.fill(); ctx.stroke();
+          ctx.save();
+          ctx.translate(core.x, core.y);
+          ctx.rotate(motion ? t * 0.25 : 0);
+          ctx.setLineDash([3, 5]);
+          ctx.strokeStyle = alpha(theme.core, 0.6);
+          ctx.lineWidth = 1.2 / Math.max(k, 0.4);
+          ctx.beginPath(); ctx.arc(0, 0, R + 10, 0, TAU); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.restore();
+          // Эмблема: восемь хвостов и жемчужина.
+          ctx.save();
+          ctx.translate(core.x, core.y + 8);
+          for (var ti2 = 0; ti2 < 8; ti2++) {
+            ctx.save();
+            ctx.rotate((-70 + ti2 * 20) * Math.PI / 180);
+            ctx.fillStyle = alpha(theme.core, ti2 % 2 ? 0.55 : 0.95);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.bezierCurveTo(-9, -8, -11, -24, 0, -34);
+            ctx.bezierCurveTo(8, -24, 8, -10, 0, 0);
+            ctx.fill();
+            ctx.restore();
+          }
+          ctx.fillStyle = theme.light ? '#ffffff' : '#05080a';
+          ctx.beginPath(); ctx.arc(0, -2, 8, 0, TAU); ctx.fill();
+          ctx.fillStyle = theme.core;
+          ctx.beginPath(); ctx.arc(0, -2, 3.2 + pulse, 0, TAU); ctx.fill();
+          ctx.restore();
+          if (!mini) {
+            ctx.fillStyle = theme.ink;
+            ctx.font = '700 ' + (12 * view.labels) + 'px ' + MONO;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+            ctx.fillText('ЯЭРИ', core.x, core.y + R + 16);
+          }
+        }
+
+        // Подписи групп.
+        if (!mini) {
+          var gfs = 13 * view.labels / Math.sqrt(Math.max(k, 0.05));
+          ctx.font = '700 ' + gfs + 'px ' + MONO;
+          ctx.textBaseline = 'middle';
+          graph.groups.forEach(function (g) {
+            if (view.layout === 'hex') return;
+            var on = !dimOthers || focus[g.id];
+            ctx.globalAlpha = on ? 1 : 0.25;
+            var lx = g.x, ly = g.y, align = 'center';
+            if (view.layout === 'rings' && g.labelR) {
+              lx = Math.cos(g.angle) * g.labelR; ly = Math.sin(g.angle) * g.labelR;
+              align = Math.cos(g.angle) > 0.2 ? 'left' : Math.cos(g.angle) < -0.2 ? 'right' : 'center';
+            } else if (view.layout === 'time') {
+              lx = g.x - 16; align = 'right';
+            } else {
+              ly = g.y - (g.collapsed ? 30 : Math.max(26, phyllo(0, g.items.length, 13.5).r + 18));
+            }
+            ctx.textAlign = align;
+            var text = cut(g.label, 30).toUpperCase() + (g.collapsed ? '  +' + g.items.length : '');
+            ctx.fillStyle = alpha(theme.bg, 0.7);
+            var tw = ctx.measureText(text).width;
+            var bx = align === 'left' ? lx : align === 'right' ? lx - tw : lx - tw / 2;
+            ctx.fillRect(bx - 3, ly - gfs * 0.62, tw + 6, gfs * 1.24);
+            ctx.fillStyle = g.color;
+            ctx.fillText(text, lx, ly);
+          });
+          ctx.globalAlpha = 1;
+
+          // Подписи узлов при приближении (и всегда — у найденных и выбранных).
+          var showAll = view.names && k > 1.3;
+          var nfs = 10.5 * view.labels / k;
+          ctx.font = '500 ' + nfs + 'px ' + MONO;
+          ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+          graph.nodes.forEach(function (n) {
+            if (n.type !== 'leaf' || !visible(n)) return;
+            var force_ = (q && state.matches[n.id]) || state.sel === n || (focus && focus[n.id] && state.hover && state.hover.type === 'leaf');
+            if (!showAll && !force_) return;
+            if (dimOthers && !focus[n.id]) return;
+            var r = self.nodeR(n);
+            ctx.fillStyle = alpha(theme.ink, force_ ? 1 : 0.78);
+            ctx.fillText(cut(n.label, 34), n.x + r + 4 / k, n.y);
+          });
+        }
+      };
+
+      /* ---------- Взаимодействие ---------- */
+      var state = { hover: null, sel: null, focus: null, query: '', matches: {} };
+      var main = new Renderer($('brain-canvas'), false);
+      var mini = new Renderer($('mini-canvas'), true);
+      var dirty = true;
+      var needFit = true;
+      var miniFit = true;
+
+      function neighbors(n) {
+        var f = {};
+        f[n.id] = 1;
+        graph.links.forEach(function (l) {
+          if (l.a === n) f[l.b.id] = 1;
+          if (l.b === n) f[l.a.id] = 1;
+        });
+        if (n.type === 'group') n.items.forEach(function (x) { f[x.id] = 1; });
+        return f;
+      }
+      function updateFocus() {
+        var n = state.hover || state.sel;
+        if (n && n.type !== 'core') state.focus = neighbors(n);
+        else if (state.query) state.focus = Object.keys(state.matches).length ? state.matches : {};
+        else state.focus = null;
+        dirty = true;
+      }
+      function hit(sx, sy) {
+        var p = main.toWorld(sx, sy);
+        var best = null, bestD = Infinity;
+        var tol = 5 / main.cam.k;
+        graph.nodes.forEach(function (n) {
+          if (!visible(n)) return;
+          var r = main.nodeR(n) + tol;
+          var dx = n.x - p.x, dy = n.y - p.y;
+          var d = dx * dx + dy * dy;
+          if (d < r * r && d < bestD) { best = n; bestD = d; }
+        });
+        return best;
+      }
+      var tip = $('tooltip');
+      function showTip(n, sx, sy) {
+        if (!n) { tip.hidden = true; return; }
+        tip.textContent = '';
+        var b = document.createElement('b');
+        var s = document.createElement('span');
+        if (n.type === 'core') { b.textContent = 'Яэри'; s.textContent = 'ядро · ' + graph.groups.length + ' групп'; }
+        else if (n.type === 'group') { b.textContent = n.label; s.textContent = n.items.length + ' узл. · клик — ' + (n.collapsed ? 'развернуть' : 'свернуть'); }
+        else {
+          b.textContent = n.label;
+          s.textContent = KIND[n.kind] + ' · ' + n.group.label + (n.t ? ' · ' + new Date(n.t).toLocaleDateString('ru-RU') : '');
+        }
+        tip.appendChild(b);
+        tip.appendChild(s);
+        tip.hidden = false;
+        var r = $('stage').getBoundingClientRect();
+        var x = Math.min(sx, r.width - 300);
+        tip.style.left = x + 'px';
+        tip.style.top = Math.min(sy, r.height - 80) + 'px';
+      }
+
+      var canvas = main.canvas;
+      var drag = null;
+      var pointers = {};
+      canvas.addEventListener('pointerdown', function (e) {
+        canvas.setPointerCapture(e.pointerId);
+        pointers[e.pointerId] = { x: e.offsetX, y: e.offsetY };
+        var ids = Object.keys(pointers);
+        if (ids.length === 2) {
+          var a = pointers[ids[0]], b = pointers[ids[1]];
+          drag = { pinch: true, d: Math.hypot(a.x - b.x, a.y - b.y), k: main.cam.k };
+        } else {
+          drag = { x: e.offsetX, y: e.offsetY, cx: main.cam.x, cy: main.cam.y, moved: false };
+        }
+        main.camTo = null;
+      });
+      canvas.addEventListener('pointermove', function (e) {
+        if (pointers[e.pointerId]) pointers[e.pointerId] = { x: e.offsetX, y: e.offsetY };
+        if (drag && drag.pinch) {
+          var ids = Object.keys(pointers);
+          if (ids.length === 2) {
+            var a = pointers[ids[0]], b = pointers[ids[1]];
+            var d = Math.hypot(a.x - b.x, a.y - b.y);
+            main.cam.k = Math.max(0.05, Math.min(8, drag.k * d / (drag.d || 1)));
+            dirty = true;
+          }
+          return;
+        }
+        if (drag) {
+          var dx = e.offsetX - drag.x, dy = e.offsetY - drag.y;
+          if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
+          if (drag.moved) {
+            canvas.classList.add('dragging');
+            main.cam.x = drag.cx - dx / main.cam.k;
+            main.cam.y = drag.cy - dy / main.cam.k;
+            tip.hidden = true;
+            dirty = true;
+          }
+          return;
+        }
+        var n = hit(e.offsetX, e.offsetY);
+        if (n !== state.hover) { state.hover = n; updateFocus(); }
+        canvas.classList.toggle('pointing', !!n);
+        showTip(n, e.offsetX, e.offsetY);
+      });
+      function endPointer(e) {
+        delete pointers[e.pointerId];
+        canvas.classList.remove('dragging');
+        if (drag && !drag.pinch && !drag.moved && e.type === 'pointerup') click(hit(e.offsetX, e.offsetY));
+        if (!Object.keys(pointers).length) drag = null;
+      }
+      canvas.addEventListener('pointerup', endPointer);
+      canvas.addEventListener('pointercancel', endPointer);
+      canvas.addEventListener('pointerleave', function () { if (state.hover) { state.hover = null; updateFocus(); } tip.hidden = true; });
+      canvas.addEventListener('wheel', function (e) {
+        e.preventDefault();
+        zoomAt(e.offsetX, e.offsetY, Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.0015)));
+      }, { passive: false });
+      canvas.addEventListener('dblclick', function (e) { zoomAt(e.offsetX, e.offsetY, 1.8); });
+      function zoomAt(sx, sy, f) {
+        var before = main.toWorld(sx, sy);
+        main.camTo = null;
+        main.cam.k = Math.max(0.05, Math.min(8, main.cam.k * f));
+        var after = main.toWorld(sx, sy);
+        main.cam.x += before.x - after.x;
+        main.cam.y += before.y - after.y;
+        dirty = true;
+      }
+      $('zoom-in').addEventListener('click', function () { zoomAt(main.w / 2, main.h / 2, 1.4); });
+      $('zoom-out').addEventListener('click', function () { zoomAt(main.w / 2, main.h / 2, 1 / 1.4); });
+      $('zoom-fit').addEventListener('click', function () { main.fit(); dirty = true; });
+
+      function click(n) {
+        if (!n) { select(null); return; }
+        if (n.type === 'core') { select(null); main.fit(); return; }
+        if (n.type === 'group') {
+          toggleGroup(n);
+          return;
+        }
+        select(n);
+      }
+      function toggleGroup(g) {
+        var i = view.collapsed.indexOf(g.key);
+        if (i > -1) view.collapsed.splice(i, 1); else view.collapsed.push(g.key);
+        g.collapsed = i < 0;
+        layout();
+      }
+      function flyTo(n, k) {
+        var to = { x: n.tx !== undefined ? n.tx : n.x, y: n.ty !== undefined ? n.ty : n.y, k: Math.max(main.cam.k, k || 1.6) };
+        if (App.motion()) main.camTo = to; else main.cam = to;
+        dirty = true;
+      }
+
+      /* Карточка выбранного узла. */
+      var detail = $('detail');
+      function select(n) {
+        state.sel = n && n.type === 'leaf' ? n : null;
+        updateFocus();
+        if (!state.sel) { detail.hidden = true; return; }
+        var it = n.item;
+        $('d-kind').textContent = KIND[n.kind];
+        $('d-meta').textContent = n.group.label + (n.t ? ' · ' + new Date(n.t).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
+        var text = n.kind === 'note' ? it.text + (it.src === 'yaeri' ? '\n\n— записала Яэри' : '')
+          : n.kind === 'doc' ? it.name + '\n' + (it.chars || 0).toLocaleString('ru-RU') + ' символов · ' + (it.chunks || 0) + ' фрагм.'
+          : it.text;
+        $('d-text').textContent = text;
+        var act = $('d-actions');
+        act.textContent = '';
+        function btn(label, fn, solid) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'mini-btn' + (solid ? ' solid' : '');
+          b.textContent = label;
+          b.addEventListener('click', fn);
+          act.appendChild(b);
+        }
+        if (n.kind === 'note') {
+          btn(it.pinned ? 'Открепить' : 'Закрепить', function () { App.updateNote(it, { pinned: !it.pinned }); });
+          btn('Изменить', function () {
+            var t2 = window.prompt('Текст заметки:', it.text);
+            if (t2 === null || !t2.trim()) return;
+            var c2 = window.prompt('Раздел:', it.cat);
+            if (c2 === null) return;
+            App.updateNote(it, { text: t2.trim().slice(0, 500), cat: c2 });
+          });
+          btn('Удалить', function () { App.deleteNote(it).then(function (ok) { if (ok) select(null); }); });
+        } else if (n.kind === 'memory') {
+          btn('Спросить Яэри', function () { App.ask('Помнишь наш разговор: «' + memTitle(it.text) + '»? Давай продолжим.'); }, true);
+          if (App.isOnline()) btn('Забыть', function () { App.deleteMemory(it).then(function (ok) { if (ok) select(null); }); });
+        } else if (n.kind === 'doc') {
+          btn('Спросить по документу', function () { App.ask('Что важного в документе «' + it.name + '»?'); }, true);
+          btn('Удалить', function () { App.deleteDoc(it).then(function (ok) { if (ok) select(null); }); });
+        }
+        detail.hidden = false;
+      }
+      $('d-close').addEventListener('click', function () { select(null); });
+
+      /* Поиск. */
+      var search = $('brain-search');
+      search.addEventListener('input', function () {
+        state.query = search.value.trim().toLowerCase();
+        state.matches = {};
+        if (state.query) {
+          graph.nodes.forEach(function (n) {
+            var hay = n.type === 'leaf' ? (n.label + ' ' + (n.item.text || n.item.name || '') + ' ' + n.group.label) : n.type === 'group' ? n.label : '';
+            if (hay.toLowerCase().indexOf(state.query) > -1) state.matches[n.id] = 1;
+          });
+        }
+        updateFocus();
+        renderSub();
+      });
+      search.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          var first = graph.nodes.filter(function (n) { return state.matches[n.id] && n.type === 'leaf'; })[0];
+          if (first) {
+            if (first.group.collapsed) toggleGroup(first.group);
+            select(first);
+            flyTo(first, 2);
+          }
+        } else if (e.key === 'Escape') { search.value = ''; search.dispatchEvent(new Event('input')); search.blur(); }
+      });
+      document.addEventListener('keydown', function (e) {
+        if (App.currentView() !== 'brain' || document.body.classList.contains('settings-open')) return;
+        var tag = (document.activeElement && document.activeElement.tagName) || '';
+        if (e.key === '/' && tag !== 'INPUT' && tag !== 'TEXTAREA') { e.preventDefault(); search.focus(); search.select(); }
+        else if (e.key === 'Escape' && tag !== 'INPUT') select(null);
+      });
+
+      /* ---------- Панель управления ---------- */
+      function pressed(container, attr, value) {
+        each($(container).querySelectorAll('[data-' + attr + ']'), function (b) { b.setAttribute('aria-pressed', b.dataset[attr] === value ? 'true' : 'false'); });
+      }
+      each($('layout-chips').querySelectorAll('[data-layout]'), function (b) {
+        b.addEventListener('click', function () { view.layout = b.dataset.layout; pressed('layout-chips', 'layout', view.layout); layout(); renderSub(); });
+      });
+      each($('group-chips').querySelectorAll('[data-group]'), function (b) {
+        b.addEventListener('click', function () { view.group = b.dataset.group; view.collapsed = []; pressed('group-chips', 'group', view.group); rebuild(); });
+      });
+      function bindRange(id, key, fmt) {
+        var r = $('r-' + id), o = $('o-' + id);
+        r.value = view[key];
+        o.textContent = fmt(view[key]);
+        r.addEventListener('input', function () { view[key] = parseFloat(r.value); o.textContent = fmt(view[key]); dirty = true; miniDirty = true; });
+      }
+      bindRange('links', 'links', function (v) { return v.toFixed(2); });
+      bindRange('nodes', 'nodes', function (v) { return v.toFixed(1) + '×'; });
+      bindRange('labels', 'labels', function (v) { return v.toFixed(1) + '×'; });
+      $('c-names').checked = view.names;
+      $('c-semantic').checked = view.semantic;
+      $('c-names').addEventListener('change', function () { view.names = this.checked; dirty = true; });
+      $('c-semantic').addEventListener('change', function () { view.semantic = this.checked; dirty = true; miniDirty = true; });
+      $('b-expand').addEventListener('click', function () { view.collapsed = []; graph.groups.forEach(function (g) { g.collapsed = false; }); layout(); });
+      $('b-collapse').addEventListener('click', function () { view.collapsed = graph.groups.map(function (g) { return g.key; }); graph.groups.forEach(function (g) { g.collapsed = true; }); select(null); layout(); });
+      $('b-center').addEventListener('click', function () { main.fit(); dirty = true; });
+      var savedTimer = 0;
+      $('b-save').addEventListener('click', function () {
+        try { localStorage.setItem('yaeri_brain_v1', JSON.stringify(view)); $('saved-note').textContent = 'Вид сохранён в этом браузере.'; }
+        catch (error) { $('saved-note').textContent = 'Не удалось сохранить: хранилище браузера недоступно.'; }
+        clearTimeout(savedTimer);
+        savedTimer = setTimeout(function () { $('saved-note').textContent = ''; }, 3000);
+      });
+      $('b-png').addEventListener('click', function () {
+        main.draw(performance.now());
+        try {
+          main.canvas.toBlob(function (blob) {
+            if (!blob) return;
+            var a = document.createElement('a');
+            var d = new Date();
+            a.href = URL.createObjectURL(blob);
+            a.download = 'yaeri-brain-' + d.getFullYear() + ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2) + '.png';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+          }, 'image/png');
+        } catch (error) { $('saved-note').textContent = 'Браузер не разрешил сохранить картинку.'; }
+      });
+      function renderThemes() {
+        var box = $('themes');
+        box.textContent = '';
+        THEMES.forEach(function (t0) {
+          var t = t0.site ? siteTheme() : t0;
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'theme';
+          b.setAttribute('aria-pressed', view.theme === t.id ? 'true' : 'false');
+          var sw = document.createElement('span');
+          sw.className = 'theme-swatch';
+          sw.style.background = t.bg;
+          [t.ink].concat(t.colors.slice(0, 5)).forEach(function (c) { var i = document.createElement('i'); i.style.background = c; sw.appendChild(i); });
+          var name = document.createElement('span');
+          name.className = 'theme-name';
+          name.textContent = t.name;
+          var small = document.createElement('small');
+          small.textContent = 'выбрана';
+          name.appendChild(small);
+          b.appendChild(sw);
+          b.appendChild(name);
+          b.addEventListener('click', function () { view.theme = t.id; pickTheme(); renderThemes(); rebuild(true); });
+          box.appendChild(b);
+        });
+      }
+
+      function renderSub() {
+        var leaves = graph.nodes.filter(function (n) { return n.type === 'leaf'; }).length;
+        var sem = graph.links.filter(function (l) { return l.kind === 'sem'; }).length;
+        var names = { rings: 'кольца', stars: 'созвездие', hex: 'соты', force: 'силы', time: 'время' };
+        var parts = [data.notes.length + ' заметок', data.memory.length + ' воспоминаний', data.docs.length + ' документов'];
+        if (sem) parts.push(sem + ' связей по смыслу');
+        if (state.query) parts.push('найдено: ' + Object.keys(state.matches).length);
+        $('brain-sub').textContent = parts.join(' · ') + ' · ' + names[view.layout];
+        var legend = $('legend');
+        legend.textContent = '';
+        graph.groups.slice(0, 14).forEach(function (g) {
+          var s = document.createElement('span');
+          var i = document.createElement('i');
+          i.style.background = g.color;
+          s.appendChild(i);
+          s.appendChild(document.createTextNode(cut(g.label, 24) + ' ' + g.items.length));
+          legend.appendChild(s);
+        });
+        var empty = $('brain-empty');
+        empty.hidden = leaves > 0;
+        empty.textContent = 'Память пока пуста. Добавьте заметки в рабочую память или поговорите с Яэри — здесь появится карта того, что она знает.';
+        if (data.note) $('brain-sub').textContent += ' · ' + data.note;
+      }
+
+      function rebuild(keepCam) {
+        var selId = state.sel && state.sel.id;
+        build();
+        layout();
+        if (keepCam) needFit = false;
+        state.sel = selId ? graph.byId[selId] || null : null;
+        if (!state.sel) detail.hidden = true;
+        state.hover = null;
+        if (state.query) search.dispatchEvent(new Event('input'));
+        updateFocus();
+        renderSub();
+        miniFit = true;
+        dirty = true;
+        miniDirty = true;
+        if (App.renderNotes) App.renderNotes();
+      }
+
+      /* ---------- Цикл отрисовки ---------- */
+      var miniDirty = true;
+      var lastMini = 0;
+      function frame(now) {
+        requestAnimationFrame(frame);
+        var view_ = App.currentView();
+        var motion = App.motion();
+        if (anim) {
+          var p = Math.min(1, (now - anim.start) / anim.dur);
+          var e = ease(p);
+          graph.nodes.forEach(function (n) { n.x = n.x0 + (n.tx - n.x0) * e; n.y = n.y0 + (n.ty - n.y0) * e; });
+          if (p >= 1) anim = null;
+          dirty = true; miniDirty = true;
+        }
+        if (view_ === 'brain') {
+          if (main.resize()) { dirty = true; if (!main.fitted) needFit = true; }
+          if (needFit && main.w) { main.fit(!main.fitted); main.fitted = true; needFit = false; }
+          if (main.camTo) {
+            var c = main.cam, to = main.camTo;
+            c.x += (to.x - c.x) * 0.14; c.y += (to.y - c.y) * 0.14; c.k += (to.k - c.k) * 0.14;
+            if (Math.abs(to.x - c.x) < 0.5 && Math.abs(to.y - c.y) < 0.5 && Math.abs(to.k - c.k) < 0.002) { main.cam = to; main.camTo = null; }
+            dirty = true;
+          }
+          if (dirty || motion) { main.draw(now); dirty = false; }
+        } else if (view_ === 'deck' && mini.canvas.offsetParent !== null) {
+          if (mini.resize()) { miniDirty = true; miniFit = true; }
+          if (miniFit && mini.w) { mini.fit(true); miniFit = false; }
+          if (miniDirty || (motion && now - lastMini > 50)) {
+            if (anim) mini.fit(true);
+            mini.draw(now); miniDirty = false; lastMini = now;
+          }
+        }
+      }
+
+      $('mini-brain').addEventListener('click', function () { App.showView('brain'); });
+      $('mini-brain').addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); App.showView('brain'); } });
+
+      window.YBrain = {
+        setData: function (d) { data = d; rebuild(true); if (!main.fitted) needFit = true; },
+        colorFor: function (kind, key) { return groupColor[key] || colorFor(kind, key); },
+        restyle: function () { pickTheme(); renderThemes(); rebuild(true); },
+        onShow: function (name) { dirty = true; miniDirty = true; if (name === 'brain' && !main.fitted) needFit = true; }
+      };
+
+      pickTheme();
+      pressed('layout-chips', 'layout', view.layout);
+      pressed('group-chips', 'group', view.group);
+      renderThemes();
+      build();
+      layout();
+      renderSub();
+      requestAnimationFrame(frame);
+      App.showView(location.hash === '#brain' ? 'brain' : App.currentView());
     }());
   </script>
 </body>

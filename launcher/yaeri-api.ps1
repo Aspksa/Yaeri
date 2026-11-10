@@ -64,6 +64,66 @@ public class YaeriHttpException : Exception
 '@
 }
 
+# Граф «второго мозга»: связи между воспоминаниями и документами по смыслу.
+if (-not ('YaeriGraph' -as [type])) {
+    Add-Type -TypeDefinition @'
+using System;
+using System.Collections.Generic;
+
+public static class YaeriGraph
+{
+    // Для каждой вершины берёт до k ближайших соседей с близостью не ниже min.
+    // Возвращает уникальные пары [i, j, близость].
+    public static List<object[]> Links(float[][] v, int k, double min)
+    {
+        int n = v.Length;
+        var seen = new HashSet<long>();
+        var res = new List<object[]>();
+        var bestJ = new int[k];
+        var bestS = new double[k];
+        for (int i = 0; i < n; i++)
+        {
+            if (v[i] == null) continue;
+            int cnt = 0;
+            for (int j = 0; j < n; j++)
+            {
+                if (j == i || v[j] == null || v[j].Length != v[i].Length) continue;
+                double s = 0;
+                float[] a = v[i], b = v[j];
+                for (int d = 0; d < a.Length; d++) s += a[d] * b[d];
+                if (s < min) continue;
+                int pos = cnt < k ? cnt++ : k;
+                if (pos == k) { if (s <= bestS[k - 1]) continue; pos = k - 1; }
+                while (pos > 0 && bestS[pos - 1] < s) { bestS[pos] = bestS[pos - 1]; bestJ[pos] = bestJ[pos - 1]; pos--; }
+                bestS[pos] = s; bestJ[pos] = j;
+            }
+            for (int t = 0; t < cnt; t++)
+            {
+                int a2 = Math.Min(i, bestJ[t]), b2 = Math.Max(i, bestJ[t]);
+                if (seen.Add((long)a2 * n + b2)) res.Add(new object[] { a2, b2, Math.Round(bestS[t], 3) });
+            }
+        }
+        return res;
+    }
+
+    // Средний нормализованный вектор (например, всех фрагментов документа).
+    public static float[] Mean(List<float[]> list)
+    {
+        if (list == null || list.Count == 0) return null;
+        int d = list[0].Length;
+        var m = new double[d];
+        foreach (var x in list) { if (x == null || x.Length != d) continue; for (int i = 0; i < d; i++) m[i] += x[i]; }
+        double sum = 0;
+        for (int i = 0; i < d; i++) sum += m[i] * m[i];
+        double norm = Math.Sqrt(sum);
+        var f = new float[d];
+        for (int i = 0; i < d; i++) f[i] = (float)(norm > 0 ? m[i] / norm : 0);
+        return f;
+    }
+}
+'@
+}
+
 function New-YError([int]$Code, [string]$Message) {
     return New-Object YaeriHttpException -ArgumentList $Code, $Message
 }
@@ -104,7 +164,9 @@ function Write-YJsonFile([string]$Path, $Value) {
     $tmp = $Path + '.tmp'
     [System.IO.File]::WriteAllText($tmp, (ConvertTo-YJson $Value), $script:Utf8)
     if ([System.IO.File]::Exists($Path)) {
-        [System.IO.File]::Replace($tmp, $Path, $null)
+        # PowerShell превращает $null в пустую строку для строковых параметров .NET,
+        # а File.Replace на пустом пути резервной копии падает. NullString передаёт настоящий null.
+        [System.IO.File]::Replace($tmp, $Path, [System.Management.Automation.Language.NullString]::Value)
     } else {
         [System.IO.File]::Move($tmp, $Path)
     }
@@ -204,11 +266,18 @@ function Import-YStore {
     $script:Chunks = New-Object System.Collections.ArrayList
     foreach ($m in @(Get-YValue $d 'chunks' @())) { [void]$script:Chunks.Add($m) }
 
+    # Рабочая память: короткие факты по разделам, всегда видны модели.
+    $script:NotesFile = Join-Path $script:DataDir 'notes.json'
+    $n = Read-YJsonFile $script:NotesFile
+    $script:Notes = New-Object System.Collections.ArrayList
+    foreach ($m in @(Get-YValue $n 'items' @())) { [void]$script:Notes.Add($m) }
+
     $script:VecCache = @{}
 }
 
 function Save-YHistory { Write-YJsonFile $script:HistoryFile @{ version = 1; messages = $script:History.ToArray() } }
 function Save-YMemory { Write-YJsonFile $script:MemoryFile @{ version = 1; model = $script:MemoryModel; items = $script:Memory.ToArray() } }
+function Save-YNotes { Write-YJsonFile $script:NotesFile @{ version = 1; items = $script:Notes.ToArray() } }
 function Save-YDocs {
     Write-YJsonFile $script:DocsFile @{
         version = 1; model = $script:DocsModel
@@ -376,6 +445,7 @@ function Get-YStatus {
         docs           = $script:Docs.Count
         chunks         = $script:Chunks.Count
         memory         = $script:Memory.Count
+        notes          = $script:Notes.Count
         messages       = $script:History.Count
         reindexNeeded  = -not (Test-YIndexReady)
         storage        = 'data\'
@@ -482,6 +552,155 @@ function Clear-YMemory {
     return @{ ok = $true }
 }
 
+# ---------- Рабочая память (заметки) ----------
+$script:NotesLimit = 1000
+$script:NoteTag = '(?is)<(?:память|memory)(?:\s+(?:раздел|section|cat)\s*=\s*["«]?([^"»>]{1,40}?)["»]?)?\s*>(.*?)</(?:память|memory)\s*>'
+
+function Get-YCleanLine([string]$Text, [int]$Max) {
+    $t = ([regex]::Replace([string]$Text, '\s+', ' ')).Trim()
+    if ($t.Length -gt $Max) { $t = $t.Substring(0, $Max).Trim() }
+    return $t
+}
+
+function Get-YNoteCat([string]$Cat) {
+    $cat = Get-YCleanLine $Cat 40
+    if (-not $cat) { return 'Общее' }
+    # Один и тот же раздел в разном регистре («планы», «Планы») не дробим.
+    foreach ($n in $script:Notes) {
+        if ([string]::Equals([string]$n['cat'], $cat, [System.StringComparison]::OrdinalIgnoreCase)) { return [string]$n['cat'] }
+    }
+    return $cat.Substring(0, 1).ToUpperInvariant() + $cat.Substring(1)
+}
+
+function Add-YNoteItem([string]$Cat, [string]$Text, [string]$Src) {
+    $text = Get-YCleanLine $Text 500
+    if (-not $text) { return $null }
+    foreach ($n in $script:Notes) {
+        if ([string]::Equals([string]$n['text'], $text, [System.StringComparison]::OrdinalIgnoreCase)) { return $null }
+    }
+    if ($script:Notes.Count -ge $script:NotesLimit) { return $null }
+    $item = @{ id = (New-YId); cat = (Get-YNoteCat $Cat); text = $text; t = (Get-YNow); src = $Src; pinned = $false }
+    [void]$script:Notes.Add($item)
+    return $item
+}
+
+function Find-YNote([string]$Id) {
+    foreach ($n in $script:Notes) { if ([string]$n['id'] -eq $Id) { return $n } }
+    throw (New-YError 404 'Заметка не найдена.')
+}
+
+function Get-YNotesList { return @{ notes = $script:Notes.ToArray() } }
+
+function Add-YNote($Req) {
+    if ($script:Notes.Count -ge $script:NotesLimit) { throw (New-YError 413 'Рабочая память заполнена: удалите старые заметки.') }
+    $item = Add-YNoteItem ([string](Get-YValue $Req 'cat' '')) ([string](Get-YValue $Req 'text' '')) 'user'
+    if ($null -eq $item) { throw (New-YError 400 'Заметка пустая или уже есть в памяти.') }
+    Save-YNotes
+    return @{ note = $item }
+}
+
+function Update-YNote($Req) {
+    $note = Find-YNote ([string](Get-YValue $Req 'id' ''))
+    if (Test-YKey $Req 'text') {
+        $text = Get-YCleanLine ([string]$Req['text']) 500
+        if (-not $text) { throw (New-YError 400 'Заметка пустая.') }
+        $note['text'] = $text
+    }
+    if (Test-YKey $Req 'cat') { $note['cat'] = Get-YNoteCat ([string]$Req['cat']) }
+    if (Test-YKey $Req 'pinned') { $note['pinned'] = [bool]$Req['pinned'] }
+    Save-YNotes
+    return @{ note = $note }
+}
+
+function Remove-YNote($Req) {
+    $note = Find-YNote ([string](Get-YValue $Req 'id' ''))
+    $script:Notes.Remove($note)
+    Save-YNotes
+    return @{ ok = $true }
+}
+
+function Remove-YMemoryItem($Req) {
+    $id = [string](Get-YValue $Req 'id' '')
+    foreach ($m in $script:Memory) {
+        if ([string]$m['id'] -eq $id) {
+            $script:Memory.Remove($m)
+            $script:VecCache.Remove($id)
+            Save-YMemory
+            return @{ ok = $true }
+        }
+    }
+    throw (New-YError 404 'Воспоминание не найдено.')
+}
+
+function Get-YNotesPrompt {
+    if ($script:Notes.Count -eq 0) { return '' }
+    $sorted = @($script:Notes | Sort-Object `
+        @{ Expression = { [bool](Get-YValue $_ 'pinned' $false) }; Descending = $true }, `
+        @{ Expression = { [long](Get-YValue $_ 't' 0) }; Descending = $true })
+    $lines = New-Object System.Collections.Generic.List[string]
+    $size = 0
+    foreach ($n in $sorted) {
+        $line = '- [' + [string]$n['cat'] + '] ' + [string]$n['text']
+        if ($size + $line.Length -gt 6000) { break }
+        $lines.Add($line)
+        $size += $line.Length + 1
+    }
+    return ($lines -join "`n")
+}
+
+function Get-YBrain {
+    # Данные для «второго мозга»: заметки, воспоминания, документы и связи по смыслу.
+    $mem = New-Object System.Collections.Generic.List[object]
+    $start = [Math]::Max(0, $script:Memory.Count - 600)
+    for ($i = $start; $i -lt $script:Memory.Count; $i++) {
+        $m = $script:Memory[$i]
+        $text = [string]$m['text']
+        if ($text.Length -gt 600) { $text = $text.Substring(0, 600) + '…' }
+        $mem.Add(@{ id = [string]$m['id']; t = [long](Get-YValue $m 't' 0); text = $text })
+    }
+    $links = @()
+    $note = ''
+    try {
+        $ids = New-Object System.Collections.Generic.List[string]
+        $vecs = New-Object 'System.Collections.Generic.List[System.Single[]]'
+        if ($script:MemoryModel -eq [string]$script:Config.embeddingModel) {
+            for ($i = $start; $i -lt $script:Memory.Count; $i++) {
+                $m = $script:Memory[$i]
+                if (-not (Test-YKey $m 'vec')) { continue }
+                $ids.Add('m:' + [string]$m['id'])
+                $vecs.Add((Get-YVec $m))
+            }
+        }
+        if ($script:Chunks.Count -gt 0 -and (Test-YIndexReady)) {
+            $byDoc = @{}
+            foreach ($c in $script:Chunks) {
+                $docId = [string]$c['docId']
+                if (-not $byDoc.ContainsKey($docId)) { $byDoc[$docId] = New-Object 'System.Collections.Generic.List[System.Single[]]' }
+                $byDoc[$docId].Add((Get-YVec $c))
+            }
+            foreach ($d in $script:Docs) {
+                $docId = [string]$d['id']
+                if (-not $byDoc.ContainsKey($docId)) { continue }
+                $ids.Add('d:' + $docId)
+                $vecs.Add([YaeriGraph]::Mean($byDoc[$docId]))
+            }
+        }
+        if ($vecs.Count -gt 1) {
+            $out = New-Object System.Collections.Generic.List[object]
+            foreach ($p in [YaeriGraph]::Links($vecs.ToArray(), 2, 0.55)) {
+                $out.Add(@($ids[[int]$p[0]], $ids[[int]$p[1]], $p[2]))
+            }
+            $links = $out.ToArray()
+        }
+    } catch {
+        $note = 'Связи по смыслу не посчитались: ' + $_.Exception.Message
+    }
+    return @{
+        notes = $script:Notes.ToArray(); memory = $mem.ToArray(); docs = $script:Docs.ToArray()
+        links = $links; messages = $script:History.Count; memoryTotal = $script:Memory.Count; note = $note
+    }
+}
+
 function Get-YTextValue([string]$Text) {
     # Рассуждающие модели (например, Qwen3) могут присылать скрытые размышления в <think>.
     $clean = [regex]::Replace($Text, '(?s)<think>.*?</think>', '')
@@ -496,6 +715,7 @@ function Invoke-YChat($Req) {
     if ($model -notmatch '^[\w.\-/:@]{1,120}$') { $model = [string]$script:Config.chatModel }
     $useRag = [bool](Get-YValue $Req 'rag' $true)
     $remember = [bool](Get-YValue $Req 'remember' $true)
+    $autoNotes = [bool](Get-YValue $Req 'autoNotes' $true)
     $name = ([string](Get-YValue $Req 'name' '')).Trim()
     if ($name.Length -gt 30) { $name = $name.Substring(0, 30) }
     if (-not $name) { $name = 'Хозяин' }
@@ -555,6 +775,16 @@ function Invoke-YChat($Req) {
             'Если ответа нет ни в контексте, ни в твоих знаниях, честно скажи об этом.'
     }
     $system = $system.Replace('{name}', $name)
+    $notesText = Get-YNotesPrompt
+    if ($notesText) {
+        $system += "`n`nРабочая память (то, что ты уже знаешь о пользователе и его делах; учитывай это в ответах):`n" + $notesText
+    }
+    if ($autoNotes) {
+        $system += "`n`nЕсли пользователь сообщает устойчивый факт, который пригодится позже (о себе, планах, задачах, людях, проектах, предпочтениях), " +
+            'в самом конце ответа добавь тег <память раздел="Раздел">короткий факт одной фразой</память>, по одному тегу на факт. ' +
+            'Разделы: Профиль, Планы, Задачи, Люди, Проекты, Предпочтения или свой. ' +
+            'Не повторяй то, что уже есть в рабочей памяти, и не упоминай теги в тексте: пользователь их не видит.'
+    }
     if ($contextLines.Count -gt 0) {
         $system += "`n`nКонтекст (документы пользователя и память о прошлых разговорах):`n`n" + ($contextLines -join "`n`n")
     }
@@ -579,9 +809,21 @@ function Invoke-YChat($Req) {
     $content = ''
     if ($choice.Count -gt 0) { $content = [string](Get-YValue (Get-YValue $choice[0] 'message' @{}) 'content' '') }
     $content = Get-YTextValue $content
+
+    # Теги <память> модель ставит в конце ответа: забираем факты в рабочую память и убираем теги из текста.
+    $newNotes = New-Object System.Collections.Generic.List[object]
+    foreach ($tag in [regex]::Matches($content, $script:NoteTag)) {
+        if (-not $autoNotes) { continue }
+        $item = Add-YNoteItem $tag.Groups[1].Value $tag.Groups[2].Value 'yaeri'
+        if ($null -ne $item) { $newNotes.Add($item) }
+    }
+    if ($newNotes.Count -gt 0) { Save-YNotes }
+    $content = ([regex]::Replace($content, $script:NoteTag, '')).Trim()
+    if (-not $content -and $newNotes.Count -gt 0) { $content = 'Запомнила.' }
     if (-not $content) { throw (New-YError 502 'Модель вернула пустой ответ.') }
 
     $answer = @{ id = (New-YId); role = 'assistant'; text = $content; t = (Get-YNow); model = $model; sources = $sources.ToArray() }
+    if ($newNotes.Count -gt 0) { $answer['remembered'] = @($newNotes | ForEach-Object { [string]$_['text'] }) }
     [void]$script:History.Add($answer)
     Save-YHistory
 
@@ -603,7 +845,7 @@ function Invoke-YChat($Req) {
         }
     }
 
-    return @{ user = $userMsg; reply = $answer; note = $ragNote }
+    return @{ user = $userMsg; reply = $answer; note = $ragNote; notes = $newNotes.ToArray() }
 }
 
 function Invoke-YApi([string]$Method, [string]$Path, [string]$BodyText) {
@@ -625,6 +867,12 @@ function Invoke-YApi([string]$Method, [string]$Path, [string]$BodyText) {
         'POST /api/docs'           { return Add-YDoc $req }
         'POST /api/docs/delete'    { return Remove-YDoc $req }
         'POST /api/reindex'        { return Update-YIndex }
+        'GET /api/notes'           { return Get-YNotesList }
+        'POST /api/notes'          { return Add-YNote $req }
+        'POST /api/notes/update'   { return Update-YNote $req }
+        'POST /api/notes/delete'   { return Remove-YNote $req }
+        'POST /api/memory/delete'  { return Remove-YMemoryItem $req }
+        'GET /api/brain'           { return Get-YBrain }
     }
     throw (New-YError 404 'Неизвестный адрес API.')
 }
