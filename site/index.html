@@ -100,6 +100,8 @@
       border: 1px solid var(--line); border-radius: 8px; color: var(--muted);
       font: 600 .64rem/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; white-space: nowrap;
     }
+    button.status { background: none; cursor: pointer; transition: border-color .2s, color .2s; }
+    button.status:hover { border-color: var(--a); color: var(--ink); }
     .status .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
     .status.online .dot { background: var(--a); box-shadow: 0 0 10px var(--a); }
     .status.warn .dot { background: var(--warn); box-shadow: 0 0 10px var(--warn); }
@@ -146,7 +148,7 @@
     .card-head h2::before, .card-head h3::before {
       content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--a); box-shadow: 0 0 8px var(--a);
     }
-    .card-meta { margin-left: auto; color: var(--faint); font: 500 .6rem/1.2 var(--mono); letter-spacing: .12em; text-transform: uppercase; white-space: nowrap; }
+    .card-meta { margin-left: auto; color: var(--faint); font: 500 .62rem/1.2 var(--mono); letter-spacing: .12em; text-transform: uppercase; white-space: nowrap; }
     .card-body { min-height: 0; overflow-y: auto; padding: 10px 12px; scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
     .card-foot {
       flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px;
@@ -187,7 +189,7 @@
     .mem-item:hover { background: hsl(var(--h) 20% 12% / .6); border-left-color: var(--a); }
     .mem-item.pinned { border-left-color: var(--a); }
     .mem-item .m-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-    .mem-item .m-src { display: block; margin-top: 2px; color: var(--faint); font: 500 .58rem/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .mem-item .m-src { display: block; margin-top: 2px; color: var(--faint); font: 500 .6rem/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
     .mem-item button {
       flex: none; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 5px; background: none;
       color: var(--faint); font-size: .85rem; line-height: 1; opacity: .5;
@@ -204,7 +206,7 @@
     .now-date { color: var(--muted); font: 500 .66rem/1.4 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
     .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-top: 10px; text-align: center; font: 500 .66rem/1 var(--mono); }
     .cal span { padding: 5px 0; border-radius: 4px; color: var(--muted); position: relative; }
-    .cal .wd { color: var(--faint); font-size: .56rem; letter-spacing: .1em; padding: 2px 0 4px; }
+    .cal .wd { color: var(--faint); font-size: .6rem; letter-spacing: .1em; padding: 2px 0 4px; }
     .cal .out { opacity: .25; }
     .cal .has::after { content: ""; position: absolute; left: 50%; bottom: 1px; width: 3px; height: 3px; margin-left: -1.5px; border-radius: 50%; background: var(--a); }
     .cal .today { background: var(--a); color: var(--on-a); font-weight: 700; }
@@ -226,7 +228,7 @@
       scrollbar-width: thin; scrollbar-color: var(--line-2) transparent;
     }
     .msg { max-width: min(88%, 680px); display: flex; flex-direction: column; gap: 4px; }
-    .msg .who { color: var(--faint); font: 700 .58rem/1 var(--mono); letter-spacing: .18em; text-transform: uppercase; }
+    .msg .who { color: var(--faint); font: 700 .62rem/1 var(--mono); letter-spacing: .18em; text-transform: uppercase; }
     .msg.assistant .who { color: var(--a); }
     .msg .text { white-space: pre-wrap; overflow-wrap: anywhere; }
     .msg .time { color: var(--faint); font: 500 .64rem/1 var(--mono); letter-spacing: .06em; }
@@ -265,6 +267,83 @@
     .send:hover { background: var(--a-glow); }
     .send:active { transform: scale(.97); }
     .send:disabled { opacity: .55; cursor: progress; }
+    /* Яэри в чате: фигура слева от переписки, поза меняется по настроению */
+    .chat-card { container-type: inline-size; container-name: chat; }
+    .chat-main { flex: 1; min-height: 0; display: grid; grid-template-columns: clamp(190px, 36%, 340px) minmax(0, 1fr); }
+    .stage-fig {
+      position: relative; min-height: 0; display: flex; align-items: flex-end; justify-content: center; overflow: hidden;
+      padding: 0; border: 0; background: linear-gradient(hsl(var(--h) 30% 7% / 0), hsl(var(--h) 40% 10% / .7));
+      cursor: pointer;
+      -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+      mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+    }
+    .chat-main .chat { border-left: 1px solid var(--line); }
+    .stage-glow {
+      position: absolute; left: 50%; bottom: 22%; width: 160%; aspect-ratio: 1; transform: translateX(-50%);
+      background: radial-gradient(closest-side, hsl(var(--h) 80% 60% / .22), hsl(45 90% 70% / .08) 55%, transparent);
+      pointer-events: none;
+    }
+    .fig-img {
+      position: absolute; left: 50%; bottom: 34px; translate: -50% 0; display: block; width: auto; max-width: none; height: min(86%, 620px);
+      filter: drop-shadow(0 10px 24px rgb(0 0 0 / .45));
+      transition: opacity .2s ease, transform .2s ease; user-select: none; -webkit-user-drag: none;
+    }
+    .fig-img.swap { opacity: 0; transform: translateY(6px) scale(.985); }
+    html[data-motion="on"] .stage-fig:not(.busy) .fig-img:not(.swap) { animation: breathe 5.5s ease-in-out infinite; }
+    @keyframes breathe { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+    .stage-fig:hover .stage-glow, .stage-fig:focus-visible .stage-glow { background: radial-gradient(closest-side, hsl(var(--h) 80% 62% / .34), hsl(45 90% 70% / .12) 55%, transparent); }
+    .stage-fig:focus-visible { outline-offset: -3px; }
+    .stage-cap {
+      position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); max-width: calc(100% - 16px);
+      padding: 5px 11px; border: 1px solid hsl(var(--h) 50% 40% / .55); border-radius: 999px; background: hsl(var(--h) 30% 6% / .88);
+      color: var(--a); font: 600 .66rem/1.2 var(--mono); letter-spacing: .06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .head-face { display: none; flex: none; width: 32px; height: 32px; border-radius: 50%; overflow: hidden; border: 1px solid var(--a); box-shadow: 0 0 10px hsl(var(--h) 80% 55% / .35); }
+    .face-img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .chat-card .card-head h2::before { display: none; }
+    .mood { color: var(--a); font: 500 .66rem/1.2 var(--mono); letter-spacing: .06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    .mood::before { content: "· "; color: var(--faint); }
+    .model-chip {
+      max-width: 200px; padding: 4px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg-2); color: var(--muted);
+      font: 500 .66rem/1.3 var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .model-chip:hover { color: var(--ink); border-color: var(--a); }
+    .pop-close { display: none; font-size: .9rem; padding: 2px 9px; }
+    @container chat (max-width: 560px) {
+      .chat-main { grid-template-columns: minmax(0, 1fr); }
+      .stage-fig { display: none; }
+      .chat-main .chat { border-left: 0; }
+      .head-face { display: block; }
+      .model-chip { display: none; }
+    }
+    .connect-banner {
+      flex: none; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+      margin: 0 12px 0; padding: 8px 10px; border: 1px dashed hsl(40 80% 60% / .5); border-radius: 9px;
+      background: hsl(40 80% 50% / .06); color: var(--muted); font-size: .8rem; line-height: 1.4;
+    }
+    .connect-banner + .composer { border-top: 0; }
+
+    /* Аватар-кнопка и всплывающий чат */
+    .yaeri-fab {
+      position: fixed; right: 18px; bottom: 18px; z-index: 8; width: 64px; height: 64px; padding: 0;
+      border: 2px solid var(--a); border-radius: 50%; background: var(--surface-solid); overflow: visible;
+      box-shadow: 0 0 0 4px hsl(var(--h) 60% 50% / .15), 0 10px 30px rgb(0 0 0 / .5), 0 0 26px hsl(var(--h) 80% 55% / .35);
+      transition: transform .2s, box-shadow .2s;
+    }
+    .yaeri-fab .face-img { border-radius: 50%; }
+    .yaeri-fab:hover { transform: scale(1.06); }
+    .yaeri-fab[aria-expanded="true"] { box-shadow: 0 0 0 4px var(--a), 0 10px 30px rgb(0 0 0 / .5); }
+    .fab-dot { position: absolute; right: 1px; bottom: 3px; width: 14px; height: 14px; border: 2px solid var(--surface-solid); border-radius: 50%; background: var(--faint); }
+    body.is-online .fab-dot { background: var(--a); }
+    body.is-thinking .fab-dot { background: hsl(45 95% 62%); animation: glow 1.2s ease-in-out infinite; }
+    .chat-pop {
+      position: fixed; right: 18px; bottom: 94px; z-index: 9; width: min(440px, calc(100vw - 24px)); height: min(620px, calc(100dvh - 170px));
+      display: flex; border-radius: 14px; box-shadow: 0 24px 70px rgb(0 0 0 / .6);
+    }
+    .chat-pop .chat-card { flex: 1; background: var(--surface-solid); border-color: var(--line-2); }
+    .chat-pop .pop-close { display: inline-block; }
+    html[data-motion="on"] .chat-pop:not([hidden]) { animation: rise .22s ease-out both; }
+
     .composer-hint { flex: none; margin: 0; padding: 3px 14px 8px; color: var(--faint); font: 500 .64rem/1.4 var(--mono); }
 
     /* Мини-мозг, навыки, журнал */
@@ -279,7 +358,7 @@
     .skill { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 9px; background: var(--bg-2); min-width: 0; }
     .skill:hover { border-color: var(--line-2); }
     .skill-name { font: 600 .72rem/1.25 var(--mono); overflow-wrap: anywhere; }
-    .skill-desc { color: var(--faint); font: 500 .56rem/1.3 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .skill-desc { color: var(--faint); font: 500 .6rem/1.3 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
     .skill-row { display: flex; align-items: center; gap: 5px; margin-top: auto; }
     .skill .run { width: 24px; height: 22px; padding: 0; border: 0; border-radius: 5px; background: var(--a); color: var(--on-a); font-size: .7rem; line-height: 1; }
     .skill .run:hover { background: var(--a-glow); }
@@ -288,13 +367,14 @@
     .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
     .stat { padding: 7px 6px; border: 1px solid var(--line); border-radius: 8px; text-align: center; }
     .stat b { display: block; color: var(--a); font: 600 1.15rem/1.1 var(--mono); }
-    .stat span { color: var(--faint); font: 500 .52rem/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .stat span { color: var(--faint); font: 500 .6rem/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
     .feed { list-style: none; margin: 0; padding: 0; }
     .feed li { display: grid; grid-template-columns: 44px 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: .8rem; line-height: 1.35; }
     .feed li:last-child { border-bottom: 0; }
+    .feed li.empty { display: block; border-bottom: 0; }
     .feed time { color: var(--faint); font: 500 .62rem/1.6 var(--mono); }
     .feed .f-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .feed .f-kind { color: var(--a); font: 600 .56rem/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; margin-right: 6px; }
+    .feed .f-kind { color: var(--a); font: 600 .6rem/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; margin-right: 6px; }
     .grow { flex: 1; }
 
     /* ---------- Второй мозг ---------- */
@@ -326,14 +406,14 @@
     .detail .card-body { font-size: .86rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
     .detail .d-actions { display: flex; gap: 6px; padding: 8px 12px; border-top: 1px solid var(--line); }
     .stage-empty {
-      inset: 0; display: grid; place-items: center; text-align: center; padding: 20px;
-      color: var(--stage-muted, var(--muted)); font: 500 .74rem/1.6 var(--mono); letter-spacing: .08em;
+      inset: auto 0 0 0; display: flex; justify-content: center; text-align: center; padding: 0 max(20px, 12%) 64px;
+      color: var(--stage-muted, var(--muted)); font: 500 .74rem/1.6 var(--mono); letter-spacing: .06em;
     }
     .zoom { right: 12px; bottom: 12px; display: flex; flex-direction: column; gap: 4px; pointer-events: auto; }
     .zoom button { width: 30px; height: 30px; padding: 0; border: 1px solid var(--line-2); border-radius: 7px; background: hsl(var(--h) 28% 6% / .85); color: var(--muted); font: 600 .9rem/1 var(--mono); }
     .zoom button:hover { color: var(--ink); border-color: var(--a); }
 
-    .controls { min-height: 0; overflow-y: auto; border-left: 1px solid var(--line); background: var(--surface-solid); padding: 12px; scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
+    .controls { min-height: 0; overflow-y: auto; border-left: 1px solid var(--line); background: var(--surface-solid); padding: 12px 12px 96px; scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
     .ctl { padding: 10px 0; border-bottom: 1px solid var(--line); }
     .ctl:first-child { padding-top: 0; }
     .ctl:last-child { border-bottom: 0; }
@@ -439,6 +519,25 @@
     .doc-list button:hover { color: var(--danger); }
     .doc-status { margin: 10px 0 0; color: var(--muted); font-size: .8rem; min-height: 1.2em; }
     code { font-family: var(--mono); font-size: .9em; }
+    .note.small { font-size: .76rem; margin: 10px 0 0; color: var(--faint); }
+    .lbl { display: block; margin: 0 0 6px; color: var(--ink); font-size: .84rem; font-weight: 600; }
+    .conn-state { display: flex; align-items: center; gap: 8px; margin: 6px 0 14px; font-size: .88rem; }
+    .conn-state .dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--faint); }
+    .conn-state.ok .dot { background: var(--a); box-shadow: 0 0 10px var(--a); }
+    .conn-state.warn .dot { background: var(--warn); box-shadow: 0 0 10px var(--warn); }
+    .key-form { margin: 0 0 16px; }
+    .key-row { display: flex; gap: 6px; margin-bottom: 10px; }
+    .key-row .field { font-family: var(--mono); padding: 9px 11px; }
+    .key-row .icon-btn { width: 40px; height: auto; }
+    .key-row .icon-btn[aria-pressed="true"] { color: var(--a); border-color: var(--a); }
+    .primary-btn { padding: 8px 14px; border: 1px solid var(--a); border-radius: 8px; background: var(--a); color: var(--on-a); font-size: .84rem; font-weight: 700; white-space: nowrap; }
+    .primary-btn:hover { background: var(--a-glow); }
+    .primary-btn:disabled, .ghost:disabled { opacity: .55; cursor: progress; }
+    .ghost.danger:hover { border-color: var(--danger); color: var(--danger); }
+    .form-status { min-height: 1.2em; margin: 10px 0 0; font-size: .82rem; color: var(--muted); }
+    .form-status.ok { color: var(--a); }
+    .form-status.err { color: var(--danger); }
+    .model-pick .model-select { max-width: none; padding: 9px 30px 9px 11px; font-size: .8rem; }
 
     html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="off"] *::after {
       animation: none !important; transition: none !important; scroll-behavior: auto !important;
@@ -466,7 +565,9 @@
       .controls { border-left: 0; border-top: 1px solid var(--line); }
       .chat { padding: 14px 12px; }
       .msg { max-width: 94%; }
-      .model-select { max-width: 140px; }
+      .yaeri-fab { right: 12px; bottom: 12px; width: 56px; height: 56px; }
+      .chat-pop { inset: 8px; width: auto; height: auto; z-index: 11; }
+      body.pop-open .yaeri-fab { display: none; }
     }
   </style>
 </head>
@@ -515,7 +616,7 @@
         <button class="tab" type="button" role="tab" id="tab-brain" aria-controls="brain" aria-selected="false">Второй мозг</button>
       </nav>
       <div class="top-actions">
-        <span class="status" id="status" title="Подключение к AI ещё не настроено"><i class="dot"></i><span id="status-text">Демо-режим</span></span>
+        <button class="status" id="status" type="button" title="Подключение к AI ещё не настроено"><i class="dot"></i><span id="status-text">Демо-режим</span></button>
         <button class="icon-btn" id="open-settings" type="button" aria-label="Настройки проекта" aria-haspopup="dialog" aria-expanded="false" aria-controls="settings">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="3"/>
@@ -558,16 +659,29 @@
       </div>
 
       <div class="col col-center">
-        <section class="card chat-card" aria-label="Чат с Яэри">
+        <section class="card chat-card" id="chat-card" aria-label="Чат с Яэри">
           <div class="card-head">
+            <span class="head-face" aria-hidden="true"><img class="face-img" src="yaeri/idle-face.webp" alt="" width="32" height="32"></span>
             <h2>Разговор</h2>
-            <span class="card-meta" id="panel-hint">демо-режим</span>
+            <span class="mood" id="mood-text" aria-live="polite">слушает</span>
             <div class="head-actions">
-              <select class="model-select server-only" id="model" aria-label="Модель Cloud.ru" title="Модель Cloud.ru" hidden></select>
+              <button class="model-chip server-only" type="button" id="model-chip" title="Модель Cloud.ru — сменить в настройках" hidden></button>
               <button class="mini-btn" type="button" id="clear">Очистить</button>
+              <button class="mini-btn pop-close" type="button" id="chat-close" aria-label="Свернуть чат">×</button>
             </div>
           </div>
-          <div class="chat" id="chat" role="log" aria-live="polite" aria-relevant="additions"></div>
+          <div class="chat-main">
+            <button class="stage-fig" type="button" id="yaeri-stage" aria-label="Яэри. Нажмите, чтобы написать ей">
+              <span class="stage-glow" aria-hidden="true"></span>
+              <img class="fig-img" id="fig-img" src="yaeri/idle.webp" alt="" width="600" height="600">
+              <span class="stage-cap" id="stage-cap">Слушаю вас</span>
+            </button>
+            <div class="chat" id="chat" role="log" aria-live="polite" aria-relevant="additions"></div>
+          </div>
+          <div class="connect-banner" id="connect-banner" hidden>
+            <span id="connect-text">Чат в демо-режиме: Яэри пока не подключена к AI.</span>
+            <button class="mini-btn solid" type="button" id="connect-open">Подключить Cloud.ru</button>
+          </div>
           <form class="composer" id="message-form">
             <textarea id="message" name="message" rows="1" maxlength="4000" aria-label="Ваше сообщение"></textarea>
             <button class="send" id="send" type="submit">Отправить</button>
@@ -691,6 +805,13 @@
         </div>
       </aside>
     </main>
+
+    <!-- Аватар Яэри: открывает чат поверх любого раздела -->
+    <button class="yaeri-fab" type="button" id="yaeri-fab" aria-label="Открыть чат с Яэри" aria-expanded="false" aria-controls="chat-pop" hidden>
+      <img class="face-img" src="yaeri/idle-face.webp" alt="" width="64" height="64">
+      <span class="fab-dot" aria-hidden="true"></span>
+    </button>
+    <div class="chat-pop" id="chat-pop" role="dialog" aria-label="Чат с Яэри" hidden></div>
   </div>
 
   <div class="scrim" id="scrim"></div>
@@ -702,6 +823,33 @@
       </button>
     </div>
     <div class="drawer-body">
+      <section class="group" id="conn-group" aria-labelledby="conn-title">
+        <h3 id="conn-title">Подключение Cloud.ru</h3>
+        <p class="conn-state" id="conn-state"><i class="dot"></i><span id="conn-state-text">Проверяю…</span></p>
+        <form class="key-form" id="key-form" autocomplete="off" hidden>
+          <label class="lbl" for="set-key" id="key-label">API-ключ</label>
+          <div class="key-row">
+            <input class="field" id="set-key" type="password" maxlength="2000" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="Вставьте ключ Cloud.ru">
+            <button class="icon-btn" type="button" id="key-eye" aria-label="Показать ключ" aria-pressed="false" title="Показать ключ">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <div class="actions">
+            <button class="primary-btn" type="submit" id="key-save">Сохранить и подключить</button>
+            <button class="ghost" type="button" id="key-test" hidden>Проверить связь</button>
+            <button class="ghost danger" type="button" id="key-remove" hidden>Удалить ключ</button>
+          </div>
+          <p class="form-status" id="key-status" role="status"></p>
+          <p class="note small">Ключ отправляется только локальному серверу Яэри на этом компьютере и хранится в <code>config\yaeri.config.json</code> (в git не попадает). Обратно на страницу он не возвращается.</p>
+        </form>
+        <p class="note" id="no-server-note" hidden>Сайт открыт как файл, поэтому подключить AI отсюда нельзя. Запустите Яэри через <code>Yaeri.bat</code>, и здесь появится поле для ключа.</p>
+        <div class="model-pick server-only" hidden>
+          <label class="lbl" for="model">Модель для ответов</label>
+          <select class="model-select" id="model"></select>
+          <p class="note small" id="model-note">Список приходит из Cloud.ru. Выбор сохраняется на этом компьютере.</p>
+        </div>
+      </section>
+
       <section class="group">
         <h3>Обращение</h3>
         <p class="note">Так Яэри будет называть вас в ответах.</p>
@@ -745,8 +893,8 @@
       </section>
 
       <section class="group">
-        <h3>AI и знания</h3>
-        <p class="note" id="ai-note">AI не подключён. Добавьте ключ Cloud.ru в файл <code>config\yaeri.config.json</code> (или введите его в окне запуска) и перезапустите Яэри.</p>
+        <h3>Память и знания</h3>
+        <p class="note" id="ai-note">Эти настройки появятся, когда Яэри подключится к Cloud.ru.</p>
         <div class="server-only" id="ai-toggles" hidden>
           <label class="toggle">
             <span class="t-text"><span class="t-name">Яэри ведёт рабочую память</span><span class="t-desc">Сама записывает важные факты из разговора: планы, задачи, людей, предпочтения</span></span>
@@ -778,7 +926,7 @@
       <section class="group">
         <h3>О проекте</h3>
         <dl class="about">
-          <dt>Версия</dt><dd>0.4</dd>
+          <dt>Версия</dt><dd>0.5</dd>
           <dt>AI-модель</dt><dd id="about-model">не подключена</dd>
           <dt>Эмбеддинги</dt><dd id="about-embed">—</dd>
           <dt>Хранение</dt><dd id="about-storage">только в этом браузере</dd>
@@ -912,11 +1060,18 @@
       var closeBtn = $('close-settings');
 
       function isOpen() { return body.classList.contains('settings-open'); }
-      function openSettings() {
+      function openSettings(target) {
         body.classList.add('settings-open');
         app.inert = true;
         openBtn.setAttribute('aria-expanded', 'true');
-        closeBtn.focus();
+        var node = target && $(target);
+        if (node && node.offsetParent !== null) {
+          node.scrollIntoView({ block: 'center' });
+          node.focus({ preventScroll: true });
+        } else {
+          drawer.querySelector('.drawer-body').scrollTop = 0;
+          closeBtn.focus();
+        }
       }
       function closeSettings() {
         body.classList.remove('settings-open');
@@ -924,7 +1079,7 @@
         openBtn.setAttribute('aria-expanded', 'false');
         openBtn.focus();
       }
-      openBtn.addEventListener('click', openSettings);
+      openBtn.addEventListener('click', function () { openSettings(); });
       closeBtn.addEventListener('click', closeSettings);
       $('scrim').addEventListener('click', closeSettings);
       document.addEventListener('keydown', function (event) {
@@ -932,7 +1087,7 @@
         if (event.key === 'Escape') { event.preventDefault(); closeSettings(); return; }
         if (event.key !== 'Tab') return;
         var items = Array.prototype.filter.call(
-          drawer.querySelectorAll('button, input, [href], [tabindex]:not([tabindex="-1"])'),
+          drawer.querySelectorAll('button, input, select, [href], [tabindex]:not([tabindex="-1"])'),
           function (node) { return !node.disabled && node.offsetParent !== null; }
         );
         if (!items.length) return;
@@ -960,6 +1115,7 @@
           if (location.hash !== hash) history_.replaceState(null, '', hash || location.pathname + location.search);
         }
         if (window.YBrain) YBrain.onShow(name);
+        syncFab();
         if (!fromHash && window.scrollY) window.scrollTo(0, 0);
       }
       var history_ = window.history;
@@ -1007,20 +1163,110 @@
       }
       function applyMode() {
         showServerParts(online);
+        body.classList.toggle('is-online', online);
+        $('connect-banner').hidden = online || !serverStatus;
         if (online) {
-          setStatus('online', 'Cloud.ru · онлайн', 'AI подключён: Cloud.ru Foundation Models');
-          panelHint.textContent = 'Cloud.ru';
-          $('ai-note').textContent = 'Подключено: Cloud.ru Foundation Models. Ключ хранится только в config\\yaeri.config.json на этом компьютере и не передаётся в браузер.';
+          setStatus('online', 'Cloud.ru · онлайн', 'AI подключён: Cloud.ru Foundation Models. Нажмите, чтобы открыть подключение');
+          $('ai-note').textContent = 'Яэри подключена к Cloud.ru. Здесь можно решить, что ей запоминать и где искать ответы.';
           $('about-model').textContent = modelSelect.value || serverStatus.chatModel;
           $('about-embed').textContent = serverStatus.embeddingModel;
           $('about-storage').textContent = 'папка data на этом компьютере';
           $('mem-foot').textContent = 'Яэри видит эти заметки в каждом ответе';
         } else {
-          setStatus(serverStatus ? 'warn' : '', 'Демо-режим', serverStatus ? 'Ключ Cloud.ru не задан' : 'Сервер Яэри не найден');
-          panelHint.textContent = 'демо-режим';
+          setStatus(serverStatus ? 'warn' : '', 'Демо-режим', serverStatus ? 'Ключ Cloud.ru не задан. Нажмите, чтобы подключить' : 'Сервер Яэри не найден: запустите Yaeri.bat');
+          $('ai-note').textContent = 'Эти настройки появятся, когда Яэри подключится к Cloud.ru.';
+          $('about-model').textContent = 'не подключена';
+          $('about-embed').textContent = '—';
+          $('about-storage').textContent = 'только в этом браузере';
           $('mem-foot').textContent = 'Хранится в этом браузере';
         }
+        renderConn();
       }
+
+      /* ---------- Подключение: ключ и модель в настройках ---------- */
+      var keyForm = $('key-form');
+      var keyField = $('set-key');
+      var keyStatus = $('key-status');
+      var keyBusy = false;
+      function keyMsg(text, kind) {
+        keyStatus.textContent = text || '';
+        keyStatus.className = 'form-status' + (kind ? ' ' + kind : '');
+      }
+      function renderConn(checkText) {
+        var state = $('conn-state');
+        var src = serverStatus && serverStatus.keySource;
+        keyForm.hidden = !serverStatus;
+        $('no-server-note').hidden = !!serverStatus;
+        state.classList.toggle('ok', online);
+        state.classList.toggle('warn', !!serverStatus && !online);
+        if (!serverStatus) $('conn-state-text').textContent = location.protocol === 'file:' ? 'Сайт открыт без сервера Яэри' : 'Сервер Яэри не отвечает';
+        else if (online) $('conn-state-text').textContent = checkText || ('Подключено' + (src === 'env' ? ' (ключ из переменной CLOUDRU_API_KEY)' : '') + ' · ' + shortModel(modelSelect.value || serverStatus.chatModel));
+        else $('conn-state-text').textContent = 'Ключ не задан: Яэри работает в демо-режиме';
+        $('key-label').textContent = online ? 'Заменить ключ' : 'API-ключ';
+        keyField.placeholder = online ? 'Новый ключ (старый сохранён и скрыт)' : 'Вставьте ключ Cloud.ru';
+        $('key-test').hidden = !online;
+        $('key-remove').hidden = !online || src !== 'file';
+      }
+      function applyConfig(st) {
+        serverStatus = st;
+        var wasOnline = online;
+        if (st.configured && !wasOnline) return startOnline();
+        if (!st.configured && wasOnline) { startDemo(); return Promise.resolve(); }
+        applyMode();
+        if (st.configured) loadModels();
+        return Promise.resolve();
+      }
+      function busyKey(on) {
+        keyBusy = on;
+        each(keyForm.querySelectorAll('button'), function (b) { b.disabled = on; });
+      }
+      keyForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+        var key = keyField.value.trim();
+        if (keyBusy) return;
+        if (!key) { keyMsg('Вставьте ключ в поле выше.', 'err'); keyField.focus(); return; }
+        busyKey(true);
+        keyMsg('Сохраняю и проверяю связь с Cloud.ru…');
+        api('config', { apiKey: key }).then(function (st) {
+          keyField.value = '';
+          keyField.type = 'password';
+          $('key-eye').setAttribute('aria-pressed', 'false');
+          var check = st.check || {};
+          return applyConfig(st).then(function () {
+            if (check.ok) keyMsg('Готово: ключ сохранён, Cloud.ru ответил (' + check.models + ' ' + plural(check.models, 'модель', 'модели', 'моделей') + ').', 'ok');
+            else keyMsg('Ключ сохранён, но Cloud.ru его не принял: ' + (check.error || 'нет ответа') + '. Проверьте ключ и сохраните ещё раз.', 'err');
+          });
+        }).catch(function (error) { keyMsg(error.message, 'err'); })
+          .then(function () { busyKey(false); });
+      });
+      $('key-eye').addEventListener('click', function () {
+        var show = keyField.type === 'password';
+        keyField.type = show ? 'text' : 'password';
+        this.setAttribute('aria-pressed', show ? 'true' : 'false');
+        this.setAttribute('aria-label', show ? 'Скрыть ключ' : 'Показать ключ');
+      });
+      $('key-test').addEventListener('click', function () {
+        busyKey(true);
+        keyMsg('Проверяю связь…');
+        api('config/test', {}).then(function (r) {
+          if (r.ok) keyMsg('Связь есть: Cloud.ru отвечает, доступно ' + r.models + ' ' + plural(r.models, 'модель', 'модели', 'моделей') + '.', 'ok');
+          else keyMsg('Нет связи: ' + r.error, 'err');
+        }).catch(function (error) { keyMsg(error.message, 'err'); })
+          .then(function () { busyKey(false); });
+      });
+      $('key-remove').addEventListener('click', function () {
+        if (!window.confirm('Удалить ключ Cloud.ru с этого компьютера? Яэри перейдёт в демо-режим. Память и переписка останутся.')) return;
+        busyKey(true);
+        api('config', { apiKey: '' }).then(function (st) {
+          return applyConfig(st).then(function () {
+            keyMsg(st.configured ? 'Ключ из файла удалён, но задан ещё в переменной CLOUDRU_API_KEY.' : 'Ключ удалён.', st.configured ? 'err' : 'ok');
+          });
+        }).catch(function (error) { keyMsg(error.message, 'err'); })
+          .then(function () { busyKey(false); });
+      });
+      statusPill.addEventListener('click', function () { openSettings(online ? 'model' : 'set-key'); });
+      $('connect-open').addEventListener('click', function () { openSettings('set-key'); });
+      $('model-chip').addEventListener('click', function () { openSettings('model'); });
 
       /* ---------- Данные памяти ---------- */
       // notes: рабочая память; memory: воспоминания о разговорах; docs: документы RAG.
@@ -1323,6 +1569,132 @@
         renderSkills();
       });
 
+      /* ---------- Яэри: позы и настроение ---------- */
+      // Базовое настроение держится, пока не сменится (слушает, думает, дремлет);
+      // вспышка (рада, смеётся, извиняется) показывается несколько секунд и уходит обратно к базовому.
+      var MOODS = {
+        idle:   { pose: 'idle',   cap: 'Слушаю вас',          text: 'слушает' },
+        listen: { pose: 'listen', cap: 'Внимательно слушаю…', text: 'читает, что вы пишете' },
+        think:  { pose: 'think',  cap: 'Думаю…',              text: 'думает' },
+        happy:  { pose: 'happy',  cap: 'Готово!',             text: 'ответила' },
+        memo:   { pose: 'happy',  cap: 'Записала в память',   text: 'записала в память' },
+        greet:  { pose: 'greet',  cap: 'Добро пожаловать',    text: 'приветствует' },
+        giggle: { pose: 'giggle', cap: 'Хи-хи, щекотно',      text: 'смеётся' },
+        sleep:  { pose: 'sleep',  cap: 'Дремлю… разбудите',   text: 'дремлет' },
+        sorry:  { pose: 'sorry',  cap: 'Простите, не вышло',  text: 'извиняется' }
+      };
+      var figImg = $('fig-img');
+      var stage = $('yaeri-stage');
+      var mood = { base: 'idle', cur: '', flash: 0, swap: 0 };
+      var poseCache = {};
+      function preloadPoses() {
+        Object.keys(MOODS).forEach(function (k) {
+          var p = MOODS[k].pose;
+          if (poseCache[p]) return;
+          poseCache[p] = [new Image(), new Image()];
+          poseCache[p][0].src = 'yaeri/' + p + '.webp';
+          poseCache[p][1].src = 'yaeri/' + p + '-face.webp';
+        });
+      }
+      function renderMood(name) {
+        var m = MOODS[name] || MOODS.idle;
+        var prev = MOODS[mood.cur];
+        mood.cur = name;
+        $('stage-cap').textContent = m.cap;
+        $('mood-text').textContent = m.text;
+        stage.classList.toggle('busy', name === 'think');
+        body.classList.toggle('is-thinking', name === 'think');
+        if (prev && prev.pose === m.pose) return;
+        each(document.querySelectorAll('.face-img'), function (img) { img.src = 'yaeri/' + m.pose + '-face.webp'; });
+        clearTimeout(mood.swap);
+        if (!settings.motion || !prev) { figImg.src = 'yaeri/' + m.pose + '.webp'; return; }
+        figImg.classList.add('swap');
+        mood.swap = setTimeout(function () {
+          figImg.src = 'yaeri/' + m.pose + '.webp';
+          figImg.classList.remove('swap');
+        }, 170);
+      }
+      function setBase(name) {
+        mood.base = name;
+        // «Думаю» важнее любой вспышки: сразу видно, что ответ готовится.
+        if (name === 'think') { clearTimeout(mood.flash); mood.flash = 0; }
+        if (!mood.flash) renderMood(name);
+      }
+      function flash(name, ms) {
+        if (mood.base === 'think') return;
+        clearTimeout(mood.flash);
+        renderMood(name);
+        mood.flash = setTimeout(function () { mood.flash = 0; renderMood(mood.base); }, ms);
+      }
+      function restMood() { return input.value.trim() ? 'listen' : 'idle'; }
+
+      // Через три минуты тишины Яэри задрёмывает, любое действие её будит.
+      var lastActive = Date.now();
+      function wake() {
+        lastActive = Date.now();
+        if (mood.base === 'sleep') { setBase(restMood()); flash('greet', 2200); }
+      }
+      ['pointerdown', 'keydown', 'wheel'].forEach(function (type) { document.addEventListener(type, wake, { passive: true }); });
+      setInterval(function () {
+        if (!pending && mood.base === 'idle' && !mood.flash && !document.hidden && Date.now() - lastActive > 180000) setBase('sleep');
+      }, 15000);
+
+      stage.addEventListener('click', function () {
+        if (mood.base !== 'think') flash('giggle', 1800);
+        input.focus();
+      });
+
+      /* ---------- Аватар-кнопка: чат поверх любого раздела ---------- */
+      var chatCard = $('chat-card');
+      var chatHome = chatCard.parentNode;
+      var pop = $('chat-pop');
+      var fab = $('yaeri-fab');
+      var chatSeen = true;
+      function openPop() {
+        if (!pop.hidden) return;
+        pop.appendChild(chatCard);
+        pop.hidden = false;
+        body.classList.add('pop-open');
+        fab.setAttribute('aria-expanded', 'true');
+        fab.setAttribute('aria-label', 'Свернуть чат с Яэри');
+        chat.scrollTop = chat.scrollHeight;
+        input.focus();
+      }
+      function closePop(focusFab) {
+        if (pop.hidden) return;
+        pop.hidden = true;
+        body.classList.remove('pop-open');
+        chatHome.insertBefore(chatCard, chatHome.firstChild);
+        fab.setAttribute('aria-expanded', 'false');
+        fab.setAttribute('aria-label', 'Открыть чат с Яэри');
+        if (focusFab) fab.focus();
+      }
+      function syncFab() {
+        if (!fab) return;
+        if (currentView === 'deck') closePop(false);
+        // В командном центре чат и так на виду; кнопка нужна, когда он ушёл за экран или открыт другой раздел.
+        fab.hidden = currentView === 'deck' && chatSeen;
+      }
+      fab.addEventListener('click', function () {
+        wake();
+        if (currentView === 'deck') {
+          chatCard.scrollIntoView({ block: 'start', behavior: settings.motion ? 'smooth' : 'auto' });
+          input.focus({ preventScroll: true });
+          flash('greet', 1800);
+          return;
+        }
+        if (pop.hidden) { openPop(); flash('greet', 1800); } else closePop(true);
+      });
+      $('chat-close').addEventListener('click', function () { closePop(true); });
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && !pop.hidden && !isOpen()) { event.preventDefault(); closePop(true); }
+      });
+      if ('IntersectionObserver' in window) {
+        new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) { if (pop.hidden) { chatSeen = e.isIntersecting; syncFab(); } });
+        }, { threshold: 0.15 }).observe(chatCard);
+      }
+
       /* ---------- Чат ---------- */
       var history = [];
       var typingNode = null;
@@ -1366,12 +1738,13 @@
         refreshBrain(300);
       }
       function greet() {
+        flash('greet', 3600);
         if (online) {
           // Приветствие только на экране: в базу и в контекст модели оно не попадает.
-          bubble({ role: 'assistant', text: 'Здравствуйте, ' + settings.name + '! Я Яэри, ваша восьмихвостая лисица. Я подключена к Cloud.ru, веду рабочую память и помню наши разговоры. Всё, что я знаю, видно слева и во «Втором мозге».', t: Date.now() }, true);
+          bubble({ role: 'assistant', text: 'Здравствуйте, ' + settings.name + '! Я Яэри, ваша восьмихвостая лисица. Я подключена к Cloud.ru, веду рабочую память и помню наши разговоры. Всё, что я знаю, видно в «Рабочей памяти» и во «Втором мозге».', t: Date.now() }, true);
           return;
         }
-        add('assistant', 'Здравствуйте, ' + settings.name + '! Я Яэри, ваша восьмихвостая лисица. Сейчас чат работает в демонстрационном режиме: чтобы я отвечала по-настоящему, добавьте API-ключ Cloud.ru при запуске Yaeri.bat. Рабочую память слева можно заполнять уже сейчас.');
+        add('assistant', 'Здравствуйте, ' + settings.name + '! Я Яэри, ваша восьмихвостая лисица. Сейчас чат работает в демонстрационном режиме: чтобы я отвечала по-настоящему, вставьте API-ключ Cloud.ru в настройках (кнопка «Подключить Cloud.ru» под чатом). Рабочую память можно заполнять уже сейчас.');
       }
       function showTyping() {
         if (typingNode) return;
@@ -1391,11 +1764,13 @@
       function demoReply() {
         pending++;
         showTyping();
+        setBase('think');
         var id = setTimeout(function () {
           timers = timers.filter(function (x) { return x !== id; });
           pending--;
           if (!pending) hideTyping();
           add('assistant', settings.name + ', я получила ваше сообщение. Пока ключ Cloud.ru не задан, отвечать по-настоящему я не могу, зато интерфейс, рабочая память и второй мозг уже работают.');
+          if (!pending) { setBase(restMood()); flash('happy', 2600); }
         }, settings.motion ? 900 : 250);
         timers.push(id);
       }
@@ -1408,6 +1783,7 @@
         pending++;
         sendBtn.disabled = true;
         showTyping();
+        setBase('think');
         api('chat', { text: message, model: modelSelect.value, rag: settings.rag, remember: settings.remember, autoNotes: settings.autoNotes, name: settings.name })
           .then(function (data) {
             if (epoch !== chatEpoch) return;
@@ -1417,15 +1793,21 @@
             hideTyping();
             bubble(m, true);
             refreshBrain();
+            setBase(restMood());
+            if (Array.isArray(m.remembered) && m.remembered.length) flash('memo', 4200);
+            else flash('happy', 3200);
           })
           .catch(function (error) {
             if (epoch !== chatEpoch) return;
             hideTyping();
             bubble({ role: 'assistant', error: true, text: 'Не получилось ответить: ' + error.message }, true);
+            setBase(restMood());
+            flash('sorry', 5000);
           })
           .then(function () {
             pending = Math.max(0, pending - 1);
             if (!pending) sendBtn.disabled = false;
+            if (!pending && mood.base === 'think') setBase(restMood());
           });
       }
       function resetView() {
@@ -1436,6 +1818,7 @@
         hideTyping();
         history = [];
         chat.textContent = '';
+        setBase(restMood());
       }
       function clearChat() {
         if (history.length > 1 && !window.confirm(online
@@ -1471,7 +1854,7 @@
         message = String(message || '').trim();
         if (!message) return false;
         if (online && pending) return false;
-        if (currentView !== 'deck') showView('deck');
+        if (currentView !== 'deck' && pop.hidden) showView('deck');
         if (online) {
           aiReply(message);
         } else {
@@ -1488,7 +1871,10 @@
         input.focus();
       }
       form.addEventListener('submit', function (event) { event.preventDefault(); submit(); });
-      input.addEventListener('input', grow);
+      input.addEventListener('input', function () {
+        grow();
+        if (mood.base === 'idle' || mood.base === 'listen' || mood.base === 'sleep') setBase(restMood());
+      });
       input.addEventListener('keydown', function (event) {
         // Enter во время ввода через IME (японский, китайский) подтверждает слово, а не отправляет.
         if (event.key !== 'Enter' || event.isComposing || event.keyCode === 229) return;
@@ -1507,21 +1893,35 @@
           modelSelect.appendChild(option);
         });
         modelSelect.value = list.indexOf(preferred) > -1 ? preferred : list[0];
-        $('about-model').textContent = modelSelect.value;
+        syncModel();
+        renderConn();
       }
       function loadModels() {
         fillModels([serverStatus.chatModel], serverStatus.chatModel);
         api('models').then(function (data) {
           var list = Array.isArray(data.models) && data.models.length ? data.models : [serverStatus.chatModel];
           fillModels(list, settings.model || data.default);
-          if (data.error) modelSelect.title = 'Список моделей не загрузился: ' + data.error;
+          $('model-note').textContent = data.error ? 'Полный список моделей не загрузился: ' + data.error : 'Список приходит из Cloud.ru. Выбор сохраняется на этом компьютере.';
         }).catch(function () { /* Остаётся модель по умолчанию. */ });
       }
       modelSelect.addEventListener('change', function () {
         settings.model = modelSelect.value;
         changed();
-        $('about-model').textContent = modelSelect.value;
+        syncModel();
+        renderConn();
+        $('model-note').textContent = 'Сохраняю…';
+        api('config', { chatModel: modelSelect.value }).then(function () {
+          $('model-note').textContent = 'Готово: следующие ответы даст ' + shortModel(modelSelect.value) + '.';
+        }).catch(function (error) {
+          $('model-note').textContent = 'Модель выбрана для этого браузера, но не сохранилась на сервере: ' + error.message;
+        });
       });
+      function syncModel() {
+        $('about-model').textContent = modelSelect.value;
+        var chip = $('model-chip');
+        chip.textContent = shortModel(modelSelect.value);
+        chip.title = 'Модель: ' + modelSelect.value + '. Сменить — в настройках';
+      }
 
       /* ---------- Документы для RAG ---------- */
       var docList = $('doc-list');
@@ -1617,6 +2017,7 @@
 
       /* ---------- Старт ---------- */
       syncControls();
+      renderMood('idle');
       applySettings();
       renderSkills();
       renderCalendar(true);
@@ -1651,6 +2052,7 @@
       }
 
       window.addEventListener('DOMContentLoaded', function () { showView(location.hash === '#brain' ? 'brain' : 'deck', true); });
+      window.addEventListener('load', function () { setTimeout(preloadPoses, 300); });
       if (location.protocol === 'file:') {
         startDemo();
       } else {

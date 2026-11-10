@@ -220,26 +220,48 @@ function Import-YConfig {
 
 function Test-YConfigured { return -not [string]::IsNullOrWhiteSpace([string]$script:Config.apiKey) }
 
-function Save-YApiKey([string]$Key) {
+function Get-YKeySource {
+    # Откуда взят ключ: из файла настроек, из переменной окружения или ниоткуда.
+    $file = Read-YJsonFile $script:ConfigFile
+    if ($null -ne $file -and -not [string]::IsNullOrWhiteSpace([string](Get-YValue $file 'apiKey' ''))) { return 'file' }
+    if ($env:CLOUDRU_API_KEY) { return 'env' }
+    return ''
+}
+
+function Set-YConfigString([string]$Name, [string]$Value) {
+    # Меняет одно строковое поле в config\yaeri.config.json, сохраняя остальной файл как есть.
     if (-not [System.IO.Directory]::Exists($script:ConfigDir)) {
         [void][System.IO.Directory]::CreateDirectory($script:ConfigDir)
     }
-    $quoted = ConvertTo-YJson ([string]$Key)
+    $quoted = ConvertTo-YJson ([string]$Value)
     if ([System.IO.File]::Exists($script:ConfigFile)) {
         $text = [System.IO.File]::ReadAllText($script:ConfigFile, $script:Utf8)
     } elseif ([System.IO.File]::Exists($script:ConfigExample)) {
         $text = [System.IO.File]::ReadAllText($script:ConfigExample, $script:Utf8)
     } else {
-        $text = '{ "apiKey": "" }'
+        $text = '{ }'
     }
-    $pattern = '"apiKey"\s*:\s*"(?:[^"\\]|\\.)*"'
+    $pattern = '"' + [regex]::Escape($Name) + '"\s*:\s*"(?:[^"\\]|\\.)*"'
     if ($text -match $pattern) {
-        $text = [regex]::Replace($text, $pattern, { param($m) '"apiKey": ' + $quoted })
+        $text = [regex]::Replace($text, $pattern, { param($m) '"' + $Name + '": ' + $quoted })
     } else {
-        $text = '{ "apiKey": ' + $quoted + ' }'
+        $brace = $text.IndexOf('{')
+        if ($brace -lt 0) { $text = '{ }'; $brace = 0 }
+        $rest = $text.Substring($brace + 1)
+        $sep = if ($rest.Trim().StartsWith('}')) { '' } else { ',' }
+        $text = $text.Substring(0, $brace + 1) + [Environment]::NewLine + '  "' + $Name + '": ' + $quoted + $sep + $rest
     }
-    [System.IO.File]::WriteAllText($script:ConfigFile, $text, $script:Utf8)
+    # Сначала временный файл: если запись оборвётся, старые настройки не пострадают.
+    $tmp = $script:ConfigFile + '.tmp'
+    [System.IO.File]::WriteAllText($tmp, $text, $script:Utf8)
+    if ([System.IO.File]::Exists($script:ConfigFile)) {
+        [System.IO.File]::Replace($tmp, $script:ConfigFile, [System.Management.Automation.Language.NullString]::Value)
+    } else {
+        [System.IO.File]::Move($tmp, $script:ConfigFile)
+    }
 }
+
+function Save-YApiKey([string]$Key) { Set-YConfigString 'apiKey' $Key }
 
 # ---------- База данных (JSON-файлы в data\) ----------
 function Import-YStore {
@@ -300,7 +322,7 @@ try {
 } catch { }
 
 function Invoke-CloudRu([string]$Method, [string]$Path, $Body) {
-    if (-not (Test-YConfigured)) { throw (New-YError 503 'Ключ Cloud.ru не задан. Добавьте его в config\yaeri.config.json и перезапустите Яэри.') }
+    if (-not (Test-YConfigured)) { throw (New-YError 503 'Ключ Cloud.ru не задан. Введите его в настройках Яэри (⚙ → Подключение).') }
     $request = [System.Net.HttpWebRequest]::Create($script:Config.baseUrl + $Path)
     $request.Method = $Method
     $request.Timeout = 180000
@@ -340,7 +362,7 @@ function Invoke-CloudRu([string]$Method, [string]$Path, $Body) {
             } catch { }
             if ($detail.Length -gt 400) { $detail = $detail.Substring(0, 400) + '…' }
             $hint = ''
-            if ($code -eq 401 -or $code -eq 403) { $hint = ' Проверьте API-ключ в config\yaeri.config.json.' }
+            if ($code -eq 401 -or $code -eq 403) { $hint = ' Проверьте API-ключ в настройках Яэри (⚙ → Подключение).' }
             elseif ($code -eq 404) { $hint = ' Проверьте название модели.' }
             throw (New-YError 502 ('Cloud.ru ответил ' + $code + ': ' + $detail + $hint))
         }
@@ -439,6 +461,7 @@ function Test-YIndexReady {
 function Get-YStatus {
     return @{
         configured     = (Test-YConfigured)
+        keySource      = (Get-YKeySource)
         provider       = 'Cloud.ru Foundation Models'
         chatModel      = [string]$script:Config.chatModel
         embeddingModel = [string]$script:Config.embeddingModel
@@ -848,6 +871,41 @@ function Invoke-YChat($Req) {
     return @{ user = $userMsg; reply = $answer; note = $ragNote; notes = $newNotes.ToArray() }
 }
 
+function Test-YConnection {
+    # Пробный запрос списка моделей: так видно, подходит ли ключ.
+    if (-not (Test-YConfigured)) { return @{ ok = $false; models = 0; error = 'Ключ не задан.' } }
+    $script:ModelsCache = $null
+    try {
+        $list = Get-YModels
+        return @{ ok = $true; models = @($list).Count; error = '' }
+    } catch {
+        return @{ ok = $false; models = 0; error = $_.Exception.Message }
+    }
+}
+
+function Set-YConfig($Req) {
+    # Ключ приходит со страницы Яэри на 127.0.0.1 и сохраняется только в config\yaeri.config.json.
+    # Обратно в браузер он никогда не отдаётся: в ответе только признак «ключ задан».
+    $check = $null
+    if (Test-YKey $Req 'chatModel') {
+        $model = ([string]$Req['chatModel']).Trim()
+        if ($model.Length -gt 200 -or $model -notmatch '^[\w./:@+-]+$') { throw (New-YError 400 'Некорректное название модели.') }
+        Set-YConfigString 'chatModel' $model
+    }
+    if (Test-YKey $Req 'apiKey') {
+        $key = ([string]$Req['apiKey']).Trim()
+        if ($key.Length -gt 2000) { throw (New-YError 400 'Ключ слишком длинный.') }
+        if ($key -and $key -cnotmatch '^[\x21-\x7E]+$') { throw (New-YError 400 'Ключ должен быть одной строкой без пробелов и русских букв. Скопируйте его ещё раз.') }
+        Set-YConfigString 'apiKey' $key
+    }
+    Import-YConfig
+    $script:ModelsCache = $null
+    if ((Test-YKey $Req 'apiKey') -and (Test-YConfigured)) { $check = Test-YConnection }
+    $result = Get-YStatus
+    $result['check'] = $check
+    return $result
+}
+
 function Invoke-YApi([string]$Method, [string]$Path, [string]$BodyText) {
     $req = $null
     if ($Method -eq 'POST') {
@@ -873,6 +931,8 @@ function Invoke-YApi([string]$Method, [string]$Path, [string]$BodyText) {
         'POST /api/notes/delete'   { return Remove-YNote $req }
         'POST /api/memory/delete'  { return Remove-YMemoryItem $req }
         'GET /api/brain'           { return Get-YBrain }
+        'POST /api/config'         { return Set-YConfig $req }
+        'POST /api/config/test'    { return Test-YConnection }
     }
     throw (New-YError 404 'Неизвестный адрес API.')
 }
