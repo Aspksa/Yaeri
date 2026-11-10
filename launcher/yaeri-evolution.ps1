@@ -94,11 +94,12 @@ function Add-YEvolutionFact([string]$Key, [string]$Value, [string]$Quote, [strin
     $now = Get-YNow
     $prior = $null
     foreach ($f in $script:Evo.facts) {
-        if ($f.key -eq $key -and $f.status -eq 'active') { $prior = $f; break }
+        if ($f.key -eq $key -and @('active','unverified','needs-review') -contains [string]$f.status) { $prior = $f; break }
     }
     if ($null -ne $prior -and (Get-YEvoNormalized $prior.value) -eq (Get-YEvoNormalized $value)) {
         $prior.lastSeen = $now
         $prior.confidence = [Math]::Max([double]$prior.confidence, $confidence)
+        if ([double]$prior.confidence -ge 0.75) { $prior.status = 'active' }
         return
     }
     if ($null -ne $prior) {
@@ -332,6 +333,18 @@ function Set-YEvolution($Req) {
         Add-YEvolutionEvent 'system' $(if ($script:Evo.enabled) { 'Фоновая жизнь включена' } else { 'Фоновая жизнь приостановлена' })
         Save-YEvolution
     }
+    return Get-YEvolutionView
+}
+function Clear-YEvolution {
+    foreach ($name in @('queue','facts','episodes','corrections','links','events','timeline')) {
+        $script:Evo[$name].Clear()
+    }
+    foreach ($name in @('lastAction','lastStudy','lastReflect','lastSleep','lastReview','lastMaintenance','retryAfter')) {
+        $script:Evo[$name] = 0L
+    }
+    $script:Evo.lastError = ''
+    $script:Evo.lastTask = ''
+    Save-YEvolution
     return Get-YEvolutionView
 }
 function Invoke-YEvolutionTick {
