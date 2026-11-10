@@ -56,7 +56,7 @@ function Save-YCuriosity {
             $plain[$key] = $script:Cur[$key]
         }
     }
-    Write-YJsonFile $script:CurFile $plain
+    Write-YJsonFile $script:CurFile (ConvertTo-YPlain $plain)
 }
 
 function Get-YCurProfile {

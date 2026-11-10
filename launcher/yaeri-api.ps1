@@ -163,6 +163,31 @@ function ConvertTo-YJson($Value) {
     return ($Value | ConvertTo-Json -Depth 100 -Compress)
 }
 
+# Копия данных из «чистых» типов: хэш-таблицы, object[] и примитивы. JavaScriptSerializer в Windows PowerShell 5.1
+# падает («circular reference ... PSParameterizedProperty»), если ему попадает объект, обёрнутый PowerShell (PSObject).
+function ConvertTo-YPlain($Value) {
+    if ($null -eq $Value) { return $null }
+    $base = $Value.PSObject.BaseObject
+    if ($base -is [string]) { return [string]$base }
+    if ($base -is [bool]) { return [bool]$base }
+    if ($base -is [int] -or $base -is [long] -or $base -is [double] -or $base -is [decimal] -or $base -is [single] -or
+        $base -is [byte] -or $base -is [int16] -or $base -is [uint32] -or $base -is [uint64]) { return $base }
+    if ($base -is [datetime]) { return $base.ToString('o') }
+    if ($base -is [System.Collections.IDictionary]) {
+        $copy = @{}
+        foreach ($key in @($base.Keys)) { $copy[[string]$key] = ConvertTo-YPlain $base[$key] }
+        return $copy
+    }
+    if ($base -is [System.Collections.IEnumerable]) {
+        $items = New-Object System.Collections.Generic.List[object]
+        foreach ($item in $base) { $items.Add((ConvertTo-YPlain $item)) }
+        return , $items.ToArray()
+    }
+    $copy = @{}
+    foreach ($prop in $base.PSObject.Properties) { $copy[[string]$prop.Name] = ConvertTo-YPlain $prop.Value }
+    return $copy
+}
+
 function Read-YJsonFile([string]$Path) {
     if (-not [System.IO.File]::Exists($Path)) { return $null }
     $text = [System.IO.File]::ReadAllText($Path, $script:Utf8)

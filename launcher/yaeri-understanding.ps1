@@ -88,7 +88,7 @@ function Save-YUnderstanding {
             $plain[$key] = $script:Und[$key]
         }
     }
-    Write-YJsonFile $script:UndFile $plain
+    Write-YJsonFile $script:UndFile (ConvertTo-YPlain $plain)
 }
 
 # ---------- Темы и приватность ----------

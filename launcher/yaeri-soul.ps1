@@ -251,7 +251,7 @@ function Import-YSoul {
 
 function Save-YSoul {
     while ($script:Soul.journal.Count -gt $script:SoulJournalLimit) { $script:Soul.journal.RemoveAt(0) }
-    Write-YJsonFile $script:SoulFile $script:Soul
+    Write-YJsonFile $script:SoulFile (ConvertTo-YPlain $script:Soul)
 }
 
 function Get-YSoulLevel([long]$Xp) {
