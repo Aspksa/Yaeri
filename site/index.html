@@ -680,6 +680,31 @@
     .msg details.inner { margin-top: 6px; color: var(--muted); font-size: .8rem; }
     .msg details.inner summary { cursor: pointer; color: var(--faint); font: 600 .58rem/1.4 var(--mono); letter-spacing: .14em; text-transform: uppercase; }
     .msg details.inner p { margin: 4px 0 0; padding-left: 8px; border-left: 2px solid var(--line-2); font-style: italic; }
+    .j-tools { flex: none; display: grid; gap: 8px; padding: 10px 12px 0; }
+    .j-tools .field { padding: 6px 9px; font-size: .82rem; }
+    .j-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; font: 500 .66rem/1 var(--mono); text-align: center; }
+    .j-cal .cal-head { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; }
+    .j-cal .cal-head button { width: 24px; height: 22px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; color: var(--muted); }
+    .j-cal .wd { color: var(--faint); padding: 3px 0; }
+    .j-cal button.d { padding: 5px 0; border: 1px solid transparent; border-radius: 5px; background: none; color: var(--faint); font: inherit; cursor: default; }
+    .j-cal button.d.has { color: var(--ink); background: var(--a-soft); cursor: pointer; }
+    .j-cal button.d.has:hover { border-color: var(--a); }
+    .j-cal button.d.sel { background: var(--a); color: var(--on-a); }
+    .j-cal button.d.today { border-color: var(--line-2); }
+    @media (min-width: 821px) {
+      .j-tools { grid-template-columns: minmax(0, 1fr) 250px; align-items: start; }
+      .j-tools .j-cal { grid-row: span 2; }
+      .j-tools .j-filter { align-self: start; }
+    }
+    .j-filter { margin: 0; display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: .78rem; }
+    .j-filter button { margin-left: auto; }
+    .t-chart svg { display: block; width: 100%; height: auto; }
+    .t-chart .grid { stroke: var(--line); stroke-width: 1; }
+    .t-chart text { fill: var(--faint); font: 500 9px var(--mono); }
+    .t-legend { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 8px; font-size: .76rem; color: var(--muted); }
+    .t-legend span { display: inline-flex; align-items: center; gap: 5px; }
+    .t-legend i { width: 10px; height: 3px; border-radius: 2px; }
+    .t-legend b { color: var(--ink); font-weight: 600; }
     .soul-mini { flex: none; }
     .soul-mini-body { display: flex; align-items: center; gap: 12px; padding: 10px 12px; cursor: pointer; border-radius: 0 0 12px 12px; }
     .soul-mini-body:hover { background: hsl(var(--h) 20% 12% / .5); }
@@ -1061,6 +1086,11 @@
             <span class="soul-lbl">Последняя мысль о вас</span>
             <p id="soul-thought-text"></p>
           </div>
+          <div class="j-tools">
+            <input class="field" id="soul-jsearch" type="search" placeholder="Поиск по дневнику" aria-label="Поиск по дневнику">
+            <div class="j-cal" id="soul-jcal" aria-label="Календарь дневника"></div>
+            <p class="j-filter" id="soul-jfilter" hidden></p>
+          </div>
           <div class="card-body grow"><ul class="journal" id="soul-journal"></ul></div>
           <div class="card-foot"><span>Яэри пишет сюда, когда размышляет о разговорах и о вас</span></div>
         </section>
@@ -1112,6 +1142,16 @@
             <span class="card-meta">меняется медленно</span>
           </div>
           <div class="card-body"><div class="traits" id="soul-traits"></div></div>
+        </section>
+        <section class="card" aria-labelledby="soul-chart-title">
+          <div class="card-head">
+            <h2 id="soul-chart-title">Как менялся характер</h2>
+            <span class="card-meta" id="soul-chart-meta"></span>
+          </div>
+          <div class="card-body">
+            <div class="t-chart" id="soul-chart" role="img" aria-label="График черт характера по дням"></div>
+            <div class="t-legend" id="soul-chart-legend"></div>
+          </div>
         </section>
         <section class="card grow" aria-labelledby="soul-lessons-title">
           <div class="card-head">
@@ -1658,7 +1698,8 @@
               links: Array.isArray(data.links) ? data.links : [],
               messages: data.messages || 0,
               memoryTotal: data.memoryTotal || 0,
-              note: data.note || ''
+              note: data.note || '',
+              soul: Array.isArray(data.soul) ? data.soul : []
             };
             dataChanged();
           }).catch(function () { /* Покажем то, что уже есть. */ });
@@ -2158,6 +2199,7 @@
             else if (Array.isArray(m.remembered) && m.remembered.length) flash('memo', 4200);
             else flash('happy', 3200);
             if (data.soul) soulAfterChat(data.soul);
+            litSources(m);
           })
           .catch(function (error) {
             if (epoch !== chatEpoch) return;
@@ -2171,6 +2213,13 @@
             if (!pending) sendBtn.disabled = false;
             if (!pending && mood.base === 'think') setBase(restMood());
           });
+      }
+      function litSources(m) {
+        // Подсветить на графе воспоминания, на которые Яэри опиралась в ответе.
+        var ids = (Array.isArray(m.sources) ? m.sources : []).map(function (x) { return x && x.id; }).filter(Boolean);
+        if (!ids.length || !window.YBrain || !YBrain.light) return;
+        // Граф обновится через refreshBrain: подождём, чтобы новые узлы уже были на месте.
+        setTimeout(function () { YBrain.light(ids, 9000); }, 900);
       }
       function resetView() {
         timers.forEach(clearTimeout);
@@ -2532,8 +2581,21 @@
 
         var list = $('soul-journal');
         list.textContent = '';
-        $('soul-journal-count').textContent = s.journal.length + ' ' + plural(s.journal.length, 'запись', 'записи', 'записей');
-        s.journal.slice().reverse().forEach(function (j) {
+        var jq = jState.q.toLowerCase();
+        var shown = s.journal.slice().reverse().filter(function (j) {
+          if (jState.day && dayKey(new Date(j.t || 0)) !== jState.day) return false;
+          return !jq || String(j.text || '').toLowerCase().indexOf(jq) > -1 || String(j.mood || '').toLowerCase().indexOf(jq) > -1 || String(SOUL_KINDS[j.kind] || '').indexOf(jq) > -1;
+        });
+        $('soul-journal-count').textContent = (shown.length !== s.journal.length ? shown.length + ' из ' : '') + s.journal.length + ' ' + plural(s.journal.length, 'запись', 'записи', 'записей');
+        renderJCal(s.journal);
+        var jf = $('soul-jfilter');
+        jf.hidden = !jState.day && !jq;
+        jf.textContent = '';
+        if (!jf.hidden) {
+          jf.appendChild(el('span', '', (jState.day ? 'За ' + jState.day.split('-').reverse().join('.') : 'Все дни') + (jq ? ' · «' + jState.q + '»' : '')));
+          jf.appendChild(smallBtn('Показать всё', 'Сбросить фильтр дневника', function () { jState.day = ''; jState.q = ''; $('soul-jsearch').value = ''; renderSoul(); }, 'mini-btn'));
+        }
+        shown.forEach(function (j) {
           var li = el('li', 'k-' + (j.kind || 'reflection'));
           var head = el('div', 'j-head');
           head.appendChild(el('b', '', SOUL_KINDS[j.kind] || 'запись'));
@@ -2553,6 +2615,7 @@
           list.appendChild(li);
         });
         if (!s.journal.length) list.appendChild(el('li', 'empty', 'Дневник пока пуст.'));
+        else if (!shown.length) list.appendChild(el('li', 'empty', 'Ничего не нашлось.'));
 
         each(document.querySelectorAll('#soul .soul-list[data-key]'), function (box) {
           var key = box.getAttribute('data-key');
@@ -2560,6 +2623,7 @@
         });
 
         renderSoulGrowth(d, s);
+        renderTraitChart(d, s);
 
         var traits = $('soul-traits');
         traits.textContent = '';
@@ -2621,6 +2685,101 @@
         });
       });
 
+
+      /* Дневник: поиск и календарь. */
+      var jState = { q: '', day: '', month: null };
+      var JWEEK = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
+      function renderJCal(journal) {
+        var days = {};
+        journal.forEach(function (j) { var k = dayKey(new Date(j.t || 0)); days[k] = (days[k] || 0) + 1; });
+        if (!jState.month) jState.month = new Date();
+        var m = jState.month;
+        var cal = $('soul-jcal');
+        cal.textContent = '';
+        var head = el('div', 'cal-head');
+        head.appendChild(smallBtn('‹', 'Предыдущий месяц', function () { jState.month = new Date(m.getFullYear(), m.getMonth() - 1, 1); renderSoul(); }));
+        var title = '';
+        try { title = m.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }); } catch (e) { title = (m.getMonth() + 1) + '.' + m.getFullYear(); }
+        head.appendChild(el('span', '', title));
+        head.appendChild(smallBtn('›', 'Следующий месяц', function () { jState.month = new Date(m.getFullYear(), m.getMonth() + 1, 1); renderSoul(); }));
+        cal.appendChild(head);
+        JWEEK.forEach(function (w) { cal.appendChild(el('span', 'wd', w)); });
+        var first = new Date(m.getFullYear(), m.getMonth(), 1);
+        var lead = (first.getDay() + 6) % 7;
+        for (var i = 0; i < lead; i++) cal.appendChild(el('span'));
+        var total = new Date(m.getFullYear(), m.getMonth() + 1, 0).getDate();
+        var today = dayKey(new Date());
+        for (var dd = 1; dd <= total; dd++) {
+          (function (key, n) {
+            var cnt = days[key] || 0;
+            var b = el('button', 'd' + (cnt ? ' has' : '') + (key === jState.day ? ' sel' : '') + (key === today ? ' today' : ''), String(n));
+            b.type = 'button';
+            b.disabled = !cnt;
+            b.title = cnt ? cnt + ' ' + plural(cnt, 'запись', 'записи', 'записей') : 'записей нет';
+            b.addEventListener('click', function () { jState.day = jState.day === key ? '' : key; renderSoul(); });
+            cal.appendChild(b);
+          })(dayKey(new Date(m.getFullYear(), m.getMonth(), dd)), dd);
+        }
+      }
+      $('soul-jsearch').addEventListener('input', function () { jState.q = this.value.trim(); renderSoul(); });
+
+      /* График характера. */
+      var TRAIT_COLORS = ['hsl(168, 68%, 62%)', 'hsl(45, 90%, 62%)', 'hsl(330, 80%, 70%)', 'hsl(208, 80%, 66%)', 'hsl(262, 70%, 74%)', 'hsl(24, 90%, 64%)'];
+      function renderTraitChart(d, s) {
+        var traits = arr(d.traitList);
+        var pts = arr(s.traitHistory).slice();
+        var today = dayKey(new Date());
+        var cur = {};
+        traits.forEach(function (t) { cur[t.id] = t.value; });
+        if (!pts.length || pts[pts.length - 1].day !== today) pts.push({ day: today, traits: cur });
+        var box = $('soul-chart');
+        var W = 320, H = 150, L = 26, R = 8, T = 8, B = 20;
+        var lo = 100, hi = 0;
+        pts.forEach(function (p) { traits.forEach(function (t) { var v = p.traits[t.id]; if (typeof v === 'number') { lo = Math.min(lo, v); hi = Math.max(hi, v); } }); });
+        lo = Math.max(0, Math.floor((lo - 5) / 10) * 10);
+        hi = Math.min(100, Math.ceil((hi + 5) / 10) * 10);
+        if (hi - lo < 20) { hi = Math.min(100, lo + 20); lo = Math.max(0, hi - 20); }
+        function X(i) { return pts.length < 2 ? (L + W - R) / 2 : L + i * (W - L - R) / (pts.length - 1); }
+        function Y(v) { return T + (hi - v) * (H - T - B) / (hi - lo); }
+        var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '">';
+        for (var g = lo; g <= hi; g += (hi - lo > 40 ? 20 : 10)) {
+          svg += '<line class="grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(g) + '" y2="' + Y(g) + '"/><text x="' + (L - 4) + '" y="' + (Y(g) + 3) + '" text-anchor="end">' + g + '</text>';
+        }
+        var fmt = function (k) { return k.slice(8, 10) + '.' + k.slice(5, 7); };
+        svg += '<text x="' + L + '" y="' + (H - 5) + '">' + fmt(pts[0].day) + '</text>';
+        if (pts.length > 1) svg += '<text x="' + (W - R) + '" y="' + (H - 5) + '" text-anchor="end">' + fmt(pts[pts.length - 1].day) + '</text>';
+        traits.forEach(function (t, ti) {
+          var c = TRAIT_COLORS[ti % TRAIT_COLORS.length];
+          var path = '';
+          pts.forEach(function (p, i) {
+            var v = p.traits[t.id];
+            if (typeof v !== 'number') return;
+            path += (path ? ' L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1);
+          });
+          if (pts.length > 1) svg += '<path d="' + path + '" fill="none" stroke="' + c + '" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>';
+          pts.forEach(function (p, i) {
+            var v = p.traits[t.id];
+            if (typeof v !== 'number') return;
+            svg += '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(v).toFixed(1) + '" r="' + (pts.length > 40 ? 1.2 : 2.4) + '" fill="' + c + '"><title>' + t.name + ' ' + v + ' · ' + fmt(p.day) + '</title></circle>';
+          });
+        });
+        box.innerHTML = svg + '</svg>';
+        $('soul-chart-meta').textContent = pts.length + ' ' + plural(pts.length, 'день', 'дня', 'дней');
+        var lg = $('soul-chart-legend');
+        lg.textContent = '';
+        traits.forEach(function (t, ti) {
+          var first = pts[0].traits[t.id];
+          var delta = typeof first === 'number' ? t.value - first : 0;
+          var sp = el('span');
+          var i = el('i');
+          i.style.background = TRAIT_COLORS[ti % TRAIT_COLORS.length];
+          sp.appendChild(i);
+          sp.appendChild(document.createTextNode(t.name + ' '));
+          sp.appendChild(el('b', '', String(t.value)));
+          if (delta) sp.appendChild(document.createTextNode(' (' + (delta > 0 ? '+' : '') + delta + ')'));
+          lg.appendChild(sp);
+        });
+      }
 
       function smallBtn(text, label, fn, cls) {
         var b = el('button', cls || '', text);
@@ -3036,12 +3195,15 @@
         stage.style.setProperty('--stage-accent', theme.core);
       }
 
-      var data = { notes: [], memory: [], docs: [], links: [], messages: 0 };
+      var data = { notes: [], memory: [], docs: [], links: [], messages: 0, soul: [] };
+      var SOUL_TYPES = { moment: 'Важные моменты', interest: 'Её увлечения', opinion: 'Её мнения', aim: 'Её цели', dream: 'Её сны' };
+      var SOUL_COLOR = 'hsl(330, 85%, 72%)';
+      var lit = {}; // узлы, которые сейчас светятся: id → { start, until }
       var graph = { nodes: [], links: [], groups: [], byId: {} };
       var groupColor = {};
 
       var MONTHS = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
-      var KIND = { note: 'Заметка', memory: 'Воспоминание', doc: 'Документ' };
+      var KIND = { note: 'Заметка', memory: 'Воспоминание', doc: 'Документ', soul: 'Душа' };
       function monthName(t) { var d = new Date(t || 0); return MONTHS[d.getMonth()] + ' ' + d.getFullYear(); }
       function cut(text, n) { text = String(text || '').replace(/\s+/g, ' ').trim(); return text.length > n ? text.slice(0, n - 1) + '…' : text; }
       function ago(t) {
@@ -3057,12 +3219,13 @@
         var b = (chars || 0) * 2;
         return b < 1024 ? b + ' Б' : b < 1048576 ? Math.round(b / 1024) + ' КБ' : (b / 1048576).toFixed(1) + ' МБ';
       }
-      function groupKind(g) { return g.kind === 'memory' ? 'разговоры' : g.kind === 'doc' ? 'документы' : 'раздел памяти'; }
+      function groupKind(g) { return g.kind === 'memory' ? 'разговоры' : g.kind === 'doc' ? 'документы' : g.kind === 'soul' ? 'душа Яэри' : 'раздел памяти'; }
       function memTitle(text) { return cut(String(text || '').replace(/^Пользователь:\s*/, '').split('\n')[0], 48); }
 
       function groupKey(kind, item) {
-        if (view.group === 'types') return kind === 'note' ? 'Рабочая память' : kind === 'memory' ? 'Разговоры' : 'Документы';
+        if (view.group === 'types') return kind === 'note' ? 'Рабочая память' : kind === 'memory' ? 'Разговоры' : kind === 'soul' ? 'Душа' : 'Документы';
         if (kind === 'note') return item.cat || 'Общее';
+        if (kind === 'soul') return 'Душа · ' + (SOUL_TYPES[item.type] || 'другое');
         if (kind === 'memory') return 'Разговоры · ' + monthName(item.t);
         return 'Документы';
       }
@@ -3073,6 +3236,7 @@
         if (groupColor[key]) return groupColor[key];
         if (kind === 'memory') return theme.colors[3 % theme.colors.length];
         if (kind === 'doc') return theme.colors[4 % theme.colors.length];
+        if (kind === 'soul') return SOUL_COLOR;
         return theme.colors[hashStr(key) % theme.colors.length];
       }
 
@@ -3094,7 +3258,7 @@
             gList.push(g);
           }
           var t = kind === 'doc' ? item.added : item.t;
-          var n = { id: (kind === 'note' ? 'n:' : kind === 'memory' ? 'm:' : 'd:') + item.id, type: 'leaf', kind: kind, item: item, group: g, label: title, t: t || 0, x: 0, y: 0 };
+          var n = { id: (kind === 'note' ? 'n:' : kind === 'memory' ? 'm:' : kind === 'soul' ? 's:' : 'd:') + item.id, type: 'leaf', kind: kind, item: item, group: g, label: title, t: t || 0, x: 0, y: 0 };
           g.items.push(n);
           g.t = Math.max(g.t, n.t);
           nodes.push(n);
@@ -3103,16 +3267,18 @@
         data.notes.forEach(function (n) { addItem('note', n, cut(n.text, 48)); });
         data.memory.forEach(function (m) { addItem('memory', m, memTitle(m.text)); });
         data.docs.forEach(function (d) { addItem('doc', d, cut(d.name, 48)); });
+        (data.soul || []).forEach(function (x) { addItem('soul', x, cut(x.title || x.text, 48)); });
 
         // Порядок групп: заметки по алфавиту, затем документы, затем разговоры по времени.
-        var rank = { note: 0, doc: 1, memory: 2 };
+        var rank = { note: 0, soul: 1, doc: 2, memory: 3 };
         gList.sort(function (a, b) {
           if (view.group === 'types') return rank[a.kind] - rank[b.kind];
           return rank[a.kind] - rank[b.kind] || (a.kind === 'memory' ? a.t - b.t : a.key.localeCompare(b.key, 'ru'));
         });
         var ci = 0;
         gList.forEach(function (g) {
-          if (view.group === 'types') groupColor[g.key] = theme.colors[{ note: 0, memory: 3, doc: 4 }[g.kind] % theme.colors.length];
+          if (g.kind === 'soul') groupColor[g.key] = SOUL_COLOR;
+          else if (view.group === 'types') groupColor[g.key] = theme.colors[{ note: 0, memory: 3, doc: 4 }[g.kind] % theme.colors.length];
           else if (g.kind === 'memory') groupColor[g.key] = theme.colors[3 % theme.colors.length];
           else if (g.kind === 'doc') groupColor[g.key] = theme.colors[4 % theme.colors.length];
           else { groupColor[g.key] = theme.colors[[0, 1, 2, 5, 6][ci % 5] % theme.colors.length]; ci++; }
@@ -3441,7 +3607,7 @@
           return (n.collapsed ? 9 + Math.min(14, Math.sqrt(n.items.length) * 2.2) : 6) * Math.sqrt(s);
         }
         if (n.kind === 'memory' && view.layout === 'rings') return 7.5 * Math.sqrt(s);
-        var base = n.kind === 'doc' ? 5.5 : n.kind === 'note' ? 4.6 : 3.4;
+        var base = n.kind === 'doc' ? 5.5 : n.kind === 'note' ? 4.6 : n.kind === 'soul' ? 4.8 : 3.4;
         if (n.kind === 'note' && n.item.pinned) base += 1.2;
         return base * s;
       };
@@ -3592,6 +3758,10 @@
             if (n.kind === 'doc') {
               ctx.fillStyle = n.color;
               ctx.beginPath(); ctx.rect(n.x - r, n.y - r, r * 2, r * 2); ctx.fill();
+            } else if (n.kind === 'soul') {
+              // Ромб: узлы души отличаются и цветом, и формой.
+              ctx.fillStyle = n.color;
+              ctx.beginPath(); ctx.moveTo(n.x, n.y - r * 1.25); ctx.lineTo(n.x + r * 1.05, n.y); ctx.lineTo(n.x, n.y + r * 1.25); ctx.lineTo(n.x - r * 1.05, n.y); ctx.closePath(); ctx.fill();
             } else if (n.kind === 'note') {
               ctx.fillStyle = n.color;
               ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, TAU); ctx.fill();
@@ -3676,6 +3846,29 @@
             ctx.textAlign = 'center'; ctx.textBaseline = 'top';
             ctx.fillText('ЯЭРИ', core.x, core.y + R + 16);
           }
+        }
+
+        // Свечение узлов, на которые Яэри опиралась в последнем ответе.
+        var litIds = Object.keys(lit);
+        if (litIds.length) {
+          var self2 = this;
+          litIds.forEach(function (id) {
+            var L = lit[id];
+            if (now > L.until) { delete lit[id]; return; }
+            var n = graph.byId[id];
+            if (!n) return;
+            if (!visible(n)) n = n.group;
+            var r = self2.nodeR(n);
+            var fade = Math.min(1, (L.until - now) / 1200, (now - L.start) / 300);
+            var ph = ((now - L.start) % 1500) / 1500;
+            ctx.strokeStyle = theme.core;
+            ctx.lineWidth = 2 / Math.max(k, 0.3);
+            ctx.globalAlpha = fade * (1 - ph);
+            ctx.beginPath(); ctx.arc(n.x, n.y, r + (4 + ph * 22) / Math.max(k, 0.3), 0, TAU); ctx.stroke();
+            ctx.globalAlpha = fade * 0.9;
+            ctx.beginPath(); ctx.arc(n.x, n.y, r + 2.5 / Math.max(k, 0.3), 0, TAU); ctx.stroke();
+          });
+          ctx.globalAlpha = 1;
         }
 
         // Подписи групп.
@@ -3912,6 +4105,9 @@
         } else if (n.kind === 'memory') {
           btn('Спросить Яэри', function () { App.ask('Помнишь наш разговор: «' + memTitle(it.text) + '»? Давай продолжим.'); }, true);
           if (App.isOnline()) btn('Забыть', function () { App.deleteMemory(it).then(function (ok) { if (ok) select(null); }); });
+        } else if (n.kind === 'soul') {
+          btn('Открыть «Душу»', function () { App.showView('soul'); }, true);
+          btn('Спросить Яэри', function () { App.ask('Расскажи мне про это: «' + cut(it.title || it.text, 80) + '». Что ты об этом думаешь?'); });
         } else if (n.kind === 'doc') {
           btn('Спросить по документу', function () { App.ask('Что важного в документе «' + it.name + '»?'); }, true);
           btn('Удалить', function () { App.deleteDoc(it).then(function (ok) { if (ok) select(null); }); });
@@ -4060,6 +4256,7 @@
         var sem = graph.links.filter(function (l) { return l.kind === 'sem'; }).length;
         var names = { rings: 'кольца', stars: 'созвездие', hex: 'соты', force: 'силы', time: 'время' };
         var parts = [data.notes.length + ' заметок', data.memory.length + ' воспоминаний', data.docs.length + ' документов'];
+        if ((data.soul || []).length) parts.push(data.soul.length + ' в душе');
         if (sem) parts.push(sem + ' связей по смыслу');
         if (state.query) parts.push('найдено: ' + Object.keys(state.matches).length);
         $('brain-sub').textContent = parts.join(' · ') + ' · ' + names[view.layout];
@@ -4121,6 +4318,7 @@
         var dt = lastFrame ? Math.min(100, now - lastFrame) : 0;
         lastFrame = now;
         if (motion && dt && spin(dt)) { dirty = true; miniDirty = true; }
+        for (var litKey in lit) { if (lit.hasOwnProperty(litKey)) { dirty = true; miniDirty = true; break; } }
         if (anim) {
           var p = Math.min(1, (now - anim.start) / anim.dur);
           var e = ease(p);
@@ -4182,6 +4380,11 @@
         },
         colorFor: function (kind, key) { return groupColor[key] || colorFor(kind, key); },
         restyle: function () { pickTheme(); renderThemes(); rebuild(true); },
+        light: function (ids, ms) {
+          var now = performance.now();
+          (ids || []).forEach(function (id) { lit[id] = { start: now, until: now + (ms || 8000) }; });
+          dirty = true; miniDirty = true;
+        },
         onShow: function (name) { dirty = true; miniDirty = true; if (name === 'brain' && !main.fitted) needFit = true; }
       };
 
