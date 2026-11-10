@@ -56,7 +56,17 @@ function Save-YEvolution {
         }
         while ($script:Evo[$name].Count -gt $max) { $script:Evo[$name].RemoveAt(0) }
     }
-    Write-YJsonFile $script:EvoFile $script:Evo
+    # JavaScriptSerializer in Windows PowerShell 5.1 must receive arrays,
+    # not PowerShell-wrapped ArrayList objects (PSParameterizedProperty cycle).
+    $plain = @{}
+    foreach ($key in @($script:Evo.Keys)) {
+        if (@('queue','facts','episodes','corrections','links','events','timeline') -contains [string]$key) {
+            $plain[$key] = $script:Evo[$key].ToArray()
+        } else {
+            $plain[$key] = $script:Evo[$key]
+        }
+    }
+    Write-YJsonFile $script:EvoFile $plain
 }
 function Add-YEvolutionEvent([string]$Kind, [string]$Message, [string]$Source = '') {
     [void]$script:Evo.events.Add(@{
