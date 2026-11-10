@@ -727,9 +727,12 @@ function Get-YBrain {
     } catch {
         $note = 'Связи по смыслу не посчитались: ' + $_.Exception.Message
     }
+    $soulNodes = @()
+    try { $soulNodes = Get-YSoulNodes } catch { $soulNodes = @() }
     return @{
         notes = $script:Notes.ToArray(); memory = $mem.ToArray(); docs = $script:Docs.ToArray()
         links = $links; messages = $script:History.Count; memoryTotal = $script:Memory.Count; note = $note
+        soul = $soulNodes
     }
 }
 
@@ -820,7 +823,7 @@ function Invoke-YChat($Req) {
                     foreach ($hit in (Find-YSimilar $queryVec $script:Chunks ([int]$script:Config.ragTopK) $minScore)) {
                         $n = $contextLines.Count + 1
                         $contextLines.Add('[' + $n + '] Документ «' + $hit.Item['docName'] + '», фрагмент ' + $hit.Item['n'] + ":`n" + $hit.Item['text'])
-                        $sources.Add(@{ kind = 'doc'; label = ([string]$hit.Item['docName'] + ' #' + $hit.Item['n']); score = [Math]::Round($hit.Score, 3) })
+                        $sources.Add(@{ kind = 'doc'; id = ('d:' + [string]$hit.Item['docId']); label = ([string]$hit.Item['docName'] + ' #' + $hit.Item['n']); score = [Math]::Round($hit.Score, 3) })
                     }
                 } else {
                     $ragNote = 'Документы не использованы: сменилась модель эмбеддингов, нужна переиндексация.'
@@ -831,7 +834,7 @@ function Invoke-YChat($Req) {
                     $n = $contextLines.Count + 1
                     $when = [DateTimeOffset]::FromUnixTimeMilliseconds([long]$hit.Item['t']).ToLocalTime().ToString('dd.MM.yyyy')
                     $contextLines.Add('[' + $n + '] Из прошлого разговора (' + $when + "):`n" + $hit.Item['text'])
-                    $sources.Add(@{ kind = 'memory'; label = ('память, ' + $when); score = [Math]::Round($hit.Score, 3) })
+                    $sources.Add(@{ kind = 'memory'; id = ('m:' + [string]$hit.Item['id']); label = ('память, ' + $when); score = [Math]::Round($hit.Score, 3) })
                 }
             }
         } catch {
@@ -844,7 +847,7 @@ function Invoke-YChat($Req) {
         try {
             foreach ($hit in (Find-YSoulRecall $queryVec 3 ([double]$script:Config.minScore + 0.05))) {
                 $soulRecall.Add('- ' + [string]$hit.Item.text)
-                $sources.Add(@{ kind = 'soul'; label = $(if ($hit.Item.kind -eq 'moment') { 'момент' } else { 'дневник' }); score = [Math]::Round($hit.Score, 3) })
+                $sources.Add(@{ kind = 'soul'; id = ('s:' + [string]$hit.Item.id); label = $(if ($hit.Item.kind -eq 'moment') { 'момент' } else { 'дневник' }); score = [Math]::Round($hit.Score, 3) })
             }
         } catch { }
     }

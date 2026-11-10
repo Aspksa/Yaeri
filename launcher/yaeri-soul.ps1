@@ -146,6 +146,16 @@ function ConvertTo-YSoulLists($s, $Raw) {
     }
     $s.secrets = $sc.ToArray()
     $s.dreamPending = [string](Get-YValue $Raw 'dreamPending' '')
+    $th = New-Object System.Collections.Generic.List[object]
+    foreach ($x in (Get-YDictList (Get-YValue $Raw 'traitHistory' $null))) {
+        $day = [string](Get-YValue $x 'day' '')
+        $tv = Get-YValue $x 'traits' $null
+        if ($day -notmatch '^\d{4}-\d{2}-\d{2}$' -or -not ($tv -is [System.Collections.IDictionary])) { continue }
+        $vals = @{}
+        foreach ($t in $script:SoulTraits) { if (Test-YKey $tv $t.id) { $vals[$t.id] = [int](Limit-YNum (Get-YNum $tv[$t.id] 50) 0 100) } }
+        $th.Add(@{ day = $day; traits = $vals })
+    }
+    $s.traitHistory = $th.ToArray()
     $care = Get-YValue $Raw 'care' $null
     if ($care -is [System.Collections.IDictionary]) {
         $s.care = @{ morning = [string](Get-YValue $care 'morning' ''); evening = [string](Get-YValue $care 'evening' '') }
@@ -178,6 +188,7 @@ function New-YSoul {
         care = @{ morning = ''; evening = '' }
         needs = @{ joy = 55; curiosity = 60; t = $now }
         secrets = @(); dreamPending = ''
+        traitHistory = @()
     }
 }
 
@@ -281,6 +292,34 @@ function Get-YSoulView {
         needs = (Get-YSoulNeeds); secretList = (Get-YSecretsView)
         sleepDue = ([long]$s.exchanges -gt 0 -and (Get-YNow) - [long]$s.lastSleep -ge $script:SoulSleepAfterMs)
     }
+}
+
+function Add-YTraitPoint {
+    # Точка истории характера: одна на день, последняя за день побеждает.
+    $s = $script:Soul
+    $day = Get-YDayKey
+    $vals = @{}
+    foreach ($t in $script:SoulTraits) { $vals[$t.id] = [int]$s.traits[$t.id] }
+    $list = New-Object System.Collections.Generic.List[object]
+    foreach ($p in @($s.traitHistory)) { if ([string]$p.day -ne $day) { $list.Add($p) } }
+    $list.Add(@{ day = $day; traits = $vals })
+    while ($list.Count -gt 365) { $list.RemoveAt(0) }
+    $s.traitHistory = $list.ToArray()
+}
+
+function Get-YSoulNodes {
+    # Узлы души для «второго мозга»: моменты, увлечения, мнения, цели и сны.
+    $s = $script:Soul
+    $out = New-Object System.Collections.Generic.List[object]
+    foreach ($m in @($s.moments)) { $out.Add(@{ id = [string]$m.id; type = 'moment'; title = [string]$m.title; text = ([string]$m.title + '. ' + [string]$m.text); t = [long]$m.t; strength = $m.strength }) }
+    $i = 0
+    foreach ($x in @($s.interests)) { $i++; $out.Add(@{ id = 'int' + $i; type = 'interest'; title = [string]$x.name; text = ([string]$x.name + $(if ($x.note) { ' — ' + [string]$x.note } else { '' })); t = 0; strength = $x.strength }) }
+    $i = 0
+    foreach ($x in @($s.opinions)) { $i++; $out.Add(@{ id = 'op' + $i; type = 'opinion'; title = [string]$x.topic; text = ([string]$x.topic + ': ' + [string]$x.view); t = 0 }) }
+    foreach ($x in @($s.aims)) { $out.Add(@{ id = [string]$x.id; type = 'aim'; title = [string]$x.text; text = ([string]$x.text + ' — ' + [int]$x.progress + '%'); t = [long]$x.t; progress = [int]$x.progress }) }
+    $dreams = @(@($s.journal) | Where-Object { [string]$_.kind -eq 'dream' } | Select-Object -Last 30)
+    foreach ($e in $dreams) { $out.Add(@{ id = [string]$e.id; type = 'dream'; title = (Get-YCleanLine ([string]$e.text) 48); text = [string]$e.text; t = [long]$e.t }) }
+    return , $out.ToArray()
 }
 
 function Get-YSoulSkills([int]$Level) {
@@ -664,6 +703,7 @@ function Invoke-YSoulReflect($Req) {
     $thought = Get-YCleanLine ([string](Get-YValue $r 'thought' '')) 400
     if ($thought) { $s.thought = $thought; $s.thoughtNew = $true }
     $bonus = Update-YSoulGrowth $r $kind
+    Add-YTraitPoint
     $nd = Get-YValue $r 'needs' $null
     if ($nd -is [System.Collections.IDictionary]) { Add-YSoulNeeds (Limit-YNum (Get-YNum (Get-YValue $nd 'joy' 0) 0) -15 15) (Limit-YNum (Get-YNum (Get-YValue $nd 'curiosity' 0) 0) -15 15) }
     $secret = $null
@@ -939,6 +979,7 @@ function Update-YSoul($Req) {
         foreach ($t in $script:SoulTraits) {
             if (Test-YKey $tr $t.id) { $s.traits[$t.id] = [int](Limit-YNum (Get-YNum $tr[$t.id] $s.traits[$t.id]) 0 100) }
         }
+        Add-YTraitPoint
     }
     $del = [string](Get-YValue $Req 'removeJournal' '')
     if ($del) {
