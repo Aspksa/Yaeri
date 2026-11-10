@@ -267,38 +267,18 @@
     .send:hover { background: var(--a-glow); }
     .send:active { transform: scale(.97); }
     .send:disabled { opacity: .55; cursor: progress; }
-    /* Яэри в чате: фигура слева от переписки, поза меняется по настроению */
+    /* Яэри в чате: маленькое лицо в шапке, поза меняется по настроению */
     .chat-card { container-type: inline-size; container-name: chat; }
-    .chat-main { flex: 1; min-height: 0; display: grid; grid-template-columns: clamp(190px, 36%, 340px) minmax(0, 1fr); }
-    .stage-fig {
-      position: relative; min-height: 0; display: flex; align-items: flex-end; justify-content: center; overflow: hidden;
-      padding: 0; border: 0; background: linear-gradient(hsl(var(--h) 30% 7% / 0), hsl(var(--h) 40% 10% / .7));
-      cursor: pointer;
-      -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
-      mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+    .chat-main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); }
+    .chat-main .chat { border-left: 0; }
+    .head-face {
+      flex: none; display: block; width: 36px; height: 36px; padding: 0; border-radius: 50%; overflow: hidden; cursor: pointer;
+      border: 1px solid var(--a); background: var(--surface-solid); box-shadow: 0 0 10px hsl(var(--h) 80% 55% / .35);
+      transition: transform .2s, box-shadow .2s;
     }
-    .chat-main .chat { border-left: 1px solid var(--line); }
-    .stage-glow {
-      position: absolute; left: 50%; bottom: 22%; width: 160%; aspect-ratio: 1; transform: translateX(-50%);
-      background: radial-gradient(closest-side, hsl(var(--h) 80% 60% / .22), hsl(45 90% 70% / .08) 55%, transparent);
-      pointer-events: none;
-    }
-    .fig-img {
-      position: absolute; left: 50%; bottom: 34px; translate: -50% 0; display: block; width: auto; max-width: none; height: min(86%, 620px);
-      filter: drop-shadow(0 10px 24px rgb(0 0 0 / .45));
-      transition: opacity .2s ease, transform .2s ease; user-select: none; -webkit-user-drag: none;
-    }
-    .fig-img.swap { opacity: 0; transform: translateY(6px) scale(.985); }
-    html[data-motion="on"] .stage-fig:not(.busy) .fig-img:not(.swap) { animation: breathe 5.5s ease-in-out infinite; }
-    @keyframes breathe { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
-    .stage-fig:hover .stage-glow, .stage-fig:focus-visible .stage-glow { background: radial-gradient(closest-side, hsl(var(--h) 80% 62% / .34), hsl(45 90% 70% / .12) 55%, transparent); }
-    .stage-fig:focus-visible { outline-offset: -3px; }
-    .stage-cap {
-      position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); max-width: calc(100% - 16px);
-      padding: 5px 11px; border: 1px solid hsl(var(--h) 50% 40% / .55); border-radius: 999px; background: hsl(var(--h) 30% 6% / .88);
-      color: var(--a); font: 600 .66rem/1.2 var(--mono); letter-spacing: .06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .head-face { display: none; flex: none; width: 32px; height: 32px; border-radius: 50%; overflow: hidden; border: 1px solid var(--a); box-shadow: 0 0 10px hsl(var(--h) 80% 55% / .35); }
+    .head-face:hover { transform: scale(1.06); box-shadow: 0 0 16px hsl(var(--h) 80% 60% / .55); }
+    .head-face:focus-visible { outline: 2px solid var(--a); outline-offset: 2px; }
+    body.is-thinking .head-face { box-shadow: 0 0 16px hsl(var(--h) 80% 60% / .7); }
     .face-img { display: block; width: 100%; height: 100%; object-fit: cover; }
     .chat-card .card-head h2::before { display: none; }
     .mood { color: var(--a); font: 500 .66rem/1.2 var(--mono); letter-spacing: .06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
@@ -310,10 +290,6 @@
     .model-chip:hover { color: var(--ink); border-color: var(--a); }
     .pop-close { display: none; font-size: .9rem; padding: 2px 9px; }
     @container chat (max-width: 560px) {
-      .chat-main { grid-template-columns: minmax(0, 1fr); }
-      .stage-fig { display: none; }
-      .chat-main .chat { border-left: 0; }
-      .head-face { display: block; }
       .model-chip { display: none; }
     }
     .connect-banner {
@@ -1030,7 +1006,7 @@
       <div class="col col-center">
         <section class="card chat-card" id="chat-card" aria-label="Чат с Яэри">
           <div class="card-head">
-            <span class="head-face" aria-hidden="true"><img class="face-img" src="yaeri/idle-face.webp" alt="" width="32" height="32"></span>
+            <button class="head-face" type="button" id="yaeri-stage" aria-label="Яэри. Нажмите, чтобы написать ей"><img class="face-img" src="yaeri/idle-face.webp" alt="" width="36" height="36"></button>
             <h2>Разговор</h2>
             <span class="mood" id="mood-text" aria-live="polite">слушает</span>
             <div class="head-actions">
@@ -1040,11 +1016,6 @@
             </div>
           </div>
           <div class="chat-main">
-            <button class="stage-fig" type="button" id="yaeri-stage" aria-label="Яэри. Нажмите, чтобы написать ей">
-              <span class="stage-glow" aria-hidden="true"></span>
-              <img class="fig-img" id="fig-img" src="yaeri/idle.webp" alt="" width="600" height="600">
-              <span class="stage-cap" id="stage-cap">Слушаю вас</span>
-            </button>
             <div class="chat" id="chat" role="log" aria-live="polite" aria-relevant="additions"></div>
           </div>
           <div class="connect-banner" id="connect-banner" hidden>
@@ -2349,7 +2320,6 @@
         miss:   { pose: 'greet',  cap: 'Я скучала!',          text: 'рада вас видеть' },
         grow:   { pose: 'happy',  cap: 'Зажёгся новый хвост!', text: 'растёт' }
       };
-      var figImg = $('fig-img');
       var stage = $('yaeri-stage');
       var mood = { base: 'idle', cur: '', flash: 0, swap: 0 };
       var poseCache = {};
@@ -2357,28 +2327,19 @@
         Object.keys(MOODS).forEach(function (k) {
           var p = MOODS[k].pose;
           if (poseCache[p]) return;
-          poseCache[p] = [new Image(), new Image()];
-          poseCache[p][0].src = 'yaeri/' + p + '.webp';
-          poseCache[p][1].src = 'yaeri/' + p + '-face.webp';
+          poseCache[p] = [new Image()];
+          poseCache[p][0].src = 'yaeri/' + p + '-face.webp';
         });
       }
       function renderMood(name) {
         var m = MOODS[name] || MOODS.idle;
         var prev = MOODS[mood.cur];
         mood.cur = name;
-        $('stage-cap').textContent = m.cap;
         $('mood-text').textContent = m.text;
         stage.classList.toggle('busy', name === 'think');
         body.classList.toggle('is-thinking', name === 'think');
         if (prev && prev.pose === m.pose) return;
         each(document.querySelectorAll('.face-img'), function (img) { img.src = 'yaeri/' + m.pose + '-face.webp'; });
-        clearTimeout(mood.swap);
-        if (!settings.motion || !prev) { figImg.src = 'yaeri/' + m.pose + '.webp'; return; }
-        figImg.classList.add('swap');
-        mood.swap = setTimeout(function () {
-          figImg.src = 'yaeri/' + m.pose + '.webp';
-          figImg.classList.remove('swap');
-        }, 170);
       }
       function setBase(name) {
         mood.base = name;
