@@ -15,6 +15,12 @@ jobs:
       - name: Soul 3.0 persistence and logic tests
         shell: cmd
         run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\\test-soul3.ps1
+      - name: Soul Curiosity persistence and logic tests
+        shell: cmd
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\test-soul-curiosity.ps1
+      - name: Soul Understanding logic tests
+        shell: cmd
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\test-soul-understanding.ps1
       - name: Browser JavaScript syntax
         shell: cmd
         run: node tests\check-site.js

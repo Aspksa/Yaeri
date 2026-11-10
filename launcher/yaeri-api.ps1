@@ -15,6 +15,8 @@ $script:Utf8 = [System.Text.UTF8Encoding]::new($false)
 . (Join-Path $PSScriptRoot 'yaeri-soul.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-evolution.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-growth.ps1')
+. (Join-Path $PSScriptRoot 'yaeri-curiosity.ps1')
+. (Join-Path $PSScriptRoot 'yaeri-understanding.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-bond.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-reason.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-relationship.ps1')
@@ -159,6 +161,31 @@ function ConvertFrom-YJson([string]$Text) {
 function ConvertTo-YJson($Value) {
     if ($null -ne $script:Serializer) { return $script:Serializer.Serialize($Value) }
     return ($Value | ConvertTo-Json -Depth 100 -Compress)
+}
+
+# Копия данных из «чистых» типов: хэш-таблицы, object[] и примитивы. JavaScriptSerializer в Windows PowerShell 5.1
+# падает («circular reference ... PSParameterizedProperty»), если ему попадает объект, обёрнутый PowerShell (PSObject).
+function ConvertTo-YPlain($Value) {
+    if ($null -eq $Value) { return $null }
+    $base = $Value.PSObject.BaseObject
+    if ($base -is [string]) { return [string]$base }
+    if ($base -is [bool]) { return [bool]$base }
+    if ($base -is [int] -or $base -is [long] -or $base -is [double] -or $base -is [decimal] -or $base -is [single] -or
+        $base -is [byte] -or $base -is [int16] -or $base -is [uint32] -or $base -is [uint64]) { return $base }
+    if ($base -is [datetime]) { return $base.ToString('o') }
+    if ($base -is [System.Collections.IDictionary]) {
+        $copy = @{}
+        foreach ($key in @($base.Keys)) { $copy[[string]$key] = ConvertTo-YPlain $base[$key] }
+        return $copy
+    }
+    if ($base -is [System.Collections.IEnumerable]) {
+        $items = New-Object System.Collections.Generic.List[object]
+        foreach ($item in $base) { $items.Add((ConvertTo-YPlain $item)) }
+        return , $items.ToArray()
+    }
+    $copy = @{}
+    foreach ($prop in $base.PSObject.Properties) { $copy[[string]$prop.Name] = ConvertTo-YPlain $prop.Value }
+    return $copy
 }
 
 function Read-YJsonFile([string]$Path) {
@@ -309,6 +336,8 @@ function Import-YStore {
     Import-YSoul
     Import-YEvolution
     Import-Y3
+    Import-YCuriosity
+    Import-YUnderstanding
 }
 
 function Save-YHistory { Write-YJsonFile $script:HistoryFile @{ version = 1; messages = $script:History.ToArray() } }
@@ -684,6 +713,7 @@ function Get-YNotesPrompt {
     $lines = New-Object System.Collections.Generic.List[string]
     $size = 0
     foreach ($n in $sorted) {
+        if (-not (Test-YTopicVisible ([string]$n['text']))) { continue }
         $line = '- [' + [string]$n['cat'] + '] ' + [string]$n['text']
         if ($size + $line.Length -gt 6000) { break }
         $lines.Add($line)
@@ -818,6 +848,8 @@ function Invoke-YChat($Req) {
     $userMsg = @{ id = (New-YId); role = 'user'; text = $text; t = (Get-YNow) }
     [void]$script:History.Add($userMsg)
     Save-YHistory
+    # Состояние хозяина и темы, которые он сам упомянул в этой реплике (для приватности и подстройки тона).
+    try { Update-YUndTurn $text } catch { }
 
     # Поиск по документам и памяти.
     $sources = New-Object System.Collections.Generic.List[object]
@@ -883,6 +915,13 @@ function Invoke-YChat($Req) {
     if ($useSoul -and $script:Y3.enabled) {
         $system += [Environment]::NewLine + [Environment]::NewLine + 'Твоя эволюция Soul 3.0:' + [Environment]::NewLine + (Get-Y3Prompt) +
             [Environment]::NewLine + (Get-Y3ReasonPrompt)
+        $curiosity = Get-YCuriosityPrompt
+        if ($curiosity) { $system += [Environment]::NewLine + 'Твоё самообучение:' + [Environment]::NewLine + $curiosity }
+    }
+    if ($useSoul) {
+        $understanding = ''
+        try { $understanding = Get-YUnderstandingPrompt $text } catch { $understanding = '' }
+        if ($understanding) { $system += [Environment]::NewLine + [Environment]::NewLine + 'Понимание хозяина:' + [Environment]::NewLine + $understanding }
     }
     if ($innerVoice) {
         $system += "`n`nПеред ответом коротко подумай про себя в теге <мысли>…</мысли> (2–4 фразы): что хозяин сейчас чувствует и чего хочет, " +
@@ -934,6 +973,7 @@ function Invoke-YChat($Req) {
     $newNotes = New-Object System.Collections.Generic.List[object]
     foreach ($tag in [regex]::Matches($content, $script:NoteTag)) {
         if (-not $autoNotes) { continue }
+        if (Test-YTopicBlocked ([string]$tag.Groups[2].Value)) { continue }
         $item = Add-YNoteItem $tag.Groups[1].Value $tag.Groups[2].Value 'yaeri'
         if ($null -ne $item) { $newNotes.Add($item) }
     }
@@ -1067,6 +1107,17 @@ function Invoke-YApi([string]$Method, [string]$Path, [string]$BodyText) {
         'POST /api/soul3/plans/step' { return Set-Y3PlanStep $req }
         'POST /api/soul3/promises' { return Add-Y3Promise $req }
         'POST /api/soul3/promises/update' { return Set-Y3Promise $req }
+        'GET /api/soul/growth'     { return Get-YGrowthView }
+        'POST /api/soul/growth/settings' { return Set-YGrowthSettings $req }
+        'POST /api/soul/growth/insight'  { return Set-YGrowthInsight $req }
+        'POST /api/soul/growth/run'      { return Invoke-YGrowthRun }
+        'POST /api/soul/growth/clear'    { return Clear-YCuriosity }
+        'GET /api/soul/understanding'          { return Get-YUnderstandingView }
+        'POST /api/soul/understanding/map'     { return Set-YUndMap $req }
+        'POST /api/soul/understanding/topic'   { return Set-YUndTopic $req }
+        'POST /api/soul/understanding/gap'     { return Set-YUndGap $req }
+        'POST /api/soul/understanding/clear'   { return Clear-YUnderstanding }
+        'POST /api/soul/rate'                  { return Add-YRating $req }
         'POST /api/soul/evolution' { return Set-YEvolution $req }
         'POST /api/soul/evolution/clear' { return Clear-YEvolution }
         'POST /api/soul/reflect'   { return Invoke-YEvolutionReflect $req }
