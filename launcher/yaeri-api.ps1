@@ -1050,6 +1050,7 @@ function Invoke-YApi([string]$Method, [string]$Path, [string]$BodyText) {
         'GET /api/soul'            { return Get-YSoulView }
         'GET /api/soul/evolution'  { return Get-YEvolutionView }
         'POST /api/soul/evolution' { return Set-YEvolution $req }
+        'POST /api/soul/evolution/clear' { return Clear-YEvolution }
         'POST /api/soul/reflect'   { return Invoke-YEvolutionReflect $req }
         'POST /api/soul/share'     { return Invoke-YSoulShare }
         'POST /api/soul/update'    { return Update-YSoul $req }
