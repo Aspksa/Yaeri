@@ -1444,7 +1444,13 @@
         r.addEventListener('change', function () { if (r.checked) { settings.size = r.value; changed(); } });
       });
       Object.keys(boxes).forEach(function (k) {
-        boxes[k].addEventListener('change', function () { settings[k] = boxes[k].checked; changed(); });
+        boxes[k].addEventListener('change', function () {
+          settings[k] = boxes[k].checked;
+          changed();
+          if (k === 'soul' && online) {
+            api('soul/evolution', { enabled: settings.soul }).then(loadEvolution).catch(function () {});
+          }
+        });
       });
       $('reset-settings').addEventListener('click', function () {
         settings = normalize(null);
@@ -3197,6 +3203,7 @@
       function startOnline() {
         online = true;
         applyMode();
+        if (!settings.soul) api('soul/evolution', { enabled: false }).catch(function () {});
         loadModels();
         loadDocs();
         return api('history').then(function (data) {
