@@ -937,7 +937,7 @@ function Invoke-YSoulCare($Req) {
         'Сейчас вечер. Коротко и заботливо спроси хозяина, как прошёл его день (1–3 фразы): можно вспомнить, что он планировал или что его тревожило.'
     })
     $sys = 'Ты — Яэри, восьмихвостая лисица-кицунэ и персональная AI-помощница. Обращайся к хозяину «' + $name + '». ' + $task +
-        " Пиши по-русски, живо, от себя, без тегов и пояснений. Ответь только текстом сообщения.`n`nТвоя душа:`n" + (Get-YSoulPrompt $name)
+        " Пиши по-русски, живо, от себя, без тегов и пояснений. Ответь только текстом сообщения.`n`nТвоя душа:`n" + (Get-YSoulPrompt $name) + [Environment]::NewLine + (Get-Y3CareHint)
     $ctx = 'Сейчас: ' + [DateTime]::Now.ToString('dd.MM.yyyy HH:mm, dddd', [System.Globalization.CultureInfo]::GetCultureInfo('ru-RU'))
     $notesText = Get-YNotesPrompt
     if ($notesText) { if ($notesText.Length -gt 2500) { $notesText = $notesText.Substring(0, 2500) }; $ctx += "`n`nРабочая память:`n" + $notesText }
