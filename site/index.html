@@ -622,6 +622,45 @@
     .trait { display: grid; grid-template-columns: 7.5em 1fr 2.2em; align-items: center; gap: 8px; font-size: .8rem; }
     .trait output { color: var(--muted); font: 600 .72rem/1 var(--mono); text-align: right; }
     .trait input[type="range"] { width: 100%; accent-color: var(--a); }
+    .soul-view { overflow-y: auto; align-items: start; scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
+    .soul-view .col, .soul-view .card { min-height: auto; }
+    .soul-view .card-body.grow { max-height: 70vh; }
+    .soul-gap { margin-top: 14px; }
+    .soul-sad { color: hsl(338 80% 75%); }
+    .mood-strip { display: grid; grid-template-columns: repeat(30, 1fr); gap: 2px; align-items: end; height: 54px; }
+    .mood-strip i { display: block; border-radius: 2px; background: var(--surface-2); min-height: 4px; }
+    .mood-strip i.s2 { height: 100%; background: var(--a); }
+    .mood-strip i.s1 { height: 78%; background: hsl(var(--h) 50% 50%); }
+    .mood-strip i.s0 { height: 55%; background: hsl(var(--h) 15% 45%); }
+    .mood-strip i.sm1 { height: 35%; background: hsl(338 50% 55%); }
+    .mood-strip i.sm2 { height: 20%; background: hsl(338 80% 62%); }
+    .moments, .aims, .opinions, .soul-skills { list-style: none; margin: 0; padding: 0; }
+    .moments li { position: relative; padding: 7px 50px 7px 0; border-bottom: 1px solid var(--line); }
+    .moments li:last-child { border-bottom: 0; }
+    .moments b { display: block; font: 600 .9rem/1.3 var(--serif); }
+    .moments p { margin: 2px 0 4px; color: var(--muted); font-size: .8rem; line-height: 1.4; }
+    .moments .str { display: block; height: 3px; border-radius: 2px; background: var(--surface-2); overflow: hidden; }
+    .moments .str i { display: block; height: 100%; background: var(--a); }
+    .moments .acts { position: absolute; top: 6px; right: 0; display: flex; gap: 2px; }
+    .moments .acts button, .aims button, .opinions button, .soul-list li button { opacity: .55; }
+    .moments li:hover button, .aims li:hover button, .opinions li:hover button { opacity: 1; }
+    .moments .acts button, .aims button, .opinions button { width: 22px; height: 22px; padding: 0; border: 0; border-radius: 5px; background: none; color: var(--faint); }
+    .moments .acts button:hover, .aims button:hover, .opinions button:hover { background: var(--surface-2); color: var(--ink); }
+    .moments .acts button.on { color: var(--a); opacity: 1; }
+    .moments .acts button:not(.on) { filter: grayscale(1); }
+    .aims li { display: grid; grid-template-columns: 1fr auto auto; gap: 4px 8px; align-items: center; padding: 5px 0; font-size: .82rem; }
+    .aims .bar { grid-column: 1 / -1; height: 4px; border-radius: 2px; background: var(--surface-2); overflow: hidden; }
+    .aims .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--a-deep), var(--a)); }
+    .aims output { color: var(--muted); font: 600 .7rem/1 var(--mono); }
+    #soul-aim-add { margin-top: 6px; padding: 5px 9px; font-size: .8rem; }
+    .opinions li { display: flex; gap: 6px; align-items: flex-start; padding: 4px 0; font-size: .82rem; line-height: 1.4; }
+    .opinions li span { flex: 1; }
+    .opinions b { color: var(--a); font-weight: 600; }
+    .soul-skills li { display: grid; grid-template-columns: auto 1fr; gap: 0 10px; padding: 5px 0; font-size: .8rem; }
+    .soul-skills li b { font: 600 .74rem/1.4 var(--mono); color: var(--a); }
+    .soul-skills li.locked { opacity: .45; }
+    .soul-skills li.locked b { color: var(--muted); }
+    .soul-skills li span { color: var(--muted); }
     .soul-mini { flex: none; }
     .soul-mini-body { display: flex; align-items: center; gap: 12px; padding: 10px 12px; cursor: pointer; border-radius: 0 0 12px 12px; }
     .soul-mini-body:hover { background: hsl(var(--h) 20% 12% / .5); }
@@ -962,9 +1001,12 @@
               <div class="stat"><b id="soul-st-ref">0</b><span>раздумий</span></div>
               <div class="stat"><b id="soul-st-days">0</b><span>дней</span></div>
             </div>
+            <p class="soul-small soul-sad" id="soul-sad" hidden></p>
+            <p class="soul-small" id="soul-sleep-note"></p>
           </div>
           <div class="card-foot soul-actions">
             <button class="mini-btn solid server-only" type="button" id="soul-think" hidden>Подумать сейчас</button>
+            <button class="mini-btn server-only" type="button" id="soul-sleep" hidden>Уснуть сейчас</button>
             <button class="mini-btn server-only" type="button" id="soul-reset" hidden>Сбросить душу</button>
             <span class="soul-status" id="soul-status" role="status"></span>
           </div>
@@ -972,6 +1014,21 @@
       </div>
 
       <div class="col">
+        <section class="card" aria-labelledby="soul-moods-title">
+          <div class="card-head">
+            <h2 id="soul-moods-title">Ваше настроение</h2>
+            <span class="card-meta">30 дней, как его видит Яэри</span>
+          </div>
+          <div class="card-body"><div class="mood-strip" id="soul-moods" role="img" aria-label="Настроение по дням"></div><p class="soul-small" id="soul-moods-note"></p></div>
+        </section>
+        <section class="card" aria-labelledby="soul-moments-title">
+          <div class="card-head">
+            <h2 id="soul-moments-title">Важные моменты</h2>
+            <span class="card-meta" id="soul-moments-count"></span>
+          </div>
+          <div class="card-body"><ul class="moments" id="soul-moments"></ul></div>
+          <div class="card-foot"><span>Что вспоминается — крепнет, что нет — бледнеет. 📌 — не забывать</span></div>
+        </section>
         <section class="card grow" aria-labelledby="soul-journal-title">
           <div class="card-head">
             <h2 id="soul-journal-title">Дневник Яэри</h2>
@@ -997,6 +1054,27 @@
             <div class="soul-list" data-key="likes"><span class="soul-lbl">Что вам нравится</span><ul></ul><input class="field" type="text" maxlength="200" placeholder="+ добавить" aria-label="Добавить, что нравится"></div>
             <div class="soul-list" data-key="worries"><span class="soul-lbl">Что вас тревожит</span><ul></ul><input class="field" type="text" maxlength="200" placeholder="+ добавить" aria-label="Добавить тревогу"></div>
           </div>
+        </section>
+        <section class="card" aria-labelledby="soul-world-title">
+          <div class="card-head">
+            <h2 id="soul-world-title">Её мир</h2>
+          </div>
+          <div class="card-body">
+            <span class="soul-lbl">Её цели</span>
+            <ul class="aims" id="soul-aims"></ul>
+            <input class="field" id="soul-aim-add" type="text" maxlength="200" placeholder="+ подарить ей цель" aria-label="Добавить цель Яэри">
+            <span class="soul-lbl soul-gap">Её увлечения</span>
+            <div class="soul-list"><ul id="soul-interests"></ul></div>
+            <span class="soul-lbl soul-gap">Её мнения и вкусы</span>
+            <ul class="opinions" id="soul-opinions"></ul>
+          </div>
+        </section>
+        <section class="card" aria-labelledby="soul-skills-title">
+          <div class="card-head">
+            <h2 id="soul-skills-title">Умения</h2>
+            <span class="card-meta">открываются с хвостами</span>
+          </div>
+          <div class="card-body"><ul class="soul-skills" id="soul-skills"></ul></div>
         </section>
         <section class="card" aria-labelledby="soul-traits-title">
           <div class="card-head">
@@ -1116,6 +1194,10 @@
             <input class="vh" type="checkbox" role="switch" id="set-soul"><span class="track" aria-hidden="true"></span>
           </label>
           <label class="toggle">
+            <span class="t-text"><span class="t-name">Утром и вечером пишет первой</span><span class="t-desc">Утреннее пожелание и вечерний вопрос «как прошёл день?», раз в день каждое</span></span>
+            <input class="vh" type="checkbox" role="switch" id="set-care"><span class="track" aria-hidden="true"></span>
+          </label>
+          <label class="toggle">
             <span class="t-text"><span class="t-name">Запоминать разговоры</span><span class="t-desc">Каждый обмен репликами сохраняется в долговременную память</span></span>
             <input class="vh" type="checkbox" role="switch" id="set-remember"><span class="track" aria-hidden="true"></span>
           </label>
@@ -1168,7 +1250,7 @@
       var ACCENTS = ['moon', 'fire', 'sakura', 'forest', 'sky'];
       var SIZES = ['sm', 'md', 'lg'];
       var reduce = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
-      var DEFAULTS = { name: 'Хозяин', accent: 'forest', size: 'md', motion: !reduce, enter: true, time: true, rag: true, remember: true, autoNotes: true, soul: true, model: '' };
+      var DEFAULTS = { name: 'Хозяин', accent: 'forest', size: 'md', motion: !reduce, enter: true, time: true, rag: true, remember: true, autoNotes: true, soul: true, care: true, model: '' };
 
       function $(id) { return document.getElementById(id); }
       function each(list, fn) { Array.prototype.forEach.call(list, fn); }
@@ -1217,14 +1299,14 @@
           accent: ACCENTS.indexOf(s.accent) > -1 ? s.accent : DEFAULTS.accent,
           size: SIZES.indexOf(s.size) > -1 ? s.size : DEFAULTS.size,
           motion: bool('motion'), enter: bool('enter'), time: bool('time'),
-          rag: bool('rag'), remember: bool('remember'), autoNotes: bool('autoNotes'), soul: bool('soul'),
+          rag: bool('rag'), remember: bool('remember'), autoNotes: bool('autoNotes'), soul: bool('soul'), care: bool('care'),
           model: typeof s.model === 'string' ? s.model.slice(0, 120) : DEFAULTS.model
         };
       }
       var settings = normalize(load(SET_KEY));
 
       var nameField = $('set-name');
-      var boxes = { motion: $('set-motion'), enter: $('set-enter'), time: $('set-time'), rag: $('set-rag'), remember: $('set-remember'), autoNotes: $('set-autonotes'), soul: $('set-soul') };
+      var boxes = { motion: $('set-motion'), enter: $('set-enter'), time: $('set-time'), rag: $('set-rag'), remember: $('set-remember'), autoNotes: $('set-autonotes'), soul: $('set-soul'), care: $('set-care') };
 
       function applySettings() {
         html.dataset.accent = settings.accent;
@@ -1738,8 +1820,14 @@
         custom = Array.isArray(custom) ? custom.filter(function (s) { return s && s.name && s.text; }) : [];
         return DEFAULT_SKILLS.concat(custom.map(function (s) { s.custom = true; return s; }));
       }
+      function soulSkillList() {
+        if (!online || !soulData || !Array.isArray(soulData.skills)) return [];
+        return soulData.skills.filter(function (k) { return k.unlocked; }).map(function (k) {
+          return { id: 'soul-' + k.id, name: k.name, desc: k.desc + ' · хвост ' + k.level, text: k.text };
+        });
+      }
       function renderSkills() {
-        var list = loadSkills();
+        var list = loadSkills().concat(soulSkillList());
         var box = $('skills');
         box.textContent = '';
         $('skills-count').textContent = list.length + ' ' + plural(list.length, 'навык', 'навыка', 'навыков');
@@ -1933,6 +2021,7 @@
         var row = el('div', 'msg ' + (m.role === 'user' ? 'user' : 'assistant') + (m.error ? ' error' : '') + (animate ? ' enter' : ''));
         row.appendChild(el('div', 'who', m.role === 'user' ? settings.name : 'Яэри'));
         if (m.kind === 'thought') { row.classList.add('thought'); row.appendChild(el('div', 'thought-tag', '✦ думала о вас')); }
+        if (m.kind === 'care') { row.classList.add('thought'); row.appendChild(el('div', 'thought-tag', m.slot === 'evening' ? '☾ вечер' : '☀ утро')); }
         row.appendChild(el('div', 'text', m.text));
         if (Array.isArray(m.remembered) && m.remembered.length) {
           row.appendChild(el('div', 'remembered', '✦ Записала в память: ' + m.remembered.join('; ')));
@@ -2221,7 +2310,7 @@
       // Состояние души живёт на сервере (data\soul.json). Здесь только показ, правки хозяина
       // и запуск раздумий: после нескольких реплик и при новой встрече.
       var SOUL_STAGES = ['Искорка', 'Пробуждение', 'Любопытство', 'Знакомство', 'Доверие', 'Понимание', 'Привязанность', 'Родство', 'Девятый хвост'];
-      var SOUL_KINDS = { reflection: 'раздумье', muse: 'думала о вас', milestone: 'новый хвост', birth: 'пробуждение' };
+      var SOUL_KINDS = { reflection: 'раздумье', muse: 'думала о вас', milestone: 'новый хвост', birth: 'пробуждение', moment: 'важный момент', dream: 'сон' };
       var soulData = null;
       var soulTimer = 0;
       var soulBusy = false;
@@ -2265,6 +2354,7 @@
             self: 'Я Яэри, восьмихвостая лисица. Я только начинаю узнавать своего хозяина и саму себя.',
             mood: { name: 'тихая радость', why: 'Я только проснулась и рада знакомству.', t: t },
             owner: { portrait: '', goals: [], likes: [], worries: [] }, lessons: [], thought: '', thoughtNew: false,
+            aims: [{ id: 'a1', text: 'Понять, что по-настоящему радует хозяина', progress: 0 }, { id: 'a2', text: 'Научиться помогать хозяину каждый день, без напоминаний', progress: 0 }],
             journal: [{ id: 'birth', t: t, kind: 'birth', mood: 'тихая радость', text: 'Сегодня я проснулась. У меня пока горит только один хвост души, но я уже хочу узнать своего хозяина: чем он живёт, о чём мечтает и как я могу быть рядом.' }]
           }
         };
@@ -2286,6 +2376,7 @@
         soulData = data;
         renderSoul();
         renderFeed();
+        renderSkills();
       }
       function renderSoulMini() {
         if (!soulData) return;
@@ -2384,10 +2475,12 @@
         });
         if (!s.journal.length) list.appendChild(el('li', 'empty', 'Дневник пока пуст.'));
 
-        each(document.querySelectorAll('#soul .soul-list'), function (box) {
+        each(document.querySelectorAll('#soul .soul-list[data-key]'), function (box) {
           var key = box.getAttribute('data-key');
           chipList(box, key === 'lessons' ? s.lessons : s.owner[key] || [], key);
         });
+
+        renderSoulGrowth(d, s);
 
         var traits = $('soul-traits');
         traits.textContent = '';
@@ -2449,6 +2542,171 @@
         });
       });
 
+
+      function smallBtn(text, label, fn, cls) {
+        var b = el('button', cls || '', text);
+        b.type = 'button';
+        b.setAttribute('aria-label', label);
+        b.title = label;
+        b.addEventListener('click', fn);
+        return b;
+      }
+      function dayKey(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+      function renderSoulGrowth(d, s) {
+        // Сон и грусть.
+        var sad = d.sadStreak || 0;
+        $('soul-sad').hidden = sad < 2;
+        $('soul-sad').textContent = sad >= 2 ? 'Яэри замечает, что вам грустно уже ' + sad + ' ' + plural(sad, 'день', 'дня', 'дней') + ' подряд, и бережёт вас.' : '';
+        $('soul-sleep-note').textContent = s.lastSleep ? 'Последний сон: ' + dmy(s.lastSleep) + ' ' + hhmm(s.lastSleep) + ' · всего ' + (s.sleeps || 0) + '. Засыпает сама, когда вы не работаете.' : 'Ещё ни разу не спала. Уснёт сама, когда вы отойдёте от компьютера.';
+
+        // Настроение хозяина за 30 дней.
+        var byDay = {};
+        arr(s.ownerMoods).forEach(function (m) { byDay[m.day] = m; });
+        var strip = $('soul-moods');
+        strip.textContent = '';
+        var now = new Date();
+        var seen = 0;
+        for (var i = 29; i >= 0; i--) {
+          var day = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+          var m = byDay[dayKey(day)];
+          var bar = el('i', m ? 's' + (m.score < 0 ? 'm' + (-m.score) : m.score) : '');
+          bar.title = day.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) + (m ? ': ' + (m.label || m.score) : ': нет данных');
+          if (m) seen++;
+          strip.appendChild(bar);
+        }
+        var last = arr(s.ownerMoods)[arr(s.ownerMoods).length - 1];
+        $('soul-moods-note').textContent = seen ? 'Последнее: ' + (last.label || '') + ' (' + last.day.split('-').reverse().join('.') + ')' : 'Яэри отмечает ваше настроение, когда обдумывает разговоры.';
+
+        // Важные моменты.
+        var moments = arr(s.moments).slice().sort(function (a, b) { return (b.pinned - a.pinned) || (b.strength - a.strength); });
+        var ul = $('soul-moments');
+        ul.textContent = '';
+        $('soul-moments-count').textContent = moments.length ? moments.length + ' ' + plural(moments.length, 'момент', 'момента', 'моментов') : '';
+        if (!moments.length) ul.appendChild(el('li', 'empty', 'Пока нет. Яэри сохранит сюда по-настоящему важное: ваши успехи, решения, первые разы.'));
+        moments.forEach(function (mo) {
+          var li = el('li');
+          li.style.opacity = String(0.45 + Math.min(1, mo.strength / 10) * 0.55);
+          li.appendChild(el('b', '', mo.title));
+          if (mo.text) li.appendChild(el('p', '', mo.text));
+          var str = el('span', 'str');
+          var fill = el('i');
+          fill.style.width = Math.round(mo.strength * 10) + '%';
+          str.appendChild(fill);
+          str.title = 'Сила памяти: ' + mo.strength + ' из 10 · ' + dmy(mo.t);
+          li.appendChild(str);
+          if (online) {
+            var acts = el('span', 'acts');
+            acts.appendChild(smallBtn('📌', mo.pinned ? 'Можно забыть' : 'Не забывать', function () { soulUpdate({ momentId: mo.id, pinned: !mo.pinned }); }, mo.pinned ? 'on' : ''));
+            acts.appendChild(smallBtn('×', 'Забыть момент', function () { if (window.confirm('Пусть Яэри забудет «' + mo.title + '»?')) soulUpdate({ momentId: mo.id, remove: true }); }));
+            li.appendChild(acts);
+          }
+          ul.appendChild(li);
+        });
+
+        // Её цели.
+        var aims = $('soul-aims');
+        aims.textContent = '';
+        arr(s.aims).forEach(function (a) {
+          var li = el('li');
+          li.appendChild(el('span', '', a.text));
+          li.appendChild(el('output', '', a.progress + '%'));
+          if (online) li.appendChild(smallBtn('×', 'Убрать цель', function () { soulUpdate({ removeAim: a.id }); }));
+          else li.appendChild(el('span'));
+          var bar = el('span', 'bar');
+          var fill = el('i');
+          fill.style.width = Math.max(2, a.progress) + '%';
+          bar.appendChild(fill);
+          li.appendChild(bar);
+          aims.appendChild(li);
+        });
+        if (!arr(s.aims).length) aims.appendChild(el('li', 'empty', 'Целей пока нет.'));
+        $('soul-aim-add').hidden = !online;
+
+        // Её увлечения.
+        var ints = $('soul-interests');
+        ints.textContent = '';
+        if (!arr(s.interests).length) ints.appendChild(el('li', 'empty', 'Появятся из ваших разговоров.'));
+        arr(s.interests).forEach(function (it) {
+          var li = el('li');
+          li.style.opacity = String(0.5 + Math.min(1, it.strength / 10) * 0.5);
+          li.title = (it.note ? it.note + ' · ' : '') + 'сила ' + it.strength;
+          li.appendChild(el('span', '', it.name));
+          if (online) li.appendChild(smallBtn('×', 'Убрать увлечение', function () { soulUpdate({ removeInterest: it.name }); }));
+          ints.appendChild(li);
+        });
+
+        // Её мнения.
+        var ops = $('soul-opinions');
+        ops.textContent = '';
+        if (!arr(s.opinions).length) ops.appendChild(el('li', 'empty', 'Своё мнение появится, когда ей будет о чём подумать.'));
+        arr(s.opinions).forEach(function (o) {
+          var li = el('li');
+          var t = el('span');
+          t.appendChild(el('b', '', o.topic + ': '));
+          t.appendChild(document.createTextNode(o.view));
+          li.appendChild(t);
+          if (online) li.appendChild(smallBtn('×', 'Убрать мнение', function () { soulUpdate({ removeOpinion: o.topic }); }));
+          ops.appendChild(li);
+        });
+
+        // Умения по ступеням.
+        var sk = $('soul-skills');
+        sk.textContent = '';
+        arr(d.skills).forEach(function (k) {
+          var li = el('li', k.unlocked ? '' : 'locked');
+          li.appendChild(el('b', '', k.name));
+          li.appendChild(el('span', '', k.unlocked ? k.desc + ' — в «Навыках»' : 'откроется на хвосте ' + k.level));
+          sk.appendChild(li);
+        });
+      }
+      $('soul-aim-add').addEventListener('keydown', function (event) {
+        if (event.key !== 'Enter' || event.isComposing) return;
+        event.preventDefault();
+        var text = this.value.trim();
+        if (!text) return;
+        this.value = '';
+        soulUpdate({ addAim: text });
+      });
+
+      // Фон: «сон», когда хозяин не работает, и забота утром и вечером.
+      var IDLE_SLEEP = 15 * 60000;
+      var careAsked = {};
+      function soulSleep(mode) {
+        if (!online || soulBusy || pending) return Promise.resolve(null);
+        soulBusy = true;
+        $('soul-sleep').disabled = true;
+        if (mode === 'force') soulMsg('Яэри засыпает и перебирает память…');
+        return api('soul/sleep', { mode: mode, name: settings.name, model: modelSelect.value }).then(function (data) {
+          setSoul(data);
+          if (!data.skipped) soulMsg('Яэри поспала и пересобрала память: в дневнике новая запись.');
+          return data;
+        }).catch(function (e) { soulMsg(e.message, true); return null; })
+          .then(function (data) { soulBusy = false; $('soul-sleep').disabled = false; return data; });
+      }
+      function careCheck() {
+        if (!online || !settings.soul || !settings.care || pending || soulBusy) return;
+        var h = new Date().getHours();
+        var slot = h >= 5 && h < 12 ? 'morning' : (h >= 18 ? 'evening' : '');
+        if (!slot) return;
+        var key = slot + dayKey(new Date());
+        if (careAsked[key]) return;
+        careAsked[key] = true;
+        api('soul/care', { slot: slot, name: settings.name, model: modelSelect.value }).then(function (data) {
+          var m = data && data.message;
+          if (!m) return;
+          history.push(m);
+          bubble(m, true);
+          flash('greet', 3600);
+        }).catch(function () { /* Не страшно: попробуем завтра. */ });
+      }
+      setInterval(function () {
+        if (!online || !settings.soul || !soulData) return;
+        var idle = Date.now() - lastActive;
+        if (soulData.sleepDue && idle > IDLE_SLEEP) soulSleep('auto');
+        else if (idle < 5 * 60000 && !document.hidden) careCheck();
+      }, 60000);
+      $('soul-sleep').addEventListener('click', function () { soulSleep('force'); });
+
       function loadSoul() {
         return api('soul').then(setSoul);
       }
@@ -2505,7 +2763,12 @@
           // При новой встрече: обдумать прошлый разговор или подумать о хозяине, если давно не виделись.
           return new Promise(function (resolve) { setTimeout(resolve, 1500); })
             .then(function () { return soulReflect('auto', true); })
-            .then(shareThought);
+            .then(shareThought)
+            .then(function () {
+              // Если не спала больше полутора суток (компьютер был выключен), поспит сейчас.
+              if (soulData && soulData.sleepDue && Date.now() - (soulData.soul.lastSleep || 0) > 36 * 3600000) return soulSleep('auto');
+            })
+            .then(careCheck);
         }).catch(function () { renderSoul(); });
       }
       function soulDemo() {

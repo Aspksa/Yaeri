@@ -955,6 +955,8 @@ function Invoke-YApi([string]$Method, [string]$Path, [string]$BodyText) {
         'POST /api/soul/share'     { return Invoke-YSoulShare }
         'POST /api/soul/update'    { return Update-YSoul $req }
         'POST /api/soul/reset'     { return Reset-YSoul }
+        'POST /api/soul/sleep'     { return Invoke-YSoulSleep $req }
+        'POST /api/soul/care'      { return Invoke-YSoulCare $req }
     }
     throw (New-YError 404 'Неизвестный адрес API.')
 }

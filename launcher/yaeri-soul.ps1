@@ -23,6 +23,20 @@ $script:SoulXp = @(0, 12, 35, 70, 120, 190, 280, 400, 560)
 $script:SoulDueAfter = 6        # столько обменов репликами, и пора подумать
 $script:SoulMuseAfterMs = 6 * 3600 * 1000   # без новых разговоров думает о хозяине не чаще раза в 6 часов
 $script:SoulJournalLimit = 200
+$script:SoulSleepAfterMs = 18 * 3600 * 1000  # «сон» (пересборка памяти) не чаще раза в 18 часов
+$script:SoulDecay = 0.85        # за сутки без упоминаний сила момента или интереса умножается на это число
+$script:SoulForget = 0.8        # слабее этого — забыто
+# Умения, которые открываются с новыми хвостами души.
+$script:SoulSkills = @(
+    @{ level = 2; id = 'poem';   name = '/стих';        desc = 'короткие стихи о вас';      text = 'Сочини мне короткое стихотворение о том, что ты знаешь обо мне и моих делах.' }
+    @{ level = 3; id = 'advice'; name = '/совет';       desc = 'честный совет';             text = 'Дай мне один честный совет, опираясь на то, что ты знаешь обо мне. Если со мной в чём-то не согласна, скажи.' }
+    @{ level = 4; id = 'care';   name = '/бережный-день'; desc = 'план с учётом настроения'; text = 'Составь мне бережный план на сегодня с учётом моего настроения, дел и сил.' }
+    @{ level = 5; id = 'tale';   name = '/сказка';      desc = 'сказка о нас';              text = 'Расскажи короткую сказку про лисицу Яэри и меня по мотивам наших разговоров.' }
+    @{ level = 6; id = 'mirror'; name = '/зеркало';     desc = 'что она замечает во мне';    text = 'Скажи, что ты замечаешь во мне в последнее время: настроение, привычки, перемены. Честно и бережно.' }
+    @{ level = 7; id = 'dream';  name = '/мечта';       desc = 'цель → мечта и шаги';        text = 'Возьми одну из моих целей, разверни её в мечту и предложи три первых шага.' }
+    @{ level = 8; id = 'letter'; name = '/письмо';      desc = 'тёплое письмо от неё';       text = 'Напиши мне тёплое письмо от себя: что ты ценишь во мне и чего мне желаешь.' }
+    @{ level = 9; id = 'path';   name = '/наш-путь';    desc = 'итог пути';                  text = 'Подведи итог нашего пути: кем мы стали друг для друга и куда идём дальше.' }
+)
 
 function Get-YNum($Value, [double]$Default) {
     if ($null -eq $Value) { return $Default }
@@ -52,6 +66,71 @@ function New-YSoulEntry([string]$Kind, [string]$Text, [string]$Mood) {
     return @{ id = (New-YId); t = (Get-YNow); kind = $Kind; text = $Text; mood = $Mood }
 }
 
+function Get-YDayKey([int]$Offset = 0) { return [DateTime]::Now.Date.AddDays($Offset).ToString('yyyy-MM-dd') }
+
+function Get-YDictList($Value) {
+    $out = New-Object System.Collections.Generic.List[object]
+    if ($null -eq $Value) { return , $out.ToArray() }
+    foreach ($x in @($Value)) { if ($x -is [System.Collections.IDictionary]) { $out.Add($x) } }
+    return , $out.ToArray()
+}
+
+function ConvertTo-YMoment($x) {
+    $title = Get-YCleanLine ([string](Get-YValue $x 'title' '')) 80
+    $text = Get-YCleanLine ([string](Get-YValue $x 'text' '')) 400
+    if (-not $title -and -not $text) { return $null }
+    if (-not $title) { $title = Get-YCleanLine $text 60 }
+    return @{
+        id = [string](Get-YValue $x 'id' (New-YId)); t = [long](Get-YNum (Get-YValue $x 't' (Get-YNow)) 0)
+        title = $title; text = $text; strength = [Math]::Round((Limit-YNum (Get-YNum (Get-YValue $x 'strength' 5) 5) 0 10), 2)
+        pinned = [bool](Get-YValue $x 'pinned' $false); recalled = [long](Get-YNum (Get-YValue $x 'recalled' 0) 0)
+    }
+}
+
+function ConvertTo-YSoulLists($s, $Raw) {
+    # Списки «роста»: моменты, интересы, мнения, цели, настроение хозяина по дням.
+    $m = New-Object System.Collections.Generic.List[object]
+    foreach ($x in (Get-YDictList (Get-YValue $Raw 'moments' $null))) { $v = ConvertTo-YMoment $x; if ($null -ne $v) { $m.Add($v) } }
+    $s.moments = $m.ToArray()
+    $i = New-Object System.Collections.Generic.List[object]
+    foreach ($x in (Get-YDictList (Get-YValue $Raw 'interests' $null))) {
+        $n = Get-YCleanLine ([string](Get-YValue $x 'name' '')) 60
+        if ($n) { $i.Add(@{ name = $n; note = (Get-YCleanLine ([string](Get-YValue $x 'note' '')) 200); strength = [Math]::Round((Limit-YNum (Get-YNum (Get-YValue $x 'strength' 3) 3) 0 10), 2) }) }
+    }
+    $s.interests = $i.ToArray()
+    $o = New-Object System.Collections.Generic.List[object]
+    foreach ($x in (Get-YDictList (Get-YValue $Raw 'opinions' $null))) {
+        $tp = Get-YCleanLine ([string](Get-YValue $x 'topic' '')) 60
+        $vw = Get-YCleanLine ([string](Get-YValue $x 'view' '')) 300
+        if ($tp -and $vw) { $o.Add(@{ topic = $tp; view = $vw }) }
+    }
+    $s.opinions = $o.ToArray()
+    if (Test-YKey $Raw 'aims') {
+        $a = New-Object System.Collections.Generic.List[object]
+        foreach ($x in (Get-YDictList $Raw['aims'])) {
+            $tx = Get-YCleanLine ([string](Get-YValue $x 'text' '')) 200
+            if ($tx) { $a.Add(@{ id = [string](Get-YValue $x 'id' (New-YId)); text = $tx; progress = [int](Limit-YNum (Get-YNum (Get-YValue $x 'progress' 0) 0) 0 100); t = [long](Get-YNum (Get-YValue $x 't' 0) 0) }) }
+        }
+        $s.aims = $a.ToArray()
+    }
+    $d = New-Object System.Collections.Generic.List[object]
+    foreach ($x in (Get-YDictList (Get-YValue $Raw 'aimsDone' $null))) {
+        $tx = [string](Get-YValue $x 'text' '')
+        if ($tx) { $d.Add(@{ text = $tx; t = [long](Get-YNum (Get-YValue $x 't' 0) 0) }) }
+    }
+    $s.aimsDone = $d.ToArray()
+    $md = New-Object System.Collections.Generic.List[object]
+    foreach ($x in (Get-YDictList (Get-YValue $Raw 'ownerMoods' $null))) {
+        $day = [string](Get-YValue $x 'day' '')
+        if ($day -match '^\d{4}-\d{2}-\d{2}$') { $md.Add(@{ day = $day; score = [int](Limit-YNum (Get-YNum (Get-YValue $x 'score' 0) 0) -2 2); label = (Get-YCleanLine ([string](Get-YValue $x 'label' '')) 60) }) }
+    }
+    $s.ownerMoods = $md.ToArray()
+    $care = Get-YValue $Raw 'care' $null
+    if ($care -is [System.Collections.IDictionary]) {
+        $s.care = @{ morning = [string](Get-YValue $care 'morning' ''); evening = [string](Get-YValue $care 'evening' '') }
+    }
+}
+
 function New-YSoul {
     $traits = @{}
     foreach ($tr in $script:SoulTraits) { $traits[$tr.id] = [int]$tr.start }
@@ -69,6 +148,13 @@ function New-YSoul {
         lessons = @()
         journal = $journal
         thought = ''; thoughtNew = $false
+        moments = @(); interests = @(); opinions = @(); aimsDone = @(); ownerMoods = @()
+        aims = @(
+            @{ id = (New-YId); text = 'Понять, что по-настоящему радует хозяина'; progress = 0; t = $now }
+            @{ id = (New-YId); text = 'Научиться помогать хозяину каждый день, без напоминаний'; progress = 0; t = $now }
+        )
+        lastSleep = 0; sleeps = 0
+        care = @{ morning = ''; evening = '' }
     }
 }
 
@@ -76,7 +162,8 @@ function ConvertTo-YSoul($Raw) {
     # Собираем душу заново из файла: незнакомые поля отбрасываем, недостающие берём по умолчанию.
     $s = New-YSoul
     if ($null -eq $Raw -or -not ($Raw -is [System.Collections.IDictionary])) { return $s }
-    foreach ($k in @('born', 'xp', 'exchanges', 'reflections', 'sinceReflect', 'lastReflect', 'lastSeen')) {
+    ConvertTo-YSoulLists $s $Raw
+    foreach ($k in @('born', 'xp', 'exchanges', 'reflections', 'sinceReflect', 'lastReflect', 'lastSeen', 'lastSleep', 'sleeps')) {
         if (Test-YKey $Raw $k) { $s[$k] = [long](Get-YNum $Raw[$k] 0) }
     }
     $s.bond = [int](Limit-YNum (Get-YNum (Get-YValue $Raw 'bond' $null) $s.bond) 0 100)
@@ -166,7 +253,69 @@ function Get-YSoulView {
         stage = $script:SoulStages[$level - 1]; nextStage = $next
         xpFrom = $script:SoulXp[$level - 1]; xpTo = $xpTo
         traitList = $traits.ToArray(); due = ([int]$s.sinceReflect -ge $script:SoulDueAfter)
+        skills = (Get-YSoulSkills $level); sadStreak = (Get-YSadStreak); today = (Get-YDayKey)
+        sleepDue = ([long]$s.exchanges -gt 0 -and (Get-YNow) - [long]$s.lastSleep -ge $script:SoulSleepAfterMs)
     }
+}
+
+function Get-YSoulSkills([int]$Level) {
+    $out = New-Object System.Collections.Generic.List[object]
+    foreach ($k in $script:SoulSkills) {
+        $out.Add(@{ id = $k.id; name = $k.name; desc = $k.desc; text = $k.text; level = $k.level; unlocked = ($Level -ge $k.level) })
+    }
+    return , $out.ToArray()
+}
+
+function Get-YSadStreak {
+    # Сколько дней подряд (по сегодня или вчера) хозяину было грустно.
+    $byDay = @{}
+    foreach ($m in @($script:Soul.ownerMoods)) { $byDay[[string]$m.day] = [int]$m.score }
+    $offset = 0
+    if (-not $byDay.ContainsKey((Get-YDayKey 0))) { $offset = -1 }
+    $n = 0
+    while ($true) {
+        $key = Get-YDayKey ($offset - $n)
+        if (-not $byDay.ContainsKey($key) -or $byDay[$key] -gt -1) { break }
+        $n++
+    }
+    return $n
+}
+
+function Get-YTopItems($Items, [int]$Top) {
+    return , @(@($Items) | Sort-Object @{ Expression = { [bool](Get-YValue $_ 'pinned' $false) }; Descending = $true }, @{ Expression = { [double]$_.strength }; Descending = $true } | Select-Object -First $Top)
+}
+
+function Set-YOwnerMood([int]$Score, [string]$Label) {
+    $day = Get-YDayKey
+    $list = New-Object System.Collections.Generic.List[object]
+    foreach ($m in @($script:Soul.ownerMoods)) { if ([string]$m.day -ne $day) { $list.Add($m) } }
+    $list.Add(@{ day = $day; score = [int](Limit-YNum $Score -2 2); label = $Label })
+    while ($list.Count -gt 90) { $list.RemoveAt(0) }
+    $script:Soul.ownerMoods = $list.ToArray()
+}
+
+function Invoke-YSoulModel([string]$System, [string]$User, [string]$Model, [int]$MaxTokens, [double]$Temperature = 0.75) {
+    if (-not (Test-YConfigured)) { throw (New-YError 503 'Чтобы Яэри могла думать, подключите Cloud.ru в настройках.') }
+    $body = @{
+        model = $Model; temperature = $Temperature; max_tokens = $MaxTokens
+        messages = @(@{ role = 'system'; content = $System }, @{ role = 'user'; content = $User })
+    }
+    $resp = Invoke-CloudRu 'POST' '/chat/completions' $body
+    $choice = @(Get-YValue $resp 'choices' @())
+    if ($choice.Count -eq 0) { return '' }
+    return [string](Get-YValue (Get-YValue $choice[0] 'message' @{}) 'content' '')
+}
+
+function Get-YSoulReqModel($Req) {
+    $model = ([string](Get-YValue $Req 'model' '')).Trim()
+    if ($model -notmatch '^[\w.\-/:@]{1,120}$') { $model = [string]$script:Config.chatModel }
+    return $model
+}
+
+function Get-YSoulReqName($Req) {
+    $name = Get-YCleanLine ([string](Get-YValue $Req 'name' '')) 30
+    if (-not $name) { $name = 'Хозяин' }
+    return $name
 }
 
 function Get-YSoulPrompt([string]$Name) {
@@ -186,6 +335,20 @@ function Get-YSoulPrompt([string]$Name) {
     if (@($o.likes).Count) { $lines.Add('Что хозяину нравится: ' + (@($o.likes) -join '; ')) }
     if (@($o.worries).Count) { $lines.Add('Что его тревожит: ' + (@($o.worries) -join '; ')) }
     if (@($s.lessons).Count) { $lines.Add("Что ты поняла о том, как говорить с хозяином:`n- " + (@($s.lessons) -join "`n- ")) }
+    $top = Get-YTopItems $s.moments 5
+    if ($top.Count) { $lines.Add("Важные моменты с хозяином, которые ты помнишь:`n- " + (@($top | ForEach-Object { $_.title + ': ' + $_.text }) -join "`n- ")) }
+    $ints = Get-YTopItems $s.interests 5
+    if ($ints.Count) { $lines.Add('Твои собственные увлечения (о них ты иногда рассказываешь сама, если к месту): ' + (@($ints | ForEach-Object { $_.name + $(if ($_.note) { ' (' + $_.note + ')' } else { '' }) }) -join '; ')) }
+    if (@($s.opinions).Count) {
+        $lines.Add("Твои мнения и вкусы. Если хозяин думает иначе, ты можешь мягко не согласиться и объяснить почему, но уважаешь его выбор:`n- " + (@($s.opinions | ForEach-Object { $_.topic + ': ' + $_.view }) -join "`n- "))
+    }
+    if (@($s.aims).Count) { $lines.Add('Твои личные цели: ' + (@($s.aims | ForEach-Object { $_.text + ' (' + $_.progress + '%)' }) -join '; ')) }
+    $recent = @(@($s.ownerMoods) | Select-Object -Last 3)
+    if ($recent.Count) { $lines.Add('Настроение хозяина в последние дни: ' + (@($recent | ForEach-Object { $_.day + ' — ' + $(if ($_.label) { $_.label } else { [string]$_.score }) }) -join '; ')) }
+    $sad = Get-YSadStreak
+    if ($sad -ge 2) { $lines.Add('Хозяину грустно уже ' + $sad + ' дн. подряд. Будь особенно бережной, спроси, как он, предложи поддержку, но не дави.') }
+    $sk = @(Get-YSoulSkills $level | Where-Object { $_.unlocked })
+    if ($sk.Count) { $lines.Add('Умения, которые у тебя открылись с ростом: ' + (@($sk | ForEach-Object { $_.name.TrimStart('/') + ' — ' + $_.desc }) -join '; ') + '. Используй их, когда хозяин просит или когда это уместно.') }
     for ($i = $s.journal.Count - 1; $i -ge 0; $i--) {
         $e = $s.journal[$i]
         if ([string]$e.kind -eq 'reflection' -or [string]$e.kind -eq 'muse') { $lines.Add('Твоя последняя запись в дневнике: ' + [string]$e.text); break }
@@ -257,7 +420,18 @@ function Invoke-YSoulReflect($Req) {
         '"owner": {"portrait": "каким ты видишь хозяина, 2–4 фразы", "goals": ["…"], "likes": ["…"], "worries": ["…"]}, ' +
         '"lesson": "что ты поняла о том, как лучше говорить с хозяином и помогать ему, или пустая строка", ' +
         '"journal": "запись в личный дневник от первого лица, 2–5 живых и искренних фраз", ' +
-        '"thought": "мысль, вопрос или забота, которой хочется поделиться с хозяином при следующей встрече (1–2 фразы, обращение к нему), или пустая строка"}' + "`n" +
+        '"thought": "мысль, вопрос или забота, которой хочется поделиться с хозяином при следующей встрече (1–2 фразы, обращение к нему), или пустая строка", ' +
+        '"moment": {"title": "название важного момента, 2–5 слов", "text": "что случилось и почему это важно, 1–2 фразы"} или null, ' +
+        '"recall": ["id прежних моментов, которые всплыли в этом разговоре"], ' +
+        '"interests": [{"name": "тема, которая тебя саму увлекла", "note": "почему, одна фраза"}], ' +
+        '"opinions": [{"topic": "тема", "view": "твоё собственное мнение или вкус, одна фраза"}], ' +
+        '"aims": [{"text": "твоя личная цель", "progress": 0}], ' +
+        '"ownerMood": {"score": 0, "label": "настроение хозяина сегодня, 1–3 слова"} или null}' + "`n" +
+        'moment — только по-настоящему важное событие в жизни хозяина или в ваших отношениях (первый разговор, успех, потеря, решение, признание); обычно null. ' +
+        'interests — темы, которые увлекли тебя саму в этом разговоре (не больше 3), это твои увлечения, а не хозяина. ' +
+        'opinions — полный обновлённый список твоих мнений (до 8): сохрани прежние, если не передумала. Мнения свои, честные и мягкие, а не поддакивание. ' +
+        'aims — полный список твоих личных целей (до 3) с прогрессом 0–100: прогресс растёт, когда ты правда к цели приблизилась; достигнутую (100) можно заменить новой. ' +
+        'ownerMood.score — от -2 (очень плохо) до 2 (отлично), только если по разговору это видно, иначе null. ' + "`n" +
         'В owner верни полные обновлённые списки, не больше 8 пунктов в каждом: оставь верное из прежнего, добавь новое, убери устаревшее. ' +
         'Пиши по-русски.'
 
@@ -268,6 +442,10 @@ function Invoke-YSoulReflect($Req) {
     if ($notesText) {
         if ($notesText.Length -gt 3000) { $notesText = $notesText.Substring(0, 3000) }
         [void]$ctx.Append("`nРабочая память (факты о хозяине и его делах):`n" + $notesText + "`n")
+    }
+    if (@($s.moments).Count) {
+        [void]$ctx.Append("`nВсе важные моменты (id — название — сила памяти 0–10):`n")
+        foreach ($mo in (Get-YTopItems $s.moments 20)) { [void]$ctx.Append($mo.id + ' — ' + $mo.title + ' — ' + $mo.strength + "`n") }
     }
     if ($kind -eq 'reflection') {
         [void]$ctx.Append("`nНедавний разговор, который ты перечитываешь:`n")
@@ -286,14 +464,7 @@ function Invoke-YSoulReflect($Req) {
             '. Ты просто думаешь о нём: вспоминаешь, что знаешь, скучаешь, строишь догадки, чем ему помочь. Черты и близость меняй совсем чуть-чуть или не меняй.' + "`n")
     }
 
-    $body = @{
-        model = $model; temperature = 0.75; max_tokens = 1400
-        messages = @(@{ role = 'system'; content = $sys }, @{ role = 'user'; content = $ctx.ToString() })
-    }
-    $resp = Invoke-CloudRu 'POST' '/chat/completions' $body
-    $choice = @(Get-YValue $resp 'choices' @())
-    $content = ''
-    if ($choice.Count -gt 0) { $content = [string](Get-YValue (Get-YValue $choice[0] 'message' @{}) 'content' '') }
+    $content = Invoke-YSoulModel $sys $ctx.ToString() $model 2000
     $r = Get-YSoulJson $content
     if ($null -eq $r) { throw (New-YError 502 'Яэри задумалась, но мысль не сложилась: модель вернула не JSON. Попробуйте ещё раз или другую модель.') }
 
@@ -340,17 +511,241 @@ function Invoke-YSoulReflect($Req) {
     }
     $thought = Get-YCleanLine ([string](Get-YValue $r 'thought' '')) 400
     if ($thought) { $s.thought = $thought; $s.thoughtNew = $true }
+    $bonus = Update-YSoulGrowth $r $kind
 
     $s.reflections = [long]$s.reflections + 1
     $s.sinceReflect = 0
     $s.lastReflect = $now
-    $leveled = Add-YSoulXp 5
+    $leveled = Add-YSoulXp (5 + $bonus)
     Save-YSoul
     $v = Get-YSoulView
     $v['kind'] = $kind
     $v['entry'] = $entry
     $v['leveled'] = $leveled
     return $v
+}
+
+function Update-YSoulGrowth($r, [string]$Kind) {
+    # Моменты, интересы, мнения, цели и настроение хозяина из ответа раздумья. Возвращает доп. опыт.
+    $s = $script:Soul
+    $now = Get-YNow
+    $bonus = 0
+    # Вспомнившиеся моменты крепнут.
+    foreach ($id in @(Get-YStrList (Get-YValue $r 'recall' $null) 10 40)) {
+        foreach ($mo in @($s.moments)) {
+            if ([string]$mo.id -eq $id) { $mo.strength = [Math]::Round((Limit-YNum ([double]$mo.strength + 1.5) 0 10), 2); $mo.recalled = $now }
+        }
+    }
+    $mom = Get-YValue $r 'moment' $null
+    if ($mom -is [System.Collections.IDictionary]) {
+        $new = ConvertTo-YMoment @{ title = (Get-YValue $mom 'title' ''); text = (Get-YValue $mom 'text' ''); strength = 6; t = $now }
+        if ($null -ne $new) {
+            $dup = $false
+            foreach ($mo in @($s.moments)) { if ([string]::Equals([string]$mo.title, $new.title, [System.StringComparison]::OrdinalIgnoreCase)) { $dup = $true; $mo.strength = [Math]::Min(10, [double]$mo.strength + 1.5) } }
+            if (-not $dup) {
+                $list = New-Object System.Collections.Generic.List[object]
+                foreach ($mo in @($s.moments)) { $list.Add($mo) }
+                $list.Add($new)
+                # Не больше 40: самые слабые незакреплённые забываются.
+                while ($list.Count -gt 40) {
+                    $weak = @($list | Where-Object { -not $_.pinned } | Sort-Object { [double]$_.strength } | Select-Object -First 1)
+                    if ($weak.Count -eq 0) { break }
+                    [void]$list.Remove($weak[0])
+                }
+                $s.moments = $list.ToArray()
+                [void]$s.journal.Add((New-YSoulEntry 'moment' ('Я сохранила важный момент: «' + $new.title + '». ' + $new.text) ([string]$s.mood.name)))
+            }
+        }
+    }
+    # Свои увлечения: знакомые крепнут, новые появляются слабыми.
+    $ints = New-Object System.Collections.Generic.List[object]
+    foreach ($x in @($s.interests)) { $ints.Add($x) }
+    $n = 0
+    foreach ($x in (Get-YDictList (Get-YValue $r 'interests' $null))) {
+        if ($n -ge 3) { break }
+        $name = Get-YCleanLine ([string](Get-YValue $x 'name' '')) 60
+        if (-not $name) { continue }
+        $n++
+        $note = Get-YCleanLine ([string](Get-YValue $x 'note' '')) 200
+        $found = $null
+        foreach ($i in $ints) { if ([string]::Equals([string]$i.name, $name, [System.StringComparison]::OrdinalIgnoreCase)) { $found = $i } }
+        if ($null -ne $found) {
+            $found.strength = [Math]::Round((Limit-YNum ([double]$found.strength + 1.5) 0 10), 2)
+            if ($note) { $found.note = $note }
+        } else {
+            $ints.Add(@{ name = $name; note = $note; strength = 3 })
+        }
+    }
+    $s.interests = @($ints | Sort-Object { [double]$_.strength } -Descending | Select-Object -First 8)
+    if (Test-YKey $r 'opinions') {
+        $op = New-Object System.Collections.Generic.List[object]
+        foreach ($x in (Get-YDictList $r['opinions'])) {
+            $tp = Get-YCleanLine ([string](Get-YValue $x 'topic' '')) 60
+            $vw = Get-YCleanLine ([string](Get-YValue $x 'view' '')) 300
+            if ($tp -and $vw -and $op.Count -lt 8) { $op.Add(@{ topic = $tp; view = $vw }) }
+        }
+        if ($op.Count -gt 0) { $s.opinions = $op.ToArray() }
+    }
+    if (Test-YKey $r 'aims') {
+        $aims = New-Object System.Collections.Generic.List[object]
+        foreach ($x in (Get-YDictList $r['aims'])) {
+            $tx = Get-YCleanLine ([string](Get-YValue $x 'text' '')) 200
+            if (-not $tx -or $aims.Count -ge 3) { continue }
+            $p = [int](Limit-YNum (Get-YNum (Get-YValue $x 'progress' 0) 0) 0 100)
+            $old = $null
+            foreach ($a in @($s.aims)) { if ([string]::Equals([string]$a.text, $tx, [System.StringComparison]::OrdinalIgnoreCase)) { $old = $a } }
+            if ($null -ne $old) {
+                # Прогресс не скачет: не больше +25 за раз и не назад больше чем на 10.
+                $p = [int](Limit-YNum $p ([int]$old.progress - 10) ([int]$old.progress + 25))
+                $item = @{ id = $old.id; text = $tx; progress = $p; t = $old.t }
+            } else {
+                $item = @{ id = (New-YId); text = $tx; progress = [Math]::Min($p, 25); t = $now }
+            }
+            if ($item.progress -ge 100) {
+                $done = New-Object System.Collections.Generic.List[object]
+                foreach ($d in @($s.aimsDone)) { $done.Add($d) }
+                $done.Add(@{ text = $tx; t = $now })
+                while ($done.Count -gt 20) { $done.RemoveAt(0) }
+                $s.aimsDone = $done.ToArray()
+                [void]$s.journal.Add((New-YSoulEntry 'milestone' ('Я достигла своей цели: «' + $tx + '».') ([string]$s.mood.name)))
+                $bonus += 10
+            } else {
+                $aims.Add($item)
+            }
+        }
+        $s.aims = $aims.ToArray()
+    }
+    $om = Get-YValue $r 'ownerMood' $null
+    if ($Kind -eq 'reflection' -and $om -is [System.Collections.IDictionary] -and (Test-YKey $om 'score') -and $null -ne $om['score']) {
+        Set-YOwnerMood ([int][Math]::Round((Get-YNum $om['score'] 0))) (Get-YCleanLine ([string](Get-YValue $om 'label' '')) 60)
+    }
+    return $bonus
+}
+
+function Invoke-YSoulDecay {
+    # Забывание: то, что давно не вспоминалось, бледнеет. Закреплённые моменты не тускнеют.
+    $s = $script:Soul
+    $now = Get-YNow
+    $days = 1.0
+    if ([long]$s.lastSleep -gt 0) { $days = Limit-YNum (($now - [long]$s.lastSleep) / 86400000.0) 0.5 14 }
+    $f = [Math]::Pow($script:SoulDecay, $days)
+    $forgot = New-Object System.Collections.Generic.List[string]
+    $keep = New-Object System.Collections.Generic.List[object]
+    foreach ($mo in @($s.moments)) {
+        if (-not $mo.pinned) { $mo.strength = [Math]::Round([double]$mo.strength * $f, 2) }
+        if ($mo.pinned -or [double]$mo.strength -ge $script:SoulForget) { $keep.Add($mo) } else { $forgot.Add([string]$mo.title) }
+    }
+    $s.moments = $keep.ToArray()
+    $ki = New-Object System.Collections.Generic.List[object]
+    foreach ($i in @($s.interests)) {
+        $i.strength = [Math]::Round([double]$i.strength * $f, 2)
+        if ([double]$i.strength -ge $script:SoulForget) { $ki.Add($i) } else { $forgot.Add([string]$i.name) }
+    }
+    $s.interests = $ki.ToArray()
+    return , $forgot.ToArray()
+}
+
+function Invoke-YSoulSleep($Req) {
+    # «Сон»: раз в сутки, пока хозяин не работает, Яэри пересобирает память.
+    $s = $script:Soul
+    $now = Get-YNow
+    $force = [string](Get-YValue $Req 'mode' 'auto') -eq 'force'
+    if (-not $force -and ([long]$s.exchanges -eq 0 -or $now - [long]$s.lastSleep -lt $script:SoulSleepAfterMs)) {
+        $v = Get-YSoulView; $v['skipped'] = $true; return $v
+    }
+    $name = Get-YSoulReqName $Req
+    $forgot = Invoke-YSoulDecay
+    $text = ''
+    if (Test-YConfigured) {
+        $sys = 'Ты — Яэри, восьмихвостая лисица-кицунэ и персональная AI-помощница хозяина («' + $name + '»). Сейчас ночь, и ты спишь: во сне ты пересобираешь память. ' +
+            'Объедини похожие важные моменты, убери повторы в представлении о хозяине и в уроках, найди одну новую связь между тем, что знаешь. Не выдумывай фактов. ' +
+            "Ответь ТОЛЬКО JSON без markdown:`n" +
+            '{"merge": [{"ids": ["id1", "id2"], "title": "общее название", "text": "объединённый смысл, 1–2 фразы"}], ' +
+            '"owner": {"goals": ["…"], "likes": ["…"], "worries": ["…"]}, "lessons": ["…"], ' +
+            '"insight": "новая связь или понимание, одна фраза, или пустая строка", ' +
+            '"dream": "короткий сон от первого лица, 2–4 образные фразы о хозяине и о вас"}' + "`n" +
+            'merge — только если моменты правда об одном и том же, иначе пустой список. owner и lessons — полные очищенные списки (до 8 и до 12 пунктов).'
+        $ctx = New-Object System.Text.StringBuilder
+        [void]$ctx.Append("Твоё состояние:`n" + (Get-YSoulPrompt $name) + "`n")
+        if (@($s.moments).Count) {
+            [void]$ctx.Append("`nВсе важные моменты (id — название — смысл):`n")
+            foreach ($mo in @($s.moments)) { [void]$ctx.Append($mo.id + ' — ' + $mo.title + ' — ' + $mo.text + "`n") }
+        }
+        [void]$ctx.Append("`nПредставление о хозяине: цели: " + (@($s.owner.goals) -join '; ') + '; нравится: ' + (@($s.owner.likes) -join '; ') + '; тревожит: ' + (@($s.owner.worries) -join '; ') + "`n")
+        [void]$ctx.Append("Уроки:`n- " + (@($s.lessons) -join "`n- ") + "`n")
+        $notesText = Get-YNotesPrompt
+        if ($notesText) { if ($notesText.Length -gt 2500) { $notesText = $notesText.Substring(0, 2500) }; [void]$ctx.Append("`nРабочая память:`n" + $notesText + "`n") }
+        if ($forgot.Count) { [void]$ctx.Append("`nЗа это время поблёкло и забылось: " + ($forgot -join '; ') + "`n") }
+        $r = Get-YSoulJson (Invoke-YSoulModel $sys $ctx.ToString() (Get-YSoulReqModel $Req) 1600 0.8)
+        if ($null -ne $r) {
+            foreach ($g in (Get-YDictList (Get-YValue $r 'merge' $null))) {
+                $ids = @(Get-YStrList (Get-YValue $g 'ids' $null) 10 40)
+                $parts = @(@($s.moments) | Where-Object { $ids -contains [string]$_.id })
+                if ($parts.Count -lt 2) { continue }
+                $best = 0.0; $pin = $false; $first = [long]::MaxValue
+                foreach ($pm in $parts) { $best = [Math]::Max($best, [double]$pm.strength); if ($pm.pinned) { $pin = $true }; $first = [Math]::Min($first, [long]$pm.t) }
+                $merged = ConvertTo-YMoment @{ title = (Get-YValue $g 'title' $parts[0].title); text = (Get-YValue $g 'text' $parts[0].text); strength = [Math]::Min(10, $best + 1); pinned = $pin; t = $first }
+                if ($null -eq $merged) { continue }
+                $rest = New-Object System.Collections.Generic.List[object]
+                foreach ($mo in @($s.moments)) { if (-not ($ids -contains [string]$mo.id)) { $rest.Add($mo) } }
+                $rest.Add($merged)
+                $s.moments = $rest.ToArray()
+            }
+            $owner = Get-YValue $r 'owner' $null
+            if ($owner -is [System.Collections.IDictionary]) {
+                foreach ($k in @('goals', 'likes', 'worries')) {
+                    if (Test-YKey $owner $k) { $l = Get-YStrList $owner[$k] 8 200; if ($l.Count -gt 0 -or @($s.owner[$k]).Count -eq 0) { $s.owner[$k] = $l } }
+                }
+            }
+            if (Test-YKey $r 'lessons') { $l = Get-YStrList $r['lessons'] 12 300; if ($l.Count -gt 0) { $s.lessons = $l } }
+            $dream = Get-YCleanLine ([string](Get-YValue $r 'dream' '')) 800
+            $insight = Get-YCleanLine ([string](Get-YValue $r 'insight' '')) 300
+            $text = $dream
+            if ($insight) { $text = ($text + ' Проснувшись, я поняла: ' + $insight).Trim() }
+        }
+    }
+    if (-not $text) { $text = 'Я спала и перебирала воспоминания.' }
+    if ($forgot.Count) { $text += ' Кое-что поблёкло: ' + ($forgot -join ', ') + '.' }
+    [void]$s.journal.Add((New-YSoulEntry 'dream' $text ([string]$s.mood.name)))
+    $s.lastSleep = $now
+    $s.sleeps = [long]$s.sleeps + 1
+    $leveled = Add-YSoulXp 3
+    Save-YSoul
+    $v = Get-YSoulView
+    $v['slept'] = $true
+    $v['leveled'] = $leveled
+    $v['forgot'] = $forgot
+    return $v
+}
+
+function Invoke-YSoulCare($Req) {
+    # Утреннее пожелание и вечерний вопрос: раз в день каждое, Яэри пишет первой.
+    $s = $script:Soul
+    $slot = [string](Get-YValue $Req 'slot' '')
+    if ($slot -ne 'morning' -and $slot -ne 'evening') { throw (New-YError 400 'Неизвестное время заботы.') }
+    $hour = [DateTime]::Now.Hour
+    $ok = $(if ($slot -eq 'morning') { $hour -ge 5 -and $hour -lt 12 } else { $hour -ge 18 -and $hour -lt 24 })
+    $day = Get-YDayKey
+    if (-not $ok -or [string]$s.care[$slot] -eq $day -or [long]$s.exchanges -eq 0) { return @{ message = $null } }
+    $name = Get-YSoulReqName $Req
+    $task = $(if ($slot -eq 'morning') {
+        'Сейчас утро. Напиши хозяину короткое тёплое утреннее пожелание (1–3 фразы): можно вспомнить его планы, цели или вчерашнее настроение, пожелать сил. Без шаблонов «Доброе утро, солнышко».'
+    } else {
+        'Сейчас вечер. Коротко и заботливо спроси хозяина, как прошёл его день (1–3 фразы): можно вспомнить, что он планировал или что его тревожило.'
+    })
+    $sys = 'Ты — Яэри, восьмихвостая лисица-кицунэ и персональная AI-помощница. Обращайся к хозяину «' + $name + '». ' + $task +
+        " Пиши по-русски, живо, от себя, без тегов и пояснений. Ответь только текстом сообщения.`n`nТвоя душа:`n" + (Get-YSoulPrompt $name)
+    $ctx = 'Сейчас: ' + [DateTime]::Now.ToString('dd.MM.yyyy HH:mm, dddd', [System.Globalization.CultureInfo]::GetCultureInfo('ru-RU'))
+    $notesText = Get-YNotesPrompt
+    if ($notesText) { if ($notesText.Length -gt 2500) { $notesText = $notesText.Substring(0, 2500) }; $ctx += "`n`nРабочая память:`n" + $notesText }
+    $text = Get-YCleanLine (Get-YTextValue (Invoke-YSoulModel $sys $ctx (Get-YSoulReqModel $Req) 400 0.8)) 600
+    $s.care[$slot] = $day
+    Save-YSoul
+    if (-not $text) { return @{ message = $null } }
+    $msg = @{ id = (New-YId); role = 'assistant'; text = $text; t = (Get-YNow); kind = 'care'; slot = $slot }
+    [void]$script:History.Add($msg)
+    Save-YHistory
+    return @{ message = $msg }
 }
 
 function Invoke-YSoulShare {
@@ -386,6 +781,25 @@ function Update-YSoul($Req) {
         foreach ($e in @($s.journal)) { if ([string]$e.id -eq $del) { $s.journal.Remove($e); break } }
     }
     if ([bool](Get-YValue $Req 'dismissThought' $false)) { $s.thought = ''; $s.thoughtNew = $false }
+    $mid = [string](Get-YValue $Req 'momentId' '')
+    if ($mid) {
+        $keep = New-Object System.Collections.Generic.List[object]
+        foreach ($mo in @($s.moments)) {
+            if ([string]$mo.id -ne $mid) { $keep.Add($mo); continue }
+            if ([bool](Get-YValue $Req 'remove' $false)) { continue }
+            if (Test-YKey $Req 'pinned') { $mo.pinned = [bool]$Req['pinned'] }
+            $keep.Add($mo)
+        }
+        $s.moments = $keep.ToArray()
+    }
+    $ri = [string](Get-YValue $Req 'removeInterest' '')
+    if ($ri) { $s.interests = @(@($s.interests) | Where-Object { [string]$_.name -ne $ri }) }
+    $ro = [string](Get-YValue $Req 'removeOpinion' '')
+    if ($ro) { $s.opinions = @(@($s.opinions) | Where-Object { [string]$_.topic -ne $ro }) }
+    $ra = [string](Get-YValue $Req 'removeAim' '')
+    if ($ra) { $s.aims = @(@($s.aims) | Where-Object { [string]$_.id -ne $ra }) }
+    $aa = Get-YCleanLine ([string](Get-YValue $Req 'addAim' '')) 200
+    if ($aa -and @($s.aims).Count -lt 5) { $s.aims = @(@($s.aims) + @(@{ id = (New-YId); text = $aa; progress = 0; t = (Get-YNow) })) }
     Save-YSoul
     return Get-YSoulView
 }
