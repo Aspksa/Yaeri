@@ -1164,6 +1164,7 @@
               <input class="vh" type="checkbox" role="switch" id="soul-evo-enabled"><span class="track" aria-hidden="true"></span>
             </label>
             <p class="soul-small" id="soul-evo-state" role="status"></p>
+            <button type="button" class="mini-btn server-only" id="soul-evo-clear">Очистить автономную память</button>
             <span class="soul-lbl">Внутренние события</span>
             <ul class="journal" id="soul-evo-events"></ul>
             <span class="soul-lbl soul-gap">История личности</span>
@@ -3044,6 +3045,12 @@
           $('soul-evo-state').textContent = 'Ошибка получения состояния: ' + err.message;
         });
       }
+      $('soul-evo-clear').addEventListener('click', function () {
+        if (!window.confirm('Очистить эпизоды, знания, исправления и историю автономной жизни? Другие воспоминания и дневник души останутся.')) return;
+        api('soul/evolution/clear', {}).then(loadEvolution).catch(function (err) {
+          $('soul-evo-state').textContent = err.message;
+        });
+      });
       $('soul-evo-enabled').addEventListener('change', function () {
         var control = this;
         control.disabled = true;
