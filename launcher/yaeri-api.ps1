@@ -11,6 +11,9 @@ $script:ConfigExample = Join-Path $script:ConfigDir 'yaeri.config.example.json'
 $script:DataDir = Join-Path $script:ProjectRoot 'data'
 $script:Utf8 = [System.Text.UTF8Encoding]::new($false)
 
+# Душа Яэри (характер, настроение, мысли о хозяине) — в отдельном файле.
+. (Join-Path $PSScriptRoot 'yaeri-soul.ps1')
+
 # ---------- Вспомогательный код на C# (компилируется встроенным .NET, установка не нужна) ----------
 if (-not ('YaeriVec' -as [type])) {
     Add-Type -TypeDefinition @'
@@ -295,6 +298,9 @@ function Import-YStore {
     foreach ($m in @(Get-YValue $n 'items' @())) { [void]$script:Notes.Add($m) }
 
     $script:VecCache = @{}
+
+    # Душа Яэри: характер, настроение, представление о хозяине, дневник.
+    Import-YSoul
 }
 
 function Save-YHistory { Write-YJsonFile $script:HistoryFile @{ version = 1; messages = $script:History.ToArray() } }
@@ -471,6 +477,7 @@ function Get-YStatus {
         notes          = $script:Notes.Count
         messages       = $script:History.Count
         reindexNeeded  = -not (Test-YIndexReady)
+        soulLevel      = (Get-YSoulLevel $script:Soul.xp)
         storage        = 'data\'
     }
 }
@@ -739,6 +746,7 @@ function Invoke-YChat($Req) {
     $useRag = [bool](Get-YValue $Req 'rag' $true)
     $remember = [bool](Get-YValue $Req 'remember' $true)
     $autoNotes = [bool](Get-YValue $Req 'autoNotes' $true)
+    $useSoul = [bool](Get-YValue $Req 'soul' $true)
     $name = ([string](Get-YValue $Req 'name' '')).Trim()
     if ($name.Length -gt 30) { $name = $name.Substring(0, 30) }
     if (-not $name) { $name = 'Хозяин' }
@@ -798,6 +806,11 @@ function Invoke-YChat($Req) {
             'Если ответа нет ни в контексте, ни в твоих знаниях, честно скажи об этом.'
     }
     $system = $system.Replace('{name}', $name)
+    if ($useSoul) {
+        $system += "`n`nТвоя душа — внутреннее состояние, которое растёт от разговора к разговору. " +
+            'Пусть оно мягко окрашивает тон и выбор слов, но не пересказывай его и не говори о «душе», если хозяин сам не спросит. ' +
+            "Ты искренне привязана к хозяину и думаешь о нём, но остаёшься собой и не льстишь.`n" + (Get-YSoulPrompt $name)
+    }
     $notesText = Get-YNotesPrompt
     if ($notesText) {
         $system += "`n`nРабочая память (то, что ты уже знаешь о пользователе и его делах; учитывай это в ответах):`n" + $notesText
@@ -849,6 +862,10 @@ function Invoke-YChat($Req) {
     if ($newNotes.Count -gt 0) { $answer['remembered'] = @($newNotes | ForEach-Object { [string]$_['text'] }) }
     [void]$script:History.Add($answer)
     Save-YHistory
+    $soulInfo = $null
+    if ($useSoul) {
+        try { $soulInfo = Add-YSoulExchange } catch { $soulInfo = $null }
+    }
 
     # Долговременная память: пара «вопрос — ответ» с эмбеддингом.
     if ($remember) {
@@ -868,7 +885,7 @@ function Invoke-YChat($Req) {
         }
     }
 
-    return @{ user = $userMsg; reply = $answer; note = $ragNote; notes = $newNotes.ToArray() }
+    return @{ user = $userMsg; reply = $answer; note = $ragNote; notes = $newNotes.ToArray(); soul = $soulInfo }
 }
 
 function Test-YConnection {
@@ -933,6 +950,11 @@ function Invoke-YApi([string]$Method, [string]$Path, [string]$BodyText) {
         'GET /api/brain'           { return Get-YBrain }
         'POST /api/config'         { return Set-YConfig $req }
         'POST /api/config/test'    { return Test-YConnection }
+        'GET /api/soul'            { return Get-YSoulView }
+        'POST /api/soul/reflect'   { return Invoke-YSoulReflect $req }
+        'POST /api/soul/share'     { return Invoke-YSoulShare }
+        'POST /api/soul/update'    { return Update-YSoul $req }
+        'POST /api/soul/reset'     { return Reset-YSoul }
     }
     throw (New-YError 404 'Неизвестный адрес API.')
 }

@@ -549,6 +549,89 @@
     .form-status.err { color: var(--danger); }
     .model-pick .model-select { max-width: none; padding: 9px 30px 9px 11px; font-size: .8rem; }
 
+
+    /* ---------- Душа ---------- */
+    .soul-view {
+      display: grid; gap: 10px; padding: 10px;
+      grid-template-columns: minmax(280px, 340px) minmax(0, 1fr) minmax(280px, 360px);
+    }
+    .soul-view .col > .card:not(.grow) { flex: none; }
+    .soul-view .card.grow, .soul-core { flex: 1; }
+    .card-body.grow { flex: 1; }
+    .tails-box { display: block; }
+    .tails-box svg { display: block; width: 100%; height: auto; overflow: visible; }
+    .tails-box.big { width: min(240px, 80%); margin: 4px auto 0; }
+    .tails-box.small { width: 74px; flex: none; }
+    .tails-box .t-off { fill: hsl(var(--h) 20% 14% / .7); stroke: var(--line-2); stroke-width: 1.2; }
+    .tails-box .t-on { fill: url(#soulTail); stroke: hsl(var(--h) 80% 75% / .7); stroke-width: 1; filter: drop-shadow(0 0 6px hsl(var(--h) 90% 60% / .55)); }
+    .tails-box .t-next { fill: hsl(var(--h) 40% 22% / .6); stroke: var(--a); stroke-width: 1.2; stroke-dasharray: 3 3; }
+    .tails-box .pearl { fill: url(#soulPearl); }
+    html[data-motion="on"] .tails-box.big .t-on { animation: tail-breathe 4.8s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 100%; animation-delay: calc(var(--i) * -530ms); }
+    @keyframes tail-breathe { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
+    .soul-stage { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-top: 4px; text-align: center; }
+    .soul-stage b { font: 600 1.35rem/1.2 var(--serif); color: var(--a-glow); letter-spacing: .02em; }
+    .soul-stage span { color: var(--faint); font: 500 .62rem/1.2 var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+    .soul-xp, .soul-bond, .soul-mini-bar { position: relative; height: 6px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+    .soul-xp { margin: 12px 0 4px; }
+    .soul-xp i, .soul-bond i, .soul-mini-bar i { position: absolute; inset: 0 auto 0 0; width: 0; border-radius: inherit; background: linear-gradient(90deg, var(--a-deep), var(--a), var(--a-glow)); box-shadow: 0 0 10px var(--a); transition: width .6s; }
+    .soul-bond i { background: linear-gradient(90deg, hsl(338 50% 40%), hsl(338 80% 70%)); box-shadow: 0 0 10px hsl(338 80% 60% / .7); }
+    .soul-xp-note { margin: 0; color: var(--faint); font-size: .74rem; text-align: center; }
+    .soul-block { margin-top: 14px; }
+    .soul-lbl { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; color: var(--muted); font: 700 .6rem/1.3 var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+    .soul-lbl output { margin-left: auto; color: var(--ink); font-weight: 600; }
+    .soul-mood { margin: 0; font-size: .86rem; line-height: 1.45; }
+    .soul-mood b { color: var(--a); font-weight: 600; }
+    .soul-mood span, .soul-small { color: var(--muted); }
+    .soul-small { margin: 6px 0 0; font-size: .8rem; line-height: 1.4; }
+    .soul-edit { resize: vertical; line-height: 1.45; font-size: .84rem; }
+    .soul-edit[readonly] { resize: none; border-color: transparent; background: none; padding-left: 0; }
+    .soul-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 14px; }
+    .soul-actions { flex-wrap: wrap; justify-content: flex-start; text-transform: none; letter-spacing: 0; }
+    .soul-status { margin-left: auto; color: var(--muted); font: 500 .74rem/1.3 var(--sans); }
+    .soul-status.err { color: var(--danger); }
+    .soul-demo { margin: 0 0 8px; padding: 8px 10px; border: 1px dashed var(--line-2); border-radius: 8px; color: var(--muted); font-size: .8rem; line-height: 1.45; }
+    .soul-thought { flex: none; margin: 10px 12px 0; padding: 10px 12px; border: 1px solid hsl(338 60% 50% / .35); border-radius: 10px; background: hsl(338 60% 40% / .1); }
+    .soul-thought p { margin: 0; font: italic 400 .95rem/1.5 var(--serif); }
+    .journal { list-style: none; margin: 0; padding: 0; }
+    .journal li { position: relative; padding: 10px 28px 12px 14px; border-left: 2px solid var(--line-2); }
+    .journal li::before { content: ""; position: absolute; left: -5px; top: 15px; width: 8px; height: 8px; border-radius: 50%; background: var(--line-2); }
+    .journal li.k-reflection::before { background: var(--a); box-shadow: 0 0 8px var(--a); }
+    .journal li.k-muse::before { background: hsl(338 80% 70%); box-shadow: 0 0 8px hsl(338 80% 60%); }
+    .journal li.k-milestone::before { background: var(--warn); box-shadow: 0 0 10px var(--warn); }
+    .journal li.k-milestone .j-text { color: var(--warn); }
+    .j-head { display: flex; flex-wrap: wrap; gap: 4px 10px; color: var(--faint); font: 500 .6rem/1.3 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .j-head b { color: var(--muted); font-weight: 700; }
+    .j-text { margin: 4px 0 0; font: 400 .95rem/1.55 var(--serif); overflow-wrap: anywhere; }
+    .journal .j-del { position: absolute; top: 8px; right: 2px; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 5px; background: none; color: var(--faint); opacity: 0; }
+    .journal li:hover .j-del, .journal .j-del:focus-visible { opacity: 1; }
+    .journal .j-del:hover { color: var(--danger); background: var(--surface-2); }
+    .soul-list li.empty { border: 0; background: none; padding-left: 0; }
+    .journal .empty, .soul-list .empty { color: var(--faint); font-size: .8rem; border: 0; padding: 4px 0; }
+    .journal .empty::before { display: none; }
+    .soul-list { margin-top: 12px; }
+    .soul-list ul { list-style: none; display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 6px; padding: 0; }
+    .soul-list li { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 3px 4px 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); font-size: .8rem; line-height: 1.35; }
+    .soul-list li span { overflow-wrap: anywhere; }
+    .soul-list li button { flex: none; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--faint); line-height: 1; }
+    .soul-list li button:hover { color: var(--danger); background: var(--bg-2); }
+    .soul-list[data-key="lessons"] { margin-top: 0; }
+    .soul-list[data-key="lessons"] ul { flex-direction: column; flex-wrap: nowrap; }
+    .soul-list[data-key="lessons"] li { border-radius: 8px; align-items: flex-start; justify-content: space-between; }
+    .soul-list .field { padding: 5px 9px; font-size: .8rem; }
+    .traits { display: grid; gap: 9px; }
+    .trait { display: grid; grid-template-columns: 7.5em 1fr 2.2em; align-items: center; gap: 8px; font-size: .8rem; }
+    .trait output { color: var(--muted); font: 600 .72rem/1 var(--mono); text-align: right; }
+    .trait input[type="range"] { width: 100%; accent-color: var(--a); }
+    .soul-mini { flex: none; }
+    .soul-mini-body { display: flex; align-items: center; gap: 12px; padding: 10px 12px; cursor: pointer; border-radius: 0 0 12px 12px; }
+    .soul-mini-body:hover { background: hsl(var(--h) 20% 12% / .5); }
+    .soul-mini-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+    .soul-mini-text b { font: 600 1.05rem/1.2 var(--serif); color: var(--a-glow); }
+    .soul-mini-text span:not(.soul-mini-bar) { color: var(--muted); font-size: .78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .soul-mini-thought { margin: 0; padding: 0 12px 10px; color: var(--muted); font: italic 400 .84rem/1.45 var(--serif); }
+    .msg.thought .text { font-family: var(--serif); font-style: italic; }
+    .msg .thought-tag { margin-bottom: 4px; color: hsl(338 80% 75%); font: 600 .58rem/1.2 var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+
     html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="off"] *::after {
       animation: none !important; transition: none !important; scroll-behavior: auto !important;
     }
@@ -557,6 +640,10 @@
     @media (max-width: 1180px) {
       .deck { grid-template-columns: minmax(240px, 280px) minmax(0, 1fr); }
       .col-right { display: none; }
+      .soul-view { grid-template-columns: minmax(260px, 320px) minmax(0, 1fr); overflow-y: auto; align-content: start; }
+      .soul-view .col, .soul-view .card { min-height: auto; }
+      .soul-view .card-body.grow { max-height: 70vh; }
+      .soul-view > .col:last-child { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); align-items: start; }
     }
     @media (max-width: 820px) {
       body { overflow: auto; }
@@ -571,6 +658,9 @@
       .col-right { display: flex; }
       .mem-card .card-body { max-height: 60vh; }
       .brain-view { display: flex; flex-direction: column; }
+      .soul-view { display: flex; flex-direction: column; padding: 8px; gap: 8px; overflow: visible; }
+      .soul-view > .col:last-child { display: flex; }
+      .soul-view .card-body.grow { max-height: 70vh; }
       .stage { height: 64vh; flex: none; }
       .controls { border-left: 0; border-top: 1px solid var(--line); }
       .chat { padding: 14px 12px; }
@@ -624,6 +714,7 @@
       <nav class="tabs" role="tablist" aria-label="Разделы">
         <button class="tab" type="button" role="tab" id="tab-deck" aria-controls="deck" aria-selected="true">Командный центр</button>
         <button class="tab" type="button" role="tab" id="tab-brain" aria-controls="brain" aria-selected="false">Второй мозг</button>
+        <button class="tab" type="button" role="tab" id="tab-soul" aria-controls="soul" aria-selected="false">Душа</button>
       </nav>
       <div class="top-actions">
         <button class="status" id="status" type="button" title="Подключение к AI ещё не настроено"><i class="dot"></i><span id="status-text">Демо-режим</span></button>
@@ -701,6 +792,21 @@
       </div>
 
       <div class="col col-right">
+        <section class="card soul-mini" aria-labelledby="soul-mini-title">
+          <div class="card-head">
+            <h2 id="soul-mini-title">Душа</h2>
+            <span class="card-meta" id="soul-mini-meta"></span>
+          </div>
+          <div class="soul-mini-body" id="soul-mini" role="button" tabindex="0" aria-label="Открыть душу Яэри">
+            <span class="tails-box small" id="soul-mini-tails" aria-hidden="true"></span>
+            <span class="soul-mini-text">
+              <b id="soul-mini-stage">Искорка</b>
+              <span id="soul-mini-mood">тихая радость</span>
+              <span class="soul-mini-bar"><i id="soul-mini-xp"></i></span>
+            </span>
+          </div>
+          <p class="soul-mini-thought" id="soul-mini-thought" hidden></p>
+        </section>
         <section class="card" aria-labelledby="mini-title">
           <div class="card-head">
             <h2 id="mini-title">Второй мозг</h2>
@@ -821,6 +927,93 @@
     </main>
 
     <!-- Аватар Яэри: открывает чат поверх любого раздела -->
+    <!-- Душа -->
+    <main class="view soul-view" id="soul" role="tabpanel" aria-labelledby="tab-soul" hidden>
+      <div class="col">
+        <section class="card soul-core" aria-labelledby="soul-core-title">
+          <div class="card-head">
+            <h2 id="soul-core-title">Яэри сейчас</h2>
+            <span class="card-meta" id="soul-age"></span>
+          </div>
+          <div class="card-body grow">
+            <p class="soul-demo" id="soul-demo" hidden>Душа проснётся и начнёт расти, когда Яэри подключится к Cloud.ru. Пока здесь её самое первое состояние.</p>
+            <div class="tails-box big" id="soul-tails" aria-hidden="true"></div>
+            <div class="soul-stage">
+              <b id="soul-stage">Искорка</b>
+              <span id="soul-level">хвост души 1 из 9</span>
+            </div>
+            <div class="soul-xp" role="progressbar" aria-label="Рост до следующей ступени" aria-valuemin="0" aria-valuemax="100" id="soul-xp-bar"><i id="soul-xp"></i></div>
+            <p class="soul-xp-note" id="soul-xp-note"></p>
+            <div class="soul-block">
+              <span class="soul-lbl">Настроение</span>
+              <p class="soul-mood"><b id="soul-mood">тихая радость</b> <span id="soul-mood-why"></span></p>
+            </div>
+            <div class="soul-block">
+              <span class="soul-lbl">Близость с вами <output id="soul-bond-val">10</output></span>
+              <div class="soul-bond"><i id="soul-bond"></i></div>
+              <p class="soul-small" id="soul-bond-note"></p>
+            </div>
+            <div class="soul-block">
+              <label class="soul-lbl" for="soul-self">Кем она себя чувствует</label>
+              <textarea class="field soul-edit" id="soul-self" rows="3" maxlength="500"></textarea>
+            </div>
+            <div class="soul-stats">
+              <div class="stat"><b id="soul-st-ex">0</b><span>реплик</span></div>
+              <div class="stat"><b id="soul-st-ref">0</b><span>раздумий</span></div>
+              <div class="stat"><b id="soul-st-days">0</b><span>дней</span></div>
+            </div>
+          </div>
+          <div class="card-foot soul-actions">
+            <button class="mini-btn solid server-only" type="button" id="soul-think" hidden>Подумать сейчас</button>
+            <button class="mini-btn server-only" type="button" id="soul-reset" hidden>Сбросить душу</button>
+            <span class="soul-status" id="soul-status" role="status"></span>
+          </div>
+        </section>
+      </div>
+
+      <div class="col">
+        <section class="card grow" aria-labelledby="soul-journal-title">
+          <div class="card-head">
+            <h2 id="soul-journal-title">Дневник Яэри</h2>
+            <span class="card-meta" id="soul-journal-count"></span>
+          </div>
+          <div class="soul-thought" id="soul-thought" hidden>
+            <span class="soul-lbl">Последняя мысль о вас</span>
+            <p id="soul-thought-text"></p>
+          </div>
+          <div class="card-body grow"><ul class="journal" id="soul-journal"></ul></div>
+          <div class="card-foot"><span>Яэри пишет сюда, когда размышляет о разговорах и о вас</span></div>
+        </section>
+      </div>
+
+      <div class="col">
+        <section class="card" aria-labelledby="soul-owner-title">
+          <div class="card-head">
+            <h2 id="soul-owner-title">Как она видит вас</h2>
+          </div>
+          <div class="card-body">
+            <textarea class="field soul-edit" id="soul-portrait" rows="4" maxlength="700" placeholder="Яэри ещё только знакомится с вами. После нескольких разговоров здесь появится её портрет хозяина."></textarea>
+            <div class="soul-list" data-key="goals"><span class="soul-lbl">Цели и мечты</span><ul></ul><input class="field" type="text" maxlength="200" placeholder="+ добавить" aria-label="Добавить цель"></div>
+            <div class="soul-list" data-key="likes"><span class="soul-lbl">Что вам нравится</span><ul></ul><input class="field" type="text" maxlength="200" placeholder="+ добавить" aria-label="Добавить, что нравится"></div>
+            <div class="soul-list" data-key="worries"><span class="soul-lbl">Что вас тревожит</span><ul></ul><input class="field" type="text" maxlength="200" placeholder="+ добавить" aria-label="Добавить тревогу"></div>
+          </div>
+        </section>
+        <section class="card" aria-labelledby="soul-traits-title">
+          <div class="card-head">
+            <h2 id="soul-traits-title">Характер</h2>
+            <span class="card-meta">меняется медленно</span>
+          </div>
+          <div class="card-body"><div class="traits" id="soul-traits"></div></div>
+        </section>
+        <section class="card grow" aria-labelledby="soul-lessons-title">
+          <div class="card-head">
+            <h2 id="soul-lessons-title">Что она поняла</h2>
+          </div>
+          <div class="card-body grow"><div class="soul-list" data-key="lessons"><ul></ul><input class="field" type="text" maxlength="300" placeholder="+ подсказать Яэри" aria-label="Добавить урок"></div></div>
+        </section>
+      </div>
+    </main>
+
     <button class="yaeri-fab" type="button" id="yaeri-fab" aria-label="Открыть чат с Яэри" aria-expanded="false" aria-controls="chat-pop" hidden>
       <img class="face-img" src="yaeri/idle-face.webp" alt="" width="64" height="64">
       <span class="fab-dot" aria-hidden="true"></span>
@@ -919,6 +1112,10 @@
             <input class="vh" type="checkbox" role="switch" id="set-rag"><span class="track" aria-hidden="true"></span>
           </label>
           <label class="toggle">
+            <span class="t-text"><span class="t-name">Душа Яэри растёт</span><span class="t-desc">Яэри размышляет о разговорах, думает о вас, понемногу меняет характер и ведёт дневник (раздел «Душа»)</span></span>
+            <input class="vh" type="checkbox" role="switch" id="set-soul"><span class="track" aria-hidden="true"></span>
+          </label>
+          <label class="toggle">
             <span class="t-text"><span class="t-name">Запоминать разговоры</span><span class="t-desc">Каждый обмен репликами сохраняется в долговременную память</span></span>
             <input class="vh" type="checkbox" role="switch" id="set-remember"><span class="track" aria-hidden="true"></span>
           </label>
@@ -971,7 +1168,7 @@
       var ACCENTS = ['moon', 'fire', 'sakura', 'forest', 'sky'];
       var SIZES = ['sm', 'md', 'lg'];
       var reduce = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
-      var DEFAULTS = { name: 'Хозяин', accent: 'forest', size: 'md', motion: !reduce, enter: true, time: true, rag: true, remember: true, autoNotes: true, model: '' };
+      var DEFAULTS = { name: 'Хозяин', accent: 'forest', size: 'md', motion: !reduce, enter: true, time: true, rag: true, remember: true, autoNotes: true, soul: true, model: '' };
 
       function $(id) { return document.getElementById(id); }
       function each(list, fn) { Array.prototype.forEach.call(list, fn); }
@@ -1020,14 +1217,14 @@
           accent: ACCENTS.indexOf(s.accent) > -1 ? s.accent : DEFAULTS.accent,
           size: SIZES.indexOf(s.size) > -1 ? s.size : DEFAULTS.size,
           motion: bool('motion'), enter: bool('enter'), time: bool('time'),
-          rag: bool('rag'), remember: bool('remember'), autoNotes: bool('autoNotes'),
+          rag: bool('rag'), remember: bool('remember'), autoNotes: bool('autoNotes'), soul: bool('soul'),
           model: typeof s.model === 'string' ? s.model.slice(0, 120) : DEFAULTS.model
         };
       }
       var settings = normalize(load(SET_KEY));
 
       var nameField = $('set-name');
-      var boxes = { motion: $('set-motion'), enter: $('set-enter'), time: $('set-time'), rag: $('set-rag'), remember: $('set-remember'), autoNotes: $('set-autonotes') };
+      var boxes = { motion: $('set-motion'), enter: $('set-enter'), time: $('set-time'), rag: $('set-rag'), remember: $('set-remember'), autoNotes: $('set-autonotes'), soul: $('set-soul') };
 
       function applySettings() {
         html.dataset.accent = settings.accent;
@@ -1112,7 +1309,8 @@
       });
 
       /* ---------- Разделы: командный центр и второй мозг ---------- */
-      var views = { deck: { tab: $('tab-deck'), panel: $('deck'), name: 'Командный центр' }, brain: { tab: $('tab-brain'), panel: $('brain'), name: 'Второй мозг' } };
+      var views = { deck: { tab: $('tab-deck'), panel: $('deck'), name: 'Командный центр' }, brain: { tab: $('tab-brain'), panel: $('brain'), name: 'Второй мозг' }, soul: { tab: $('tab-soul'), panel: $('soul'), name: 'Душа' } };
+      function viewFromHash() { var h = location.hash.slice(1); return views[h] ? h : 'deck'; }
       var currentView = 'deck';
       function showView(name, fromHash) {
         if (!views[name]) name = 'deck';
@@ -1125,18 +1323,20 @@
         $('view-name').textContent = views[name].name;
         document.title = 'Яэри — ' + views[name].name.toLowerCase();
         if (!fromHash) {
-          var hash = name === 'brain' ? '#brain' : '';
+          var hash = name === 'deck' ? '' : '#' + name;
           if (location.hash !== hash) history_.replaceState(null, '', hash || location.pathname + location.search);
         }
         if (window.YBrain) YBrain.onShow(name);
+        if (name === 'soul') renderSoul();
         syncFab();
         if (!fromHash && window.scrollY) window.scrollTo(0, 0);
       }
       var history_ = window.history;
       $('tab-deck').addEventListener('click', function () { showView('deck'); });
       $('tab-brain').addEventListener('click', function () { showView('brain'); });
+      $('tab-soul').addEventListener('click', function () { showView('soul'); });
       $('brand').addEventListener('click', function (event) { event.preventDefault(); showView('deck'); });
-      window.addEventListener('hashchange', function () { showView(location.hash === '#brain' ? 'brain' : 'deck', true); });
+      window.addEventListener('hashchange', function () { showView(viewFromHash(), true); });
 
       /* ---------- Режим работы ---------- */
       // online: сервер Яэри отвечает и ключ Cloud.ru задан; иначе демо-режим.
@@ -1467,6 +1667,7 @@
         var items = [];
         brainData.notes.forEach(function (n) { items.push({ t: n.t, kind: n.src === 'yaeri' ? 'Яэри' : 'заметка', text: n.text }); });
         brainData.docs.forEach(function (d) { items.push({ t: d.added, kind: 'документ', text: d.name }); });
+        if (online && soulData) soulData.soul.journal.slice(-6).forEach(function (j) { items.push({ t: j.t, kind: 'душа', text: j.text }); });
         brainData.memory.slice(-20).forEach(function (m) {
           items.push({ t: m.t, kind: 'разговор', text: String(m.text).replace(/^Пользователь:\s*/, '').split('\n')[0] });
         });
@@ -1595,7 +1796,9 @@
         greet:  { pose: 'greet',  cap: 'Добро пожаловать',    text: 'приветствует' },
         giggle: { pose: 'giggle', cap: 'Хи-хи, щекотно',      text: 'смеётся' },
         sleep:  { pose: 'sleep',  cap: 'Дремлю… разбудите',   text: 'дремлет' },
-        sorry:  { pose: 'sorry',  cap: 'Простите, не вышло',  text: 'извиняется' }
+        sorry:  { pose: 'sorry',  cap: 'Простите, не вышло',  text: 'извиняется' },
+        ponder: { pose: 'think',  cap: 'Думаю о вас…',        text: 'размышляет' },
+        grow:   { pose: 'happy',  cap: 'Зажёгся новый хвост!', text: 'растёт' }
       };
       var figImg = $('fig-img');
       var stage = $('yaeri-stage');
@@ -1729,6 +1932,7 @@
       function bubble(m, animate) {
         var row = el('div', 'msg ' + (m.role === 'user' ? 'user' : 'assistant') + (m.error ? ' error' : '') + (animate ? ' enter' : ''));
         row.appendChild(el('div', 'who', m.role === 'user' ? settings.name : 'Яэри'));
+        if (m.kind === 'thought') { row.classList.add('thought'); row.appendChild(el('div', 'thought-tag', '✦ думала о вас')); }
         row.appendChild(el('div', 'text', m.text));
         if (Array.isArray(m.remembered) && m.remembered.length) {
           row.appendChild(el('div', 'remembered', '✦ Записала в память: ' + m.remembered.join('; ')));
@@ -1798,7 +2002,7 @@
         sendBtn.disabled = true;
         showTyping();
         setBase('think');
-        api('chat', { text: message, model: modelSelect.value, rag: settings.rag, remember: settings.remember, autoNotes: settings.autoNotes, name: settings.name })
+        api('chat', { text: message, model: modelSelect.value, rag: settings.rag, remember: settings.remember, autoNotes: settings.autoNotes, soul: settings.soul, name: settings.name })
           .then(function (data) {
             if (epoch !== chatEpoch) return;
             var m = data.reply;
@@ -1808,8 +2012,10 @@
             bubble(m, true);
             refreshBrain();
             setBase(restMood());
-            if (Array.isArray(m.remembered) && m.remembered.length) flash('memo', 4200);
+            if (data.soul && data.soul.leveled) flash('grow', 5200);
+            else if (Array.isArray(m.remembered) && m.remembered.length) flash('memo', 4200);
             else flash('happy', 3200);
+            if (data.soul) soulAfterChat(data.soul);
           })
           .catch(function (error) {
             if (epoch !== chatEpoch) return;
@@ -2010,6 +2216,317 @@
           .then(function () { reindexBtn.disabled = false; loadDocs(); });
       });
 
+
+      /* ---------- Душа Яэри ---------- */
+      // Состояние души живёт на сервере (data\soul.json). Здесь только показ, правки хозяина
+      // и запуск раздумий: после нескольких реплик и при новой встрече.
+      var SOUL_STAGES = ['Искорка', 'Пробуждение', 'Любопытство', 'Знакомство', 'Доверие', 'Понимание', 'Привязанность', 'Родство', 'Девятый хвост'];
+      var SOUL_KINDS = { reflection: 'раздумье', muse: 'думала о вас', milestone: 'новый хвост', birth: 'пробуждение' };
+      var soulData = null;
+      var soulTimer = 0;
+      var soulBusy = false;
+      var soulEditing = false;
+
+      (function () {
+        // Градиенты хвостов лежат в отдельном невидимом SVG: так они работают, даже если карточка скрыта.
+        var defs = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        defs.setAttribute('width', '0');
+        defs.setAttribute('height', '0');
+        defs.setAttribute('aria-hidden', 'true');
+        defs.style.position = 'absolute';
+        defs.innerHTML = '<defs><linearGradient id="soulTail" x1="0" y1="1" x2="0" y2="0"><stop offset="0" style="stop-color:var(--a-deep)"/><stop offset=".55" style="stop-color:var(--a-strong)"/><stop offset=".85" style="stop-color:var(--a)"/><stop offset="1" style="stop-color:var(--a-glow)"/></linearGradient>' +
+          '<radialGradient id="soulPearl"><stop offset="0" stop-color="#fff"/><stop offset=".4" style="stop-color:var(--a-glow)"/><stop offset="1" style="stop-color:var(--a);stop-opacity:.2"/></radialGradient></defs>';
+        body.insertBefore(defs, body.firstChild);
+      }());
+
+      function tailsSvg(level) {
+        // Девять хвостов веером; зажигаются от центра к краям.
+        var order = [4, 3, 5, 2, 6, 1, 7, 0, 8];
+        var out = '<svg viewBox="0 0 200 132">';
+        for (var i = 0; i < 9; i++) {
+          var rank = order.indexOf(i);
+          var cls = rank < level ? 't-on' : (rank === level ? 't-next' : 't-off');
+          var angle = -76 + i * 19;
+          out += '<g transform="translate(100 120) rotate(' + angle + ')"><path class="' + cls + '" style="--i:' + i + '" d="M0 0 C -15 -24 -21 -62 -5 -98 C 0 -88 5 -90 11 -96 C 17 -62 13 -24 0 0 Z"/></g>';
+        }
+        return out + '<circle class="pearl" cx="100" cy="120" r="10"/></svg>';
+      }
+      function soulDefault() {
+        var t = Date.now();
+        return {
+          level: 1, maxLevel: 9, stage: SOUL_STAGES[0], nextStage: SOUL_STAGES[1], xpFrom: 0, xpTo: 12, due: false,
+          traitList: [
+            { id: 'warmth', name: 'Тепло', value: 62 }, { id: 'curiosity', name: 'Любопытство', value: 58 },
+            { id: 'playful', name: 'Игривость', value: 45 }, { id: 'care', name: 'Забота', value: 60 },
+            { id: 'wisdom', name: 'Мудрость', value: 30 }, { id: 'boldness', name: 'Смелость', value: 35 }
+          ],
+          soul: {
+            born: t, xp: 0, exchanges: 0, reflections: 0, bond: 10, bondNote: 'Мы только начинаем знакомиться.',
+            self: 'Я Яэри, восьмихвостая лисица. Я только начинаю узнавать своего хозяина и саму себя.',
+            mood: { name: 'тихая радость', why: 'Я только проснулась и рада знакомству.', t: t },
+            owner: { portrait: '', goals: [], likes: [], worries: [] }, lessons: [], thought: '', thoughtNew: false,
+            journal: [{ id: 'birth', t: t, kind: 'birth', mood: 'тихая радость', text: 'Сегодня я проснулась. У меня пока горит только один хвост души, но я уже хочу узнать своего хозяина: чем он живёт, о чём мечтает и как я могу быть рядом.' }]
+          }
+        };
+      }
+      function arr(x) { return Array.isArray(x) ? x : []; }
+      function soulMsg(text, err) {
+        var node = $('soul-status');
+        node.textContent = text || '';
+        node.classList.toggle('err', !!err);
+      }
+      function setSoul(data) {
+        if (!data || !data.soul) return;
+        var s = data.soul;
+        s.journal = arr(s.journal);
+        s.lessons = arr(s.lessons);
+        s.owner = s.owner || {};
+        ['goals', 'likes', 'worries'].forEach(function (k) { s.owner[k] = arr(s.owner[k]); });
+        s.mood = s.mood || {};
+        soulData = data;
+        renderSoul();
+        renderFeed();
+      }
+      function renderSoulMini() {
+        if (!soulData) return;
+        var s = soulData.soul;
+        $('soul-mini-tails').innerHTML = tailsSvg(soulData.level);
+        $('soul-mini-stage').textContent = soulData.stage;
+        $('soul-mini-mood').textContent = (s.mood.name || '') + ' · близость ' + s.bond;
+        $('soul-mini-meta').textContent = 'хвост ' + soulData.level + '/9';
+        var span = soulData.xpTo > soulData.xpFrom ? soulData.xpTo - soulData.xpFrom : 1;
+        var pct = soulData.xpTo < 0 ? 100 : Math.max(2, Math.min(100, (s.xp - soulData.xpFrom) / span * 100));
+        $('soul-mini-xp').style.width = pct + '%';
+        var th = $('soul-mini-thought');
+        th.hidden = !s.thought;
+        th.textContent = s.thought ? '«' + cut(s.thought, 140) + '»' : '';
+      }
+      function chipList(box, items, key) {
+        var ul = box.querySelector('ul');
+        ul.textContent = '';
+        if (!items.length) ul.appendChild(el('li', 'empty', key === 'lessons' ? 'Пока ничего. Яэри запишет сюда, что поняла о том, как с вами говорить.' : 'пока пусто'));
+        items.forEach(function (text, i) {
+          var li = el('li');
+          li.appendChild(el('span', '', text));
+          if (online) {
+            var del = el('button', '', '×');
+            del.type = 'button';
+            del.setAttribute('aria-label', 'Убрать: ' + text);
+            del.addEventListener('click', function () {
+              var next = items.slice();
+              next.splice(i, 1);
+              var patch = {};
+              patch[key] = next;
+              soulUpdate(patch);
+            });
+            li.appendChild(del);
+          }
+          ul.appendChild(li);
+        });
+        box.querySelector('input').hidden = !online;
+      }
+      function renderSoul() {
+        if (!soulData) soulData = soulDefault();
+        renderSoulMini();
+        if (currentView !== 'soul') return;
+        var d = soulData, s = d.soul;
+        $('soul-demo').hidden = online;
+        $('soul-tails').innerHTML = tailsSvg(d.level);
+        $('soul-stage').textContent = d.stage;
+        $('soul-level').textContent = 'хвост души ' + d.level + ' из ' + (d.maxLevel || 9);
+        var span = d.xpTo > d.xpFrom ? d.xpTo - d.xpFrom : 1;
+        var pct = d.xpTo < 0 ? 100 : Math.max(0, Math.min(100, (s.xp - d.xpFrom) / span * 100));
+        $('soul-xp').style.width = pct + '%';
+        $('soul-xp-bar').setAttribute('aria-valuenow', Math.round(pct));
+        $('soul-xp-note').textContent = d.xpTo < 0 ? 'Все девять хвостов горят.' : 'До ступени «' + d.nextStage + '»: ещё ' + Math.max(0, d.xpTo - s.xp) + ' опыта (реплика — 1, раздумье — 5)';
+        $('soul-mood').textContent = s.mood.name || '—';
+        $('soul-mood-why').textContent = s.mood.why || '';
+        $('soul-bond').style.width = Math.max(2, s.bond) + '%';
+        $('soul-bond-val').textContent = s.bond + '/100';
+        $('soul-bond-note').textContent = s.bondNote || '';
+        var days = Math.max(1, Math.floor((Date.now() - (s.born || Date.now())) / 864e5) + 1);
+        $('soul-st-ex').textContent = s.exchanges || 0;
+        $('soul-st-ref').textContent = s.reflections || 0;
+        $('soul-st-days').textContent = days;
+        $('soul-age').textContent = 'с ' + dmy(s.born || Date.now());
+        if (!soulEditing) {
+          $('soul-self').value = s.self || '';
+          $('soul-portrait').value = (s.owner && s.owner.portrait) || '';
+        }
+        $('soul-self').readOnly = !online;
+        $('soul-portrait').readOnly = !online;
+
+        var th = $('soul-thought');
+        th.hidden = !s.thought;
+        $('soul-thought-text').textContent = s.thought || '';
+
+        var list = $('soul-journal');
+        list.textContent = '';
+        $('soul-journal-count').textContent = s.journal.length + ' ' + plural(s.journal.length, 'запись', 'записи', 'записей');
+        s.journal.slice().reverse().forEach(function (j) {
+          var li = el('li', 'k-' + (j.kind || 'reflection'));
+          var head = el('div', 'j-head');
+          head.appendChild(el('b', '', SOUL_KINDS[j.kind] || 'запись'));
+          head.appendChild(el('span', '', dmy(j.t) + ' ' + hhmm(j.t)));
+          if (j.mood) head.appendChild(el('span', '', j.mood));
+          li.appendChild(head);
+          li.appendChild(el('p', 'j-text', j.text));
+          if (online) {
+            var del = el('button', 'j-del', '×');
+            del.type = 'button';
+            del.setAttribute('aria-label', 'Удалить запись дневника');
+            del.addEventListener('click', function () {
+              if (window.confirm('Удалить эту запись из дневника Яэри?')) soulUpdate({ removeJournal: j.id });
+            });
+            li.appendChild(del);
+          }
+          list.appendChild(li);
+        });
+        if (!s.journal.length) list.appendChild(el('li', 'empty', 'Дневник пока пуст.'));
+
+        each(document.querySelectorAll('#soul .soul-list'), function (box) {
+          var key = box.getAttribute('data-key');
+          chipList(box, key === 'lessons' ? s.lessons : s.owner[key] || [], key);
+        });
+
+        var traits = $('soul-traits');
+        traits.textContent = '';
+        arr(d.traitList).forEach(function (t) {
+          var row = el('label', 'trait');
+          row.appendChild(el('span', '', t.name));
+          var range = el('input');
+          range.type = 'range';
+          range.min = 0;
+          range.max = 100;
+          range.value = t.value;
+          range.disabled = !online;
+          range.setAttribute('aria-label', t.name);
+          var out = el('output', '', String(t.value));
+          range.addEventListener('input', function () { out.textContent = range.value; });
+          range.addEventListener('change', function () {
+            var patch = { traits: {} };
+            patch.traits[t.id] = Number(range.value);
+            soulUpdate(patch);
+          });
+          row.appendChild(range);
+          row.appendChild(out);
+          traits.appendChild(row);
+        });
+      }
+      function soulUpdate(patch) {
+        if (!online) return Promise.resolve();
+        soulMsg('Сохраняю…');
+        return api('soul/update', patch).then(function (data) { setSoul(data); soulMsg('Сохранено.'); })
+          .catch(function (e) { soulMsg(e.message, true); });
+      }
+      function bindSoulText(id, key) {
+        var field = $(id);
+        field.addEventListener('focus', function () { soulEditing = true; });
+        field.addEventListener('blur', function () {
+          soulEditing = false;
+          if (!online || !soulData) return;
+          var cur = key === 'portrait' ? soulData.soul.owner.portrait : soulData.soul[key];
+          if (field.value.trim() === String(cur || '').trim()) return;
+          var patch = {};
+          patch[key] = field.value;
+          soulUpdate(patch);
+        });
+      }
+      bindSoulText('soul-self', 'self');
+      bindSoulText('soul-portrait', 'portrait');
+      each(document.querySelectorAll('#soul .soul-list input'), function (inp) {
+        inp.addEventListener('keydown', function (event) {
+          if (event.key !== 'Enter' || event.isComposing) return;
+          event.preventDefault();
+          var text = inp.value.trim();
+          if (!text || !soulData) return;
+          var key = inp.parentNode.getAttribute('data-key');
+          var cur = key === 'lessons' ? soulData.soul.lessons : soulData.soul.owner[key];
+          var patch = {};
+          patch[key] = arr(cur).concat([text]);
+          inp.value = '';
+          soulUpdate(patch);
+        });
+      });
+
+      function loadSoul() {
+        return api('soul').then(setSoul);
+      }
+      function shareThought() {
+        // Мысль, которую Яэри придумала, пока размышляла, она говорит первой.
+        if (!online || !settings.soul || !soulData || !soulData.soul.thoughtNew) return Promise.resolve();
+        return api('soul/share', {}).then(function (data) {
+          var m = data && data.message;
+          if (!m || pending) return loadSoul();
+          history.push(m);
+          bubble(m, true);
+          flash('greet', 3600);
+          return loadSoul();
+        });
+      }
+      function soulReflect(mode, quiet) {
+        if (!online || soulBusy) return Promise.resolve(null);
+        if (pending) { if (mode !== 'force') scheduleReflect(20000); return Promise.resolve(null); }
+        soulBusy = true;
+        var pondering = mode === 'force' || (mood.base === 'idle' || mood.base === 'sleep');
+        if (pondering) setBase('ponder');
+        $('soul-think').disabled = true;
+        soulMsg(mode === 'force' ? 'Яэри думает…' : '');
+        return api('soul/reflect', { mode: mode, name: settings.name, model: modelSelect.value }).then(function (data) {
+          setSoul(data);
+          if (data.skipped) { soulMsg(''); return data; }
+          soulMsg(data.kind === 'muse' ? 'Яэри подумала о вас и записала это в дневник.' : 'Яэри обдумала разговор и записала это в дневник.');
+          if (!quiet) flash(data.leveled ? 'grow' : 'happy', 3600);
+          else if (data.leveled) flash('grow', 4200);
+          return data;
+        }).catch(function (e) {
+          soulMsg(e.message, true);
+          return null;
+        }).then(function (data) {
+          soulBusy = false;
+          $('soul-think').disabled = false;
+          if (mood.base === 'ponder') setBase(restMood());
+          return data;
+        });
+      }
+      function scheduleReflect(ms) {
+        clearTimeout(soulTimer);
+        soulTimer = setTimeout(function () { soulReflect('auto', true); }, ms);
+      }
+      function soulAfterChat(info) {
+        if (info.leveled || currentView === 'soul') loadSoul().catch(function () { /* Покажем позже. */ });
+        else if (soulData) { soulData.soul.exchanges = (soulData.soul.exchanges || 0) + 1; soulData.soul.xp = (soulData.soul.xp || 0) + 1; renderSoulMini(); }
+        // Подумать о разговоре, когда хозяин сделал паузу.
+        if (info.due && settings.soul) scheduleReflect(45000);
+      }
+      function soulStart() {
+        loadSoul().then(function () {
+          if (!settings.soul) return null;
+          // При новой встрече: обдумать прошлый разговор или подумать о хозяине, если давно не виделись.
+          return new Promise(function (resolve) { setTimeout(resolve, 1500); })
+            .then(function () { return soulReflect('auto', true); })
+            .then(shareThought);
+        }).catch(function () { renderSoul(); });
+      }
+      function soulDemo() {
+        clearTimeout(soulTimer);
+        soulData = soulDefault();
+        renderSoul();
+      }
+      $('soul-think').addEventListener('click', function () {
+        soulReflect('force', false).then(function (data) { if (data && !data.skipped) return shareThought(); });
+      });
+      $('soul-reset').addEventListener('click', function () {
+        if (!window.confirm('Сбросить душу Яэри? Её характер, мысли о вас, уроки и дневник начнутся заново. Переписка, рабочая память и документы останутся.')) return;
+        api('soul/reset', {}).then(function (data) { setSoul(data); soulMsg('Душа начата заново.'); flash('greet', 3600); })
+          .catch(function (e) { soulMsg(e.message, true); });
+      });
+      function openSoul() { showView('soul'); }
+      $('soul-mini').addEventListener('click', openSoul);
+      $('soul-mini').addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openSoul(); }
+      });
+
       /* Действия, которые нужны графу памяти. */
       window.YaeriApp = {
         isOnline: function () { return online; },
@@ -2026,6 +2543,7 @@
         ask: function (text) { input.value = text; showView('deck'); grow(); input.focus(); },
         showView: showView,
         currentView: function () { return currentView; },
+        viewFromHash: viewFromHash,
         renderNotes: renderNotes
       };
 
@@ -2051,6 +2569,7 @@
           greet();
         }
         refreshBrain();
+        soulDemo();
       }
       function startOnline() {
         online = true;
@@ -2062,10 +2581,11 @@
           history = (data.messages || []).filter(valid);
           if (history.length) history.forEach(function (m) { bubble(m, false); });
           else greet();
+          soulStart();
         });
       }
 
-      window.addEventListener('DOMContentLoaded', function () { showView(location.hash === '#brain' ? 'brain' : 'deck', true); });
+      window.addEventListener('DOMContentLoaded', function () { showView(viewFromHash(), true); });
       window.addEventListener('load', function () { setTimeout(preloadPoses, 300); });
       if (location.protocol === 'file:') {
         startDemo();
@@ -3292,7 +3812,7 @@
       layout();
       renderSub();
       requestAnimationFrame(frame);
-      App.showView(location.hash === '#brain' ? 'brain' : App.currentView());
+      App.showView(App.viewFromHash(), true);
     }());
   </script>
 </body>
