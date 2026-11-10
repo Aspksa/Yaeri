@@ -409,6 +409,16 @@
       inset: auto 0 0 0; display: flex; justify-content: center; text-align: center; padding: 0 max(20px, 12%) 64px;
       color: var(--stage-muted, var(--muted)); font: 500 .74rem/1.6 var(--mono); letter-spacing: .06em;
     }
+    .present-btn { width: 100%; margin-top: 6px; }
+    .present-exit {
+      display: none; right: 12px; top: 12px; pointer-events: auto; padding: 6px 10px; border: 1px solid var(--line-2); border-radius: 7px;
+      background: hsl(var(--h) 28% 6% / .8); color: var(--muted); font: 600 .62rem/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase;
+    }
+    body.presenting .topbar, body.presenting .controls, body.presenting .zoom, body.presenting .detail { display: none !important; }
+    body.presenting .brain-view { grid-template-columns: 1fr; }
+    body.presenting .stage { height: auto; }
+    body.presenting .present-exit { display: block; opacity: .35; }
+    body.presenting .present-exit:hover { opacity: 1; }
     .zoom { right: 12px; bottom: 12px; display: flex; flex-direction: column; gap: 4px; pointer-events: auto; }
     .zoom button { width: 30px; height: 30px; padding: 0; border: 1px solid var(--line-2); border-radius: 7px; background: hsl(var(--h) 28% 6% / .85); color: var(--muted); font: 600 .9rem/1 var(--mono); }
     .zoom button:hover { color: var(--ink); border-color: var(--a); }
@@ -738,6 +748,7 @@
         </div>
         <div class="overlay stage-empty" id="brain-empty" hidden></div>
         <div class="overlay tooltip" id="tooltip" hidden></div>
+        <button class="overlay present-exit" type="button" id="present-exit">Выйти из показа · Esc</button>
         <div class="overlay zoom">
           <button type="button" id="zoom-in" aria-label="Приблизить">+</button>
           <button type="button" id="zoom-out" aria-label="Отдалить">−</button>
@@ -779,6 +790,8 @@
         </div>
         <div class="ctl">
           <p class="ctl-title">Вид</p>
+          <div class="range"><label for="r-spin">Вращение колец</label><output id="o-spin"></output><input type="range" id="r-spin" min="0" max="1" step="0.05"></div>
+          <div class="range"><label for="r-springs">Пружины (силы)</label><output id="o-springs"></output><input type="range" id="r-springs" min="0.2" max="2.5" step="0.1"></div>
           <div class="range"><label for="r-links">Яркость связей</label><output id="o-links"></output><input type="range" id="r-links" min="0" max="1" step="0.05"></div>
           <div class="range"><label for="r-nodes">Размер узлов</label><output id="o-nodes"></output><input type="range" id="r-nodes" min="0.5" max="2.5" step="0.1"></div>
           <div class="range"><label for="r-labels">Размер подписей</label><output id="o-labels"></output><input type="range" id="r-labels" min="0.6" max="2" step="0.1"></div>
@@ -797,6 +810,7 @@
             <button class="btn primary" type="button" id="b-save">Сохранить вид</button>
             <button class="btn" type="button" id="b-png">Скачать PNG</button>
           </div>
+          <button class="btn present-btn" type="button" id="b-present">▶ Показ на весь экран</button>
           <p class="saved-note" id="saved-note" role="status"></p>
         </div>
         <div class="ctl">
@@ -2098,7 +2112,7 @@
       }
 
       /* ---------- Состояние и настройки вида ---------- */
-      var defaults = { layout: 'rings', group: 'sections', links: 0.45, nodes: 1, labels: 1, names: true, semantic: true, theme: 'site', collapsed: [] };
+      var defaults = { layout: 'rings', group: 'sections', spin: 0.25, springs: 1, links: 0.45, nodes: 1, labels: 1, names: true, semantic: true, theme: 'site', collapsed: [] };
       var view = (function () {
         var saved = null;
         try { saved = JSON.parse(localStorage.getItem('yaeri_brain_v1')); } catch (error) { saved = null; }
@@ -2129,6 +2143,20 @@
       var KIND = { note: 'Заметка', memory: 'Воспоминание', doc: 'Документ' };
       function monthName(t) { var d = new Date(t || 0); return MONTHS[d.getMonth()] + ' ' + d.getFullYear(); }
       function cut(text, n) { text = String(text || '').replace(/\s+/g, ' ').trim(); return text.length > n ? text.slice(0, n - 1) + '…' : text; }
+      function ago(t) {
+        var d = Math.max(0, Date.now() - t), m = Math.round(d / 6e4);
+        if (m < 1) return 'только что';
+        if (m < 60) return m + ' мин назад';
+        var h = Math.round(m / 60);
+        if (h < 24) return h + ' ч назад';
+        var days = Math.round(h / 24);
+        return days === 1 ? 'вчера' : days + ' ' + (days % 10 === 1 && days % 100 !== 11 ? 'день' : days % 10 > 1 && days % 10 < 5 && (days % 100 < 10 || days % 100 > 20) ? 'дня' : 'дней') + ' назад';
+      }
+      function sizeOf(chars) {
+        var b = (chars || 0) * 2;
+        return b < 1024 ? b + ' Б' : b < 1048576 ? Math.round(b / 1024) + ' КБ' : (b / 1048576).toFixed(1) + ' МБ';
+      }
+      function groupKind(g) { return g.kind === 'memory' ? 'разговоры' : g.kind === 'doc' ? 'документы' : 'раздел памяти'; }
       function memTitle(text) { return cut(String(text || '').replace(/^Пользователь:\s*/, '').split('\n')[0], 48); }
 
       function groupKey(kind, item) {
@@ -2232,35 +2260,71 @@
         var sp = 15;
 
         if (view.layout === 'rings') {
-          // Сектора вокруг ядра, внутри сектора узлы идут рядами наружу.
-          var weights = G.map(function (g) { return Math.max(3, g.collapsed ? 3 : g.items.length); });
-          var total = weights.reduce(function (s, w) { return s + w; }, 0);
-          var R0 = Math.max(170, Math.min(420, total * 2.2));
-          var a = -Math.PI / 2;
-          var outer = R0;
-          G.forEach(function (g, i) {
-            var span = TAU * weights[i] / total;
-            var padA = Math.min(span * 0.12, 0.08);
-            var mid = a + span / 2;
-            set(g, Math.cos(mid) * (R0 - 46), Math.sin(mid) * (R0 - 46));
-            g.angle = mid;
-            var cols = Math.max(1, Math.floor((span - 2 * padA) * R0 / sp));
-            g.items.forEach(function (n, j) {
-              var row = Math.floor(j / cols);
-              var col = j % cols;
-              var rr = R0 + row * sp;
-              var cAt = Math.max(1, Math.floor((span - 2 * padA) * rr / sp));
-              var useCols = Math.min(cAt, cols);
-              var ang = a + padA + (col + 0.5) / useCols * (span - 2 * padA);
-              set(n, Math.cos(ang) * rr, Math.sin(ang) * rr);
-              outer = Math.max(outer, rr);
-            });
-            g.labelR = R0 + Math.ceil(g.items.length / cols) * sp + 26;
-            if (g.collapsed) g.labelR = R0 + 10;
-            a += span;
+          // Как в референсе: разделы памяти — плотные «клинья» точек вокруг ядра,
+          // разговоры — внешнее кольцо из кружков-иконок, сгруппированных по месяцам.
+          var inner = G.filter(function (g) { return g.kind !== 'memory'; });
+          var outerG = G.filter(function (g) { return g.kind === 'memory'; });
+          var step = 13;
+          var shapes = inner.map(function (g) {
+            var n = g.collapsed ? 1 : Math.max(1, g.items.length);
+            var cols = Math.max(1, Math.min(9, Math.round(Math.sqrt(n / 1.2))));
+            return { g: g, cols: cols, rows: Math.ceil(n / cols) };
           });
-          deco.rings = [R0 - 90, R0 - 46, outer + 70];
-          deco.orbit = outer + 70;
+          var widthPx = shapes.reduce(function (s0, x) { return s0 + x.cols * step; }, 0);
+          var gapPx = 46;
+          var R0 = Math.max(230, (widthPx + gapPx * Math.max(1, shapes.length)) / TAU);
+          var maxRows = shapes.reduce(function (m, x) { return Math.max(m, x.rows); }, 1);
+          var gapA = shapes.length ? (TAU - widthPx / R0) / shapes.length : 0;
+          var a = -Math.PI / 2 - (shapes.length ? shapes[0].cols * step / R0 / 2 : 0);
+          var innerOuter = R0;
+          shapes.forEach(function (x) {
+            var g = x.g;
+            var wA = x.cols * step / R0;
+            var mid = a + wA / 2;
+            g.items.forEach(function (n, j) {
+              var row = Math.floor(j / x.cols);
+              var col = j % x.cols;
+              var rr = R0 + row * step;
+              var ang = a + (col + 0.5) * step / R0;
+              set(n, Math.cos(ang) * rr, Math.sin(ang) * rr);
+            });
+            var lr = R0 + (g.collapsed ? 1 : x.rows) * step + 16;
+            innerOuter = Math.max(innerOuter, lr);
+            // Узел группы стоит у подписи: от неё веером расходятся связи к узлам раздела.
+            set(g, Math.cos(mid) * lr, Math.sin(mid) * lr);
+            g.angle = mid;
+            a += wA + gapA;
+          });
+          var Rout = Math.max(innerOuter + 130, R0 + maxRows * step + 150);
+          var memCount = outerG.reduce(function (s0, g) { return s0 + (g.collapsed ? 1 : g.items.length); }, 0);
+          var slot = 19;
+          var perBand = Math.max(1, Math.floor((TAU * Rout - outerG.length * 30) / slot));
+          var bands = Math.max(1, Math.ceil(memCount / perBand));
+          // Кластеры разговоров равномерно распределены по всему внешнему кольцу.
+          var usedA = outerG.reduce(function (s0, g) { return s0 + Math.ceil((g.collapsed ? 1 : g.items.length) / bands) * slot / Rout; }, 0);
+          var spareA = outerG.length ? Math.max(30 / Rout, (TAU - usedA) / outerG.length) : 0;
+          var b = -Math.PI / 2 + spareA / 2;
+          outerG.forEach(function (g) {
+            var start = b;
+            var n = g.collapsed ? 1 : g.items.length;
+            var colsHere = Math.ceil(n / bands);
+            g.items.forEach(function (it, j) {
+              var band = j % bands;
+              var col = Math.floor(j / bands);
+              var rr = Rout + band * 18;
+              var ang = start + (col + 0.5) * slot / Rout;
+              set(it, Math.cos(ang) * rr, Math.sin(ang) * rr);
+            });
+            var wA = colsHere * slot / Rout;
+            var mid = start + wA / 2;
+            var lr = Rout + bands * 18 + 10;
+            set(g, Math.cos(mid) * lr, Math.sin(mid) * lr);
+            g.angle = mid;
+            b = start + wA + spareA;
+          });
+          deco.rings = [R0 - 70, R0 - 112];
+          if (outerG.length) deco.rings.push(Rout - 48, Rout + bands * 18 + 14);
+          deco.orbit = outerG.length ? Rout + bands * 18 + 120 : innerOuter + 40;
         } else if (view.layout === 'stars' || view.layout === 'force') {
           // Созвездия: группы по кругу, узлы — спиралью вокруг центра группы.
           var maxR = 0;
@@ -2273,7 +2337,6 @@
             set(g, gx, gy);
             g.angle = ang;
             g.items.forEach(function (n, j) { var p = phyllo(n, j, sp * 0.9); set(n, gx + p.x, gy + p.y); });
-            g.labelR = null;
           });
           deco.rings = [Rg];
           if (view.layout === 'force') { force(targets); }
@@ -2290,7 +2353,7 @@
             var hy = S * 1.5 * c.r;
             set(g, hx, hy);
             g.items.forEach(function (n, j) { var p = phyllo(n, j, sp * 0.8); set(n, hx + p.x, hy + p.y + 10); });
-            deco.hexes.push({ x: hx, y: hy, s: S, color: g.color, label: g.label });
+            deco.hexes.push({ x: hx, y: hy, s: S, color: g.color, label: g.label, inner: phyllo(0, g.items.length, sp * 0.8).r + 16, cy: 10 });
           });
         } else if (view.layout === 'time') {
           // Лента времени: по горизонтали дата, по вертикали группы.
@@ -2383,7 +2446,7 @@
           L.forEach(function (l) {
             var a = P[l.a.id], b = P[l.b.id];
             var want = l.kind === 'core' ? 260 : l.kind === 'group' ? 30 + Math.sqrt(l.a.items.length) * 9 : 90;
-            var str = l.kind === 'sem' ? 0.01 : l.kind === 'core' ? 0.04 : 0.06;
+            var str = (l.kind === 'sem' ? 0.01 : l.kind === 'core' ? 0.04 : 0.06) * view.springs;
             var ddx = b.x - a.x, ddy = b.y - a.y;
             var d = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
             var f = (d - want) * str * alpha;
@@ -2472,7 +2535,11 @@
       Renderer.prototype.nodeR = function (n) {
         var s = view.nodes;
         if (n.type === 'core') return 40;
-        if (n.type === 'group') return (n.collapsed ? 9 + Math.min(14, Math.sqrt(n.items.length) * 2.2) : 6) * Math.sqrt(s);
+        if (n.type === 'group') {
+          if (view.layout === 'rings' && !n.collapsed) return 7 * Math.sqrt(s);
+          return (n.collapsed ? 9 + Math.min(14, Math.sqrt(n.items.length) * 2.2) : 6) * Math.sqrt(s);
+        }
+        if (n.kind === 'memory' && view.layout === 'rings') return 7.5 * Math.sqrt(s);
         var base = n.kind === 'doc' ? 5.5 : n.kind === 'note' ? 4.6 : 3.4;
         if (n.kind === 'note' && n.item.pinned) base += 1.2;
         return base * s;
@@ -2517,17 +2584,6 @@
           ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.stroke();
         });
         ctx.setLineDash([]);
-        if (deco.orbit && view.layout === 'rings') {
-          // Орбита сообщений: по точке на каждые несколько реплик, медленно вращается.
-          var count = Math.min(240, Math.max(24, data.messages || 0));
-          var rot = motion ? t * 0.02 : 0;
-          ctx.fillStyle = alpha(theme.muted, 0.55);
-          for (var i = 0; i < count; i++) {
-            var a = rot + TAU * i / count;
-            var rr = deco.orbit + (i % 3) * 6;
-            ctx.beginPath(); ctx.arc(Math.cos(a) * rr, Math.sin(a) * rr, (i % 7 === 0 ? 2.2 : 1.2), 0, TAU); ctx.fill();
-          }
-        }
         deco.hexes.forEach(function (hx) {
           ctx.beginPath();
           for (var s = 0; s < 6; s++) {
@@ -2541,6 +2597,18 @@
           ctx.strokeStyle = alpha(hx.color, 0.35);
           ctx.lineWidth = 1.2 / k;
           ctx.stroke();
+          if (hx.inner) {
+            // Внутренний круг кластера и маленькие кружки на углах соты, как в референсе.
+            ctx.strokeStyle = alpha(hx.color, 0.45);
+            ctx.lineWidth = 1 / k;
+            ctx.beginPath(); ctx.arc(hx.x, hx.y + hx.cy, hx.inner, 0, TAU); ctx.stroke();
+            ctx.fillStyle = theme.bg;
+            for (var v = 0; v < 6; v += 2) {
+              var va = Math.PI / 6 + v * Math.PI / 3;
+              var vx = hx.x + Math.cos(va) * (hx.s - 4), vy = hx.y + Math.sin(va) * (hx.s - 4);
+              ctx.beginPath(); ctx.arc(vx, vy, 7, 0, TAU); ctx.fill(); ctx.stroke();
+            }
+          }
           if (hx.label && !mini) {
             ctx.fillStyle = hx.color;
             ctx.font = '600 ' + (13 * view.labels) + 'px ' + MONO;
@@ -2576,7 +2644,8 @@
           if (l.kind === 'sem' && !view.semantic) return;
           if (view.layout === 'time' && l.kind !== 'core') return;
           var hot = focus && (focus[l.a.id] && focus[l.b.id]);
-          var base = l.kind === 'core' ? 0.5 : l.kind === 'group' ? 0.28 : 0.55;
+          if (view.layout === 'rings' && l.kind === 'group' && !hot) return;
+          var base = l.kind === 'core' ? 0.5 : l.kind === 'group' ? 0.28 : view.layout === 'rings' ? 0.3 : 0.55;
           var aa = la * base * (dimOthers ? (hot ? 2.2 : 0.25) : 1);
           if (aa <= 0.01) return;
           var col = l.kind === 'core' ? l.b.color : l.kind === 'group' ? l.b.color : theme.core;
@@ -2601,7 +2670,10 @@
           var r = self.nodeR(n);
           var on = !dimOthers || focus[n.id];
           ctx.globalAlpha = on ? 1 : 0.18;
-          if (n.type === 'group') {
+          if (n.type === 'group' && view.layout === 'rings' && !n.collapsed) {
+            ctx.fillStyle = n.color;
+            ctx.beginPath(); ctx.arc(n.x, n.y, 2.2 / Math.max(k, 0.3), 0, TAU); ctx.fill();
+          } else if (n.type === 'group') {
             ctx.fillStyle = theme.bg;
             ctx.strokeStyle = n.color;
             ctx.lineWidth = 1.6 / k;
@@ -2623,6 +2695,22 @@
               ctx.fillStyle = n.color;
               ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, TAU); ctx.fill();
               if (n.item.pinned) { ctx.strokeStyle = n.color; ctx.lineWidth = 1.2 / k; ctx.beginPath(); ctx.arc(n.x, n.y, r + 3, 0, TAU); ctx.stroke(); }
+            } else if (view.layout === 'rings') {
+              // Кружок-иконка разговора, как «рутины» на внешнем кольце референса.
+              ctx.fillStyle = theme.bg;
+              ctx.strokeStyle = alpha(n.color, 0.9);
+              ctx.lineWidth = 1.1 / Math.max(k, 0.5);
+              ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, TAU); ctx.fill(); ctx.stroke();
+              if (!mini && r * k > 3) {
+                var u = r * 0.42;
+                ctx.fillStyle = alpha(n.color, 0.9);
+                ctx.beginPath();
+                ctx.rect(n.x - u, n.y - u * 0.75, u * 2, u * 1.2);
+                ctx.moveTo(n.x - u * 0.4, n.y + u * 0.45);
+                ctx.lineTo(n.x - u * 0.7, n.y + u * 0.95);
+                ctx.lineTo(n.x + u * 0.1, n.y + u * 0.45);
+                ctx.fill();
+              }
             } else {
               ctx.fillStyle = alpha(n.color, 0.85);
               ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, TAU); ctx.fill();
@@ -2699,9 +2787,12 @@
             var on = !dimOthers || focus[g.id];
             ctx.globalAlpha = on ? 1 : 0.25;
             var lx = g.x, ly = g.y, align = 'center';
-            if (view.layout === 'rings' && g.labelR) {
-              lx = Math.cos(g.angle) * g.labelR; ly = Math.sin(g.angle) * g.labelR;
-              align = Math.cos(g.angle) > 0.2 ? 'left' : Math.cos(g.angle) < -0.2 ? 'right' : 'center';
+            if (view.layout === 'rings' && !g.collapsed) {
+              var ang = Math.atan2(g.y, g.x);
+              var out = 1;
+              lx = g.x + Math.cos(ang) * 6 * out; ly = g.y + Math.sin(ang) * 6 * out;
+              var c = Math.cos(ang) * out;
+              align = c > 0.25 ? 'left' : c < -0.25 ? 'right' : 'center';
             } else if (view.layout === 'time') {
               lx = g.x - 16; align = 'right';
             } else {
@@ -2780,10 +2871,11 @@
         var b = document.createElement('b');
         var s = document.createElement('span');
         if (n.type === 'core') { b.textContent = 'Яэри'; s.textContent = 'ядро · ' + graph.groups.length + ' групп'; }
-        else if (n.type === 'group') { b.textContent = n.label; s.textContent = n.items.length + ' узл. · клик — ' + (n.collapsed ? 'развернуть' : 'свернуть'); }
+        else if (n.type === 'group') { b.textContent = n.label; s.textContent = groupKind(n) + ' · ' + n.items.length + ' узл.' + (n.t ? ' · обновлён ' + ago(n.t) : ''); }
         else {
           b.textContent = n.label;
-          s.textContent = KIND[n.kind] + ' · ' + n.group.label + (n.t ? ' · ' + new Date(n.t).toLocaleDateString('ru-RU') : '');
+          var size = n.kind === 'doc' ? sizeOf(n.item.chars) : sizeOf(String(n.item.text || '').length);
+          s.textContent = KIND[n.kind] + ' · ' + n.group.label + ' · ' + size + (n.t ? ' · ' + ago(n.t) : '');
         }
         tip.appendChild(b);
         tip.appendChild(s);
@@ -2868,10 +2960,6 @@
       function click(n) {
         if (!n) { select(null); return; }
         if (n.type === 'core') { select(null); main.fit(); return; }
-        if (n.type === 'group') {
-          toggleGroup(n);
-          return;
-        }
         select(n);
       }
       function toggleGroup(g) {
@@ -2889,9 +2977,10 @@
       /* Карточка выбранного узла. */
       var detail = $('detail');
       function select(n) {
-        state.sel = n && n.type === 'leaf' ? n : null;
+        state.sel = n && (n.type === 'leaf' || n.type === 'group') ? n : null;
         updateFocus();
         if (!state.sel) { detail.hidden = true; return; }
+        if (n.type === 'group') { selectGroup(n); return; }
         var it = n.item;
         $('d-kind').textContent = KIND[n.kind];
         $('d-meta').textContent = n.group.label + (n.t ? ' · ' + new Date(n.t).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
@@ -2929,6 +3018,28 @@
         detail.hidden = false;
       }
       $('d-close').addEventListener('click', function () { select(null); });
+      function selectGroup(g) {
+        // Карточка раздела: как в референсе — подсвечены связи ко всем его узлам.
+        $('d-kind').textContent = g.label;
+        $('d-meta').textContent = groupKind(g) + ' · ' + g.items.length + ' узл.' + (g.t ? ' · ' + ago(g.t) : '');
+        var lines = g.items.slice().reverse().slice(0, 12).map(function (x) { return '· ' + x.label; });
+        if (g.items.length > 12) lines.push('… и ещё ' + (g.items.length - 12));
+        $('d-text').textContent = lines.join('\n') || 'Пусто.';
+        var act = $('d-actions');
+        act.textContent = '';
+        function btn(label, fn, solid) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'mini-btn' + (solid ? ' solid' : '');
+          b.textContent = label;
+          b.addEventListener('click', fn);
+          act.appendChild(b);
+        }
+        if (g.kind === 'note') btn('Спросить Яэри', function () { App.ask('Что ты помнишь в разделе «' + g.label + '»? Что из этого стоит сделать в ближайшее время?'); }, true);
+        btn(g.collapsed ? 'Развернуть' : 'Свернуть', function () { toggleGroup(g); select(g); });
+        btn('Приблизить', function () { flyTo(g, 1.4); });
+        detail.hidden = false;
+      }
 
       /* Поиск. */
       var search = $('brain-search');
@@ -2978,6 +3089,13 @@
         o.textContent = fmt(view[key]);
         r.addEventListener('input', function () { view[key] = parseFloat(r.value); o.textContent = fmt(view[key]); dirty = true; miniDirty = true; });
       }
+      bindRange('spin', 'spin', function (v) { return v.toFixed(2); });
+      bindRange('springs', 'springs', function (v) { return v.toFixed(1) + '×'; });
+      var springsTimer = 0;
+      $('r-springs').addEventListener('change', function () {
+        clearTimeout(springsTimer);
+        springsTimer = setTimeout(function () { if (view.layout === 'force') layout(); }, 50);
+      });
       bindRange('links', 'links', function (v) { return v.toFixed(2); });
       bindRange('nodes', 'nodes', function (v) { return v.toFixed(1) + '×'; });
       bindRange('labels', 'labels', function (v) { return v.toFixed(1) + '×'; });
@@ -3080,10 +3198,28 @@
       /* ---------- Цикл отрисовки ---------- */
       var miniDirty = true;
       var lastMini = 0;
+      var lastFrame = 0;
+      function spin(dt) {
+        // Медленное вращение колец, как «giro dos anéis» в референсе. Замирает, пока узел под курсором.
+        var speed = presenting ? Math.max(view.spin, 0.3) : view.spin;
+        if (view.layout !== 'rings' || !speed || anim || state.hover || state.sel || drag) return false;
+        var d = dt / 1000 * speed * 0.12;
+        var c = Math.cos(d), s0 = Math.sin(d);
+        graph.nodes.forEach(function (n) {
+          var x = n.x, y = n.y;
+          n.x = x * c - y * s0; n.y = x * s0 + y * c;
+          x = n.tx; y = n.ty;
+          if (x !== undefined) { n.tx = x * c - y * s0; n.ty = x * s0 + y * c; }
+        });
+        return true;
+      }
       function frame(now) {
         requestAnimationFrame(frame);
         var view_ = App.currentView();
         var motion = App.motion();
+        var dt = lastFrame ? Math.min(100, now - lastFrame) : 0;
+        lastFrame = now;
+        if (motion && dt && spin(dt)) { dirty = true; miniDirty = true; }
         if (anim) {
           var p = Math.min(1, (now - anim.start) / anim.dur);
           var e = ease(p);
@@ -3111,11 +3247,38 @@
         }
       }
 
+      /* Режим показа: только граф на весь экран, кольца вращаются. */
+      var presenting = false;
+      function present(on) {
+        if (on === presenting) return;
+        presenting = on;
+        document.body.classList.toggle('presenting', on);
+        select(null);
+        if (on) {
+          App.showView('brain');
+          var target = $('brain');
+          try { if (target.requestFullscreen) target.requestFullscreen().catch(function () {}); } catch (error) { /* Без полного экрана. */ }
+        } else if (document.fullscreenElement) {
+          try { document.exitFullscreen().catch(function () {}); } catch (error) { /* Уже вышли. */ }
+        }
+        setTimeout(function () { needFit = true; dirty = true; }, 120);
+      }
+      $('b-present').addEventListener('click', function () { present(true); });
+      $('present-exit').addEventListener('click', function () { present(false); });
+      document.addEventListener('fullscreenchange', function () { if (!document.fullscreenElement && presenting) present(false); });
+      document.addEventListener('keydown', function (e) { if (presenting && e.key === 'Escape') present(false); });
+
       $('mini-brain').addEventListener('click', function () { App.showView('brain'); });
       $('mini-brain').addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); App.showView('brain'); } });
 
       window.YBrain = {
-        setData: function (d) { data = d; rebuild(true); if (!main.fitted) needFit = true; },
+        setData: function (d) {
+          var hadLeaves = graph.nodes.some(function (n) { return n.type === 'leaf'; });
+          data = d;
+          rebuild(true);
+          // Первые данные пришли, когда граф уже был открыт пустым: подгоняем камеру под них.
+          if (!main.fitted || !hadLeaves) { needFit = true; miniFit = true; }
+        },
         colorFor: function (kind, key) { return groupColor[key] || colorFor(kind, key); },
         restyle: function () { pickTheme(); renderThemes(); rebuild(true); },
         onShow: function (name) { dirty = true; miniDirty = true; if (name === 'brain' && !main.fitted) needFit = true; }
