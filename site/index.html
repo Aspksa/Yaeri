@@ -548,6 +548,7 @@
     .form-status.ok { color: var(--a); }
     .form-status.err { color: var(--danger); }
     .model-pick .model-select { max-width: none; padding: 9px 30px 9px 11px; font-size: .8rem; }
+    .model-pick label[for="smart-model"] { display: block; margin-top: 16px; }
 
 
     /* ---------- Душа ---------- */
@@ -661,6 +662,24 @@
     .soul-skills li.locked { opacity: .45; }
     .soul-skills li.locked b { color: var(--muted); }
     .soul-skills li span { color: var(--muted); }
+    .needs { display: grid; gap: 6px; }
+    .need { display: grid; grid-template-columns: 6.5em 1fr 2em; align-items: center; gap: 8px; font-size: .8rem; }
+    .need .nbar { height: 5px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+    .need .nbar i { display: block; height: 100%; background: var(--a); transition: width .6s; }
+    .need.longing .nbar i { background: hsl(338 80% 68%); }
+    .need.joy .nbar i { background: hsl(45 90% 62%); }
+    .need output { color: var(--muted); font: 600 .7rem/1 var(--mono); text-align: right; }
+    .secrets { list-style: none; margin: 0; padding: 0; }
+    .secrets li { padding: 7px 0; border-bottom: 1px solid var(--line); font-size: .82rem; }
+    .secrets li:last-child { border-bottom: 0; }
+    .secrets .s-head { display: flex; align-items: center; gap: 8px; }
+    .secrets .s-head b { font: 600 .9rem/1.3 var(--serif); }
+    .secrets .s-head span { margin-left: auto; color: var(--faint); font: 500 .62rem/1.2 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .secrets li.locked { opacity: .5; }
+    .secrets p { margin: 6px 0 0; font: italic 400 .92rem/1.55 var(--serif); }
+    .msg details.inner { margin-top: 6px; color: var(--muted); font-size: .8rem; }
+    .msg details.inner summary { cursor: pointer; color: var(--faint); font: 600 .58rem/1.4 var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+    .msg details.inner p { margin: 4px 0 0; padding-left: 8px; border-left: 2px solid var(--line-2); font-style: italic; }
     .soul-mini { flex: none; }
     .soul-mini-body { display: flex; align-items: center; gap: 12px; padding: 10px 12px; cursor: pointer; border-radius: 0 0 12px 12px; }
     .soul-mini-body:hover { background: hsl(var(--h) 20% 12% / .5); }
@@ -988,6 +1007,10 @@
               <p class="soul-mood"><b id="soul-mood">тихая радость</b> <span id="soul-mood-why"></span></p>
             </div>
             <div class="soul-block">
+              <span class="soul-lbl">Что она чувствует внутри</span>
+              <div class="needs" id="soul-needs"></div>
+            </div>
+            <div class="soul-block">
               <span class="soul-lbl">Близость с вами <output id="soul-bond-val">10</output></span>
               <div class="soul-bond"><i id="soul-bond"></i></div>
               <p class="soul-small" id="soul-bond-note"></p>
@@ -1069,6 +1092,13 @@
             <ul class="opinions" id="soul-opinions"></ul>
           </div>
         </section>
+        <section class="card" aria-labelledby="soul-secrets-title">
+          <div class="card-head">
+            <h2 id="soul-secrets-title">Секреты</h2>
+            <span class="card-meta">открываются с близостью</span>
+          </div>
+          <div class="card-body"><ul class="secrets" id="soul-secrets"></ul></div>
+        </section>
         <section class="card" aria-labelledby="soul-skills-title">
           <div class="card-head">
             <h2 id="soul-skills-title">Умения</h2>
@@ -1132,6 +1162,13 @@
           <label class="lbl" for="model">Модель для ответов</label>
           <select class="model-select" id="model"></select>
           <p class="note small" id="model-note">Список приходит из Cloud.ru. Выбор сохраняется на этом компьютере.</p>
+          <label class="lbl" for="smart-model">Умная модель: сложные вопросы, раздумья и сон</label>
+          <select class="model-select" id="smart-model"></select>
+          <label class="toggle">
+            <span class="t-text"><span class="t-name">Выбирать модель сама</span><span class="t-desc">Болтовня — основной моделью, сложные вопросы (анализ, код, планы, расчёты) — умной</span></span>
+            <input class="vh" type="checkbox" role="switch" id="set-automodel"><span class="track" aria-hidden="true"></span>
+          </label>
+          <p class="note small" id="smart-note"></p>
         </div>
       </section>
 
@@ -1194,6 +1231,14 @@
             <input class="vh" type="checkbox" role="switch" id="set-soul"><span class="track" aria-hidden="true"></span>
           </label>
           <label class="toggle">
+            <span class="t-text"><span class="t-name">Думает перед ответом</span><span class="t-desc">Короткий внутренний монолог: сверяется с душой и памятью. Мысли можно развернуть под ответом</span></span>
+            <input class="vh" type="checkbox" role="switch" id="set-inner"><span class="track" aria-hidden="true"></span>
+          </label>
+          <label class="toggle">
+            <span class="t-text"><span class="t-name">Проверяет себя</span><span class="t-desc">Перечитывает ответ и исправляет, если он противоречит тому, что она о вас знает (ещё один быстрый запрос)</span></span>
+            <input class="vh" type="checkbox" role="switch" id="set-selfcheck"><span class="track" aria-hidden="true"></span>
+          </label>
+          <label class="toggle">
             <span class="t-text"><span class="t-name">Утром и вечером пишет первой</span><span class="t-desc">Утреннее пожелание и вечерний вопрос «как прошёл день?», раз в день каждое</span></span>
             <input class="vh" type="checkbox" role="switch" id="set-care"><span class="track" aria-hidden="true"></span>
           </label>
@@ -1250,7 +1295,7 @@
       var ACCENTS = ['moon', 'fire', 'sakura', 'forest', 'sky'];
       var SIZES = ['sm', 'md', 'lg'];
       var reduce = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
-      var DEFAULTS = { name: 'Хозяин', accent: 'forest', size: 'md', motion: !reduce, enter: true, time: true, rag: true, remember: true, autoNotes: true, soul: true, care: true, model: '' };
+      var DEFAULTS = { name: 'Хозяин', accent: 'forest', size: 'md', motion: !reduce, enter: true, time: true, rag: true, remember: true, autoNotes: true, soul: true, care: true, inner: true, selfCheck: true, autoModel: true, model: '' };
 
       function $(id) { return document.getElementById(id); }
       function each(list, fn) { Array.prototype.forEach.call(list, fn); }
@@ -1299,14 +1344,14 @@
           accent: ACCENTS.indexOf(s.accent) > -1 ? s.accent : DEFAULTS.accent,
           size: SIZES.indexOf(s.size) > -1 ? s.size : DEFAULTS.size,
           motion: bool('motion'), enter: bool('enter'), time: bool('time'),
-          rag: bool('rag'), remember: bool('remember'), autoNotes: bool('autoNotes'), soul: bool('soul'), care: bool('care'),
+          rag: bool('rag'), remember: bool('remember'), autoNotes: bool('autoNotes'), soul: bool('soul'), care: bool('care'), inner: bool('inner'), selfCheck: bool('selfCheck'), autoModel: bool('autoModel'),
           model: typeof s.model === 'string' ? s.model.slice(0, 120) : DEFAULTS.model
         };
       }
       var settings = normalize(load(SET_KEY));
 
       var nameField = $('set-name');
-      var boxes = { motion: $('set-motion'), enter: $('set-enter'), time: $('set-time'), rag: $('set-rag'), remember: $('set-remember'), autoNotes: $('set-autonotes'), soul: $('set-soul'), care: $('set-care') };
+      var boxes = { motion: $('set-motion'), enter: $('set-enter'), time: $('set-time'), rag: $('set-rag'), remember: $('set-remember'), autoNotes: $('set-autonotes'), soul: $('set-soul'), care: $('set-care'), inner: $('set-inner'), selfCheck: $('set-selfcheck'), autoModel: $('set-automodel') };
 
       function applySettings() {
         html.dataset.accent = settings.accent;
@@ -1886,6 +1931,7 @@
         sleep:  { pose: 'sleep',  cap: 'Дремлю… разбудите',   text: 'дремлет' },
         sorry:  { pose: 'sorry',  cap: 'Простите, не вышло',  text: 'извиняется' },
         ponder: { pose: 'think',  cap: 'Думаю о вас…',        text: 'размышляет' },
+        miss:   { pose: 'greet',  cap: 'Я скучала!',          text: 'рада вас видеть' },
         grow:   { pose: 'happy',  cap: 'Зажёгся новый хвост!', text: 'растёт' }
       };
       var figImg = $('fig-img');
@@ -2021,13 +2067,20 @@
         var row = el('div', 'msg ' + (m.role === 'user' ? 'user' : 'assistant') + (m.error ? ' error' : '') + (animate ? ' enter' : ''));
         row.appendChild(el('div', 'who', m.role === 'user' ? settings.name : 'Яэри'));
         if (m.kind === 'thought') { row.classList.add('thought'); row.appendChild(el('div', 'thought-tag', '✦ думала о вас')); }
-        if (m.kind === 'care') { row.classList.add('thought'); row.appendChild(el('div', 'thought-tag', m.slot === 'evening' ? '☾ вечер' : '☀ утро')); }
+        if (m.kind === 'care') { row.classList.add('thought'); row.appendChild(el('div', 'thought-tag', m.dream ? '☾ мой сон' : (m.slot === 'evening' ? '☾ вечер' : '☀ утро'))); }
         row.appendChild(el('div', 'text', m.text));
         if (Array.isArray(m.remembered) && m.remembered.length) {
           row.appendChild(el('div', 'remembered', '✦ Записала в память: ' + m.remembered.join('; ')));
         }
+        if (m.inner) {
+          var det = el('details', 'inner');
+          det.appendChild(el('summary', '', 'мысли Яэри'));
+          det.appendChild(el('p', '', m.inner));
+          row.appendChild(det);
+        }
         var parts = [];
-        if (m.model) parts.push(shortModel(m.model));
+        if (m.model) parts.push(shortModel(m.model) + (m.route === 'smart' ? ' (умная)' : ''));
+        if (m.checked === 'fixed') parts.push('✓ перечитала и поправила себя');
         if (Array.isArray(m.sources) && m.sources.length) {
           parts.push('источники: ' + m.sources.map(function (x) { return x && x.label; }).filter(Boolean).join(', '));
         }
@@ -2091,7 +2144,7 @@
         sendBtn.disabled = true;
         showTyping();
         setBase('think');
-        api('chat', { text: message, model: modelSelect.value, rag: settings.rag, remember: settings.remember, autoNotes: settings.autoNotes, soul: settings.soul, name: settings.name })
+        api('chat', { text: message, model: modelSelect.value, rag: settings.rag, remember: settings.remember, autoNotes: settings.autoNotes, soul: settings.soul, innerVoice: settings.inner, selfCheck: settings.selfCheck, autoModel: settings.autoModel, name: settings.name })
           .then(function (data) {
             if (epoch !== chatEpoch) return;
             var m = data.reply;
@@ -2202,6 +2255,22 @@
           modelSelect.appendChild(option);
         });
         modelSelect.value = list.indexOf(preferred) > -1 ? preferred : list[0];
+        var smart = $('smart-model');
+        var want = (serverStatus && serverStatus.smartModel) || '';
+        smart.textContent = '';
+        var none = document.createElement('option');
+        none.value = '';
+        none.textContent = 'нет — всё отвечает основная';
+        smart.appendChild(none);
+        list.concat(want && list.indexOf(want) < 0 ? [want] : []).forEach(function (id) {
+          var o = document.createElement('option');
+          o.value = id;
+          o.textContent = shortModel(id);
+          o.title = id;
+          smart.appendChild(o);
+        });
+        smart.value = want;
+        syncSmart();
         syncModel();
         renderConn();
       }
@@ -2224,6 +2293,16 @@
         }).catch(function (error) {
           $('model-note').textContent = 'Модель выбрана для этого браузера, но не сохранилась на сервере: ' + error.message;
         });
+      });
+      function syncSmart() {
+        var v = $('smart-model').value;
+        $('smart-note').textContent = v ? 'Умная модель: ' + shortModel(v) + '. Ею Яэри думает о разговорах и спит.' : 'Умная модель не выбрана: раздумья и сон идут на основной.';
+      }
+      $('smart-model').addEventListener('change', function () {
+        var v = this.value;
+        $('smart-note').textContent = 'Сохраняю…';
+        api('config', { smartModel: v }).then(function (st) { serverStatus = st; syncSmart(); })
+          .catch(function (e) { $('smart-note').textContent = e.message; });
       });
       function syncModel() {
         $('about-model').textContent = modelSelect.value;
@@ -2310,7 +2389,7 @@
       // Состояние души живёт на сервере (data\soul.json). Здесь только показ, правки хозяина
       // и запуск раздумий: после нескольких реплик и при новой встрече.
       var SOUL_STAGES = ['Искорка', 'Пробуждение', 'Любопытство', 'Знакомство', 'Доверие', 'Понимание', 'Привязанность', 'Родство', 'Девятый хвост'];
-      var SOUL_KINDS = { reflection: 'раздумье', muse: 'думала о вас', milestone: 'новый хвост', birth: 'пробуждение', moment: 'важный момент', dream: 'сон' };
+      var SOUL_KINDS = { reflection: 'раздумье', muse: 'думала о вас', milestone: 'новый хвост', birth: 'пробуждение', moment: 'важный момент', dream: 'сон', secret: 'секрет' };
       var soulData = null;
       var soulTimer = 0;
       var soulBusy = false;
@@ -2649,6 +2728,44 @@
           ops.appendChild(li);
         });
 
+        // Потребности.
+        var needs = d.needs || { longing: 0, joy: 55, curiosity: 60 };
+        var nbox = $('soul-needs');
+        nbox.textContent = '';
+        [['longing', 'Скучает'], ['joy', 'Радость'], ['curiosity', 'Любопытство']].forEach(function (p) {
+          var v = Math.max(0, Math.min(100, needs[p[0]] || 0));
+          var row = el('div', 'need ' + p[0]);
+          row.appendChild(el('span', '', p[1]));
+          var bar = el('span', 'nbar');
+          var fill = el('i');
+          fill.style.width = v + '%';
+          bar.appendChild(fill);
+          row.appendChild(bar);
+          row.appendChild(el('output', '', String(v)));
+          nbox.appendChild(row);
+        });
+
+        // Секреты.
+        var sec = $('soul-secrets');
+        sec.textContent = '';
+        arr(d.secretList).forEach(function (x) {
+          var li = el('li', x.unlocked ? '' : 'locked');
+          var head = el('div', 's-head');
+          head.appendChild(el('b', '', (x.unlocked ? (x.opened ? '🔓 ' : '🎁 ') : '🔒 ') + x.title));
+          head.appendChild(el('span', '', x.unlocked ? (x.opened ? dmy(x.t) : 'новый секрет') : 'близость ' + x.bond));
+          li.appendChild(head);
+          if (x.opened) li.appendChild(el('p', '', x.text));
+          else if (x.unlocked && online) {
+            var open = el('button', 'mini-btn solid', 'Открыть');
+            open.type = 'button';
+            open.style.marginTop = '6px';
+            open.addEventListener('click', function () { soulUpdate({ openSecret: x.bond }); flash('happy', 3200); });
+            li.appendChild(open);
+          }
+          sec.appendChild(li);
+        });
+        if (!arr(d.secretList).length) sec.appendChild(el('li', 'locked', 'Секреты появятся, когда вы станете ближе.'));
+
         // Умения по ступеням.
         var sk = $('soul-skills');
         sk.textContent = '';
@@ -2760,6 +2877,7 @@
       function soulStart() {
         loadSoul().then(function () {
           if (!settings.soul) return null;
+          if (soulData && soulData.needs && soulData.needs.longing >= 50) setTimeout(function () { flash('miss', 5000); }, 4000);
           // При новой встрече: обдумать прошлый разговор или подумать о хозяине, если давно не виделись.
           return new Promise(function (resolve) { setTimeout(resolve, 1500); })
             .then(function () { return soulReflect('auto', true); })
