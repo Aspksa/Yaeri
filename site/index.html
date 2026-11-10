@@ -1153,6 +1153,55 @@
             <div class="t-legend" id="soul-chart-legend"></div>
           </div>
         </section>
+        <section class="card" aria-labelledby="soul3-title">
+          <div class="card-head">
+            <h2 id="soul3-title">Разум, близость и развитие · Soul 3.0</h2>
+            <span class="card-meta" id="soul3-trust">Доверие: —</span>
+          </div>
+          <div class="card-body">
+            <label class="toggle server-only">
+              <span class="t-text"><span class="t-name">Развитие Soul 3.0</span><span class="t-desc">Личная история, исправления, планы и забота — хранится локально</span></span>
+              <input class="vh" type="checkbox" role="switch" id="soul3-enabled"><span class="track" aria-hidden="true"></span>
+            </label>
+            <label class="lbl" for="soul3-affection">Стиль близости</label>
+            <select class="field server-only" id="soul3-affection">
+              <option value="0">Тёплый дружеский</option>
+              <option value="1">Нежный, ненавязчивый</option>
+              <option value="2">Романтический стиль персонажа</option>
+            </select>
+            <label class="toggle server-only">
+              <span class="t-text"><span class="t-name">Ненавязчивая инициатива</span><span class="t-desc">Не чаще раза в сутки готовит мысль или напоминание, показываемое только в приложении</span></span>
+              <input class="vh" type="checkbox" role="switch" id="soul3-initiative"><span class="track" aria-hidden="true"></span>
+            </label>
+            <p class="soul-small" id="soul3-status" role="status">Загружаю развитие личности…</p>
+            <span class="soul-lbl soul-gap">Личные ценности</span>
+            <ul class="journal" id="soul3-values"></ul>
+            <span class="soul-lbl soul-gap">Интересы и переломные моменты</span>
+            <ul class="journal" id="soul3-milestones"></ul>
+            <span class="soul-lbl soul-gap">Забота и уроки общения</span>
+            <ul class="journal" id="soul3-bond"></ul>
+            <span class="soul-lbl soul-gap">История роста</span>
+            <ul class="journal" id="soul3-growth"></ul>
+            <span class="soul-lbl soul-gap">Совместные планы</span>
+            <form id="soul3-plan-form">
+              <label class="lbl" for="soul3-goal">Новая цель хозяина</label>
+              <input class="field" type="text" maxlength="240" id="soul3-goal" placeholder="Например: выучить пять аккордов">
+              <button class="mini-btn" type="submit">Составить план</button>
+            </form>
+            <ul class="journal" id="soul3-plans"></ul>
+            <span class="soul-lbl soul-gap">Договорённости и обещания</span>
+            <form id="soul3-promise-form">
+              <label class="lbl" for="soul3-promise">Добавить договорённость</label>
+              <input class="field" type="text" maxlength="300" id="soul3-promise" placeholder="Что нужно не забыть выполнить">
+              <label class="lbl" for="soul3-due">Срок (необязательно)</label>
+              <input class="field" type="date" id="soul3-due">
+              <button class="mini-btn" type="submit">Сохранить обещание</button>
+            </form>
+            <ul class="journal" id="soul3-promises"></ul>
+            <button type="button" class="mini-btn server-only" id="soul3-clear">Очистить данные Soul 3.0</button>
+          </div>
+          <div class="card-foot"><span>Планы выполняются только после подтверждения хозяином. Романтический стиль и инициативу можно отключить.</span></div>
+        </section>
         <section class="card" aria-labelledby="soul-evolution-title">
           <div class="card-head">
             <h2 id="soul-evolution-title">Автономная жизнь</h2>
