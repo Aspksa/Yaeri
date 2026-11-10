@@ -876,6 +876,39 @@
       .ladder .lt { align-items: flex-start; }
     }
 
+    /* Понимание */
+    .u-line { margin: 0 0 4px; font-size: 1rem; }
+    .u-line b { font-weight: 600; }
+    .tone-tired { color: hsl(235 70% 72%); } .tone-hurry { color: var(--warn); } .tone-tense { color: var(--danger); }
+    .tone-sad { color: hsl(338 70% 72%); } .tone-joy { color: hsl(150 65% 62%); } .tone-neutral { color: var(--a); }
+    .tone-strip { display: flex; flex-wrap: wrap; gap: 5px; min-height: 14px; }
+    .tone-strip i { width: 14px; height: 14px; border-radius: 50%; background: currentColor; opacity: .9; }
+    .tone-strip i.tone-neutral { background: var(--line-2); }
+    .map-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 10px; }
+    .map-sec { padding: 10px 11px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
+    .map-sec h3 { margin: 0 0 6px; color: var(--muted); font: 700 .64rem/1.2 var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+    .map-sec .soul-list { margin-top: 0; }
+    .map-sec .soul-list li.held { opacity: .6; border-style: dashed; }
+    .gaps { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; }
+    .gaps li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: .84rem; }
+    .gaps li.off { opacity: .6; }
+    .gaps .ga { display: inline-flex; gap: 6px; }
+    .topics { display: grid; gap: 8px; }
+    .topic-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 190px); align-items: center; gap: 10px; }
+    .topic-row .tn { display: flex; flex-direction: column; min-width: 0; }
+    .topic-row .tn small { color: var(--faint); font: 500 .62rem/1.3 var(--mono); }
+    .topic-row select { padding: 6px 8px; font-size: .78rem; }
+    .rate-list li { display: flex; flex-direction: column; gap: 2px; }
+    .rate-list li b { font-size: .8rem; font-weight: 600; }
+    .rate-list li span { color: var(--muted); font-size: .8rem; }
+    .rate { display: flex; gap: 4px; margin-top: 4px; opacity: .5; transition: opacity .2s; }
+    .msg:hover .rate, .rate:focus-within, .rate:has([aria-pressed="true"]) { opacity: 1; }
+    .rate button { padding: 2px 7px; border: 1px solid transparent; border-radius: 6px; background: none; font-size: .78rem; line-height: 1.3; filter: grayscale(1); }
+    .rate button:hover { border-color: var(--line-2); filter: none; }
+    .rate button[aria-pressed="true"] { border-color: var(--a); background: var(--a-soft); filter: none; }
+    .rate-note { display: flex; gap: 6px; margin-top: 6px; }
+    .rate-note .field { flex: 1; min-width: 0; padding: 5px 8px; font-size: .78rem; }
+
     /* ---------- Узкие экраны ---------- */
     @media (max-width: 1180px) {
       .deck { grid-template-columns: minmax(240px, 280px) minmax(0, 1fr); }
@@ -1221,6 +1254,15 @@
             <span class="soul-status" id="soul-status" role="status"></span>
           </div>
         </section>
+        <section class="card" aria-labelledby="u-state-title">
+          <div class="card-head"><h2 id="u-state-title">Как она вас читает</h2><span class="card-meta" id="u-state-meta"></span></div>
+          <div class="card-body">
+            <div id="u-read"></div>
+            <span class="soul-lbl soul-gap">Последние сообщения</span>
+            <div class="tone-strip" id="u-strip" role="img" aria-label="Состояние по последним сообщениям"></div>
+          </div>
+          <div class="card-foot"><span>Грубая оценка по тексту, считается на сервере без запросов к Cloud.ru</span></div>
+        </section>
         <section class="card" aria-labelledby="soul-moods-title">
                   <div class="card-head">
                     <h2 id="soul-moods-title">Ваше настроение</h2>
@@ -1284,7 +1326,16 @@
           <div class="card-body"><ul class="soul-simple" id="g-lessons"></ul></div>
           <div class="card-foot"><span>Из ваших поправок Яэри сама выводит правила</span></div>
         </section>
-        <section class="card" aria-labelledby="g-ctl-title">
+        <section class="card" aria-labelledby="u-rate-title">
+          <div class="card-head"><h2 id="u-rate-title">Качество ответов</h2><span class="card-meta" id="u-rate-meta"></span></div>
+          <div class="card-body">
+            <div class="chart" id="u-rate-chart" role="img" aria-label="Оценки ответов по дням"></div>
+            <div class="t-legend" id="u-rate-legend"></div>
+            <ul class="soul-simple rate-list" id="u-rate-list"></ul>
+          </div>
+          <div class="card-foot"><span>Оценки 👍 и 👎 стоят под ответами в чате</span></div>
+        </section>
+<section class="card" aria-labelledby="g-ctl-title">
           <div class="card-head"><h2 id="g-ctl-title">Фоновое обучение</h2><span class="card-meta" id="g-ctl-meta"></span></div>
           <div class="card-body">
             <span class="soul-lbl">Активность</span>
@@ -1307,6 +1358,11 @@
         </section>
       </div>
       <div class="sp-grid" id="sp-memory" role="tabpanel" aria-labelledby="stab-memory" hidden>
+        <section class="card" aria-labelledby="u-topics-title">
+          <div class="card-head"><h2 id="u-topics-title">Память по темам</h2></div>
+          <div class="card-body"><div class="topics" id="u-topics"></div></div>
+          <div class="card-foot"><span>Здоровье и деньги по умолчанию не используются без вашего упоминания. «Не запоминать» — тема не записывается вовсе</span></div>
+        </section>
         <section class="card" aria-labelledby="soul-moments-title">
                   <div class="card-head">
                     <h2 id="soul-moments-title">Важные моменты</h2>
@@ -1357,6 +1413,16 @@
                 </section>
       </div>
       <div class="sp-grid" id="sp-world" role="tabpanel" aria-labelledby="stab-world" hidden>
+        <section class="card wide" aria-labelledby="u-map-title">
+          <div class="card-head"><h2 id="u-map-title">Карта человека</h2><span class="card-meta" id="u-map-meta"></span></div>
+          <div class="card-body">
+            <div class="map-grid" id="u-map"></div>
+            <span class="soul-lbl soul-gap">Чего она пока не знает</span>
+            <ul class="gaps" id="u-gaps"></ul>
+            <p class="soul-small" id="u-map-status" role="status"></p>
+          </div>
+          <div class="card-foot"><span>Только то, что вы сами сказали или добавили. 🔒 — тема не используется без запроса</span></div>
+        </section>
         <section class="card" aria-labelledby="soul-owner-title">
                   <div class="card-head">
                     <h2 id="soul-owner-title">Как она видит вас</h2>
@@ -1796,7 +1862,7 @@
           if (location.hash !== hash) history_.replaceState(null, '', hash || location.pathname + location.search);
         }
         if (window.YBrain) YBrain.onShow(name);
-        if (name === 'soul') { renderSoul(); if (online) { loadEvolution(); loadGrowth(); } }
+        if (name === 'soul') { renderSoul(); if (online) { loadEvolution(); loadGrowth(); loadUnderstanding(); } }
         syncFab();
         if (!fromHash && window.scrollY) window.scrollTo(0, 0);
       }
@@ -2436,6 +2502,7 @@
         if (m.note) parts.push(m.note);
         if (parts.length) row.appendChild(el('div', 'meta', parts.join(' · ')));
         if (typeof m.t === 'number') row.appendChild(el('div', 'time', clock(m.t)));
+        if (online && m.role === 'assistant' && m.id && !m.kind && !m.error) rateBar(m, row);
         if (typingNode) chat.insertBefore(row, typingNode); else chat.appendChild(row);
         toBottom();
       }
@@ -3378,10 +3445,10 @@
       var growthData = null;
       var SOUL_TABS = ['now', 'growth', 'memory', 'world', 'char'];
       var SOUL_XP = [0, 12, 35, 70, 120, 190, 280, 400, 560];
-      var GROWTH_ICONS = { study: '📖', insight: '💡', question: '❓', lesson: '🧭', goal: '🎯', 'goal-new': '🌱', 'goal-done': '🏆', sleep: '🌙', reflection: '💭' };
+      var GROWTH_ICONS = { study: '📖', insight: '💡', question: '❓', lesson: '🧭', goal: '🎯', map: '🗺️', 'goal-new': '🌱', 'goal-done': '🏆', sleep: '🌙', reflection: '💭' };
       var GROWTH_RAN = {
         study: 'разобрала ваш разговор', lessons: 'вывела уроки из поправок', goals: 'обновила учебные цели', wonder: 'задумалась о вас',
-        maintenance: 'навела порядок в памяти', opinions: 'пересмотрела свои мнения', sleep: 'уснула и пересобрала воспоминания', reflection: 'подумала о разговорах'
+        ratings: 'разобрала ваши оценки ответов', maintenance: 'навела порядок в памяти', opinions: 'пересмотрела свои мнения', sleep: 'уснула и пересобрала воспоминания', reflection: 'подумала о разговорах'
       };
       var INTENSITY_NOTE = {
         off: 'Только разговоры, сон и размышления. Собственного любопытства и учебных целей нет.',
@@ -3753,6 +3820,7 @@
         renderInsights();
         renderGrowthLessons();
         renderGrowthControls();
+        renderUnderstanding();
       }
       function setGrowth(data) {
         if (!data || !data.stages) return;
@@ -3792,6 +3860,219 @@
           timer = setTimeout(function () { if (currentView === 'soul' && !$('sp-growth').hidden) renderGrowth(); }, 160);
         });
       }());
+
+      /* ---------- Понимание: состояние, карта человека, темы, оценки ответов ---------- */
+      var undData = null;
+      var undRated = {};
+      var TONE_HINT = {
+        tired: 'Отвечает короче и мягче, без лишних вопросов.',
+        hurry: 'Сначала результат, коротко, без вступлений.',
+        tense: 'Спокойный тон, без шуток; сначала про чувства.',
+        sad: 'Тепло, не торопит с советами, сначала слушает.',
+        joy: 'Делит радость, говорит живее.',
+        neutral: 'Явных признаков усталости или спешки нет.'
+      };
+      var TOPIC_MODES = [['open', 'Открыто'], ['hold', 'Не использовать без запроса'], ['off', 'Не запоминать']];
+      function undError(e) { var n = $('u-map-status'); if (n) n.textContent = e && e.message ? e.message : 'Не получилось.'; }
+      function setUnderstanding(d) {
+        if (!d || !d.sections) return;
+        undData = d;
+        undRated = {};
+        arr(d.rated).forEach(function (r) { undRated[r.id] = r.score; });
+        renderUnderstanding();
+        decorateRated();
+      }
+      function loadUnderstanding() {
+        if (!online) return Promise.resolve();
+        return api('soul/understanding').then(setUnderstanding).catch(function () { /* Покажем при следующем обновлении. */ });
+      }
+      function renderUnderstanding() {
+        if (currentView !== 'soul') return;
+        renderRead();
+        renderMap();
+        renderTopics();
+        renderRatings();
+      }
+      function renderRead() {
+        var box = $('u-read'), strip = $('u-strip');
+        var st = undData && undData.state;
+        var tone = st && st.confidence >= 0.66 ? st.tone : 'neutral';
+        box.textContent = '';
+        strip.textContent = '';
+        if (!undData) {
+          box.appendChild(el('p', 'soul-small', online ? 'Загружаю…' : 'Когда Яэри подключится к Cloud.ru, здесь будет видно, как она читает ваши сообщения.'));
+          return;
+        }
+        var line = el('p', 'u-line');
+        line.appendChild(document.createTextNode('Сейчас вы, похоже, '));
+        line.appendChild(el('b', 'tone-' + tone, st && tone !== 'neutral' ? st.label : 'спокойны'));
+        box.appendChild(line);
+        box.appendChild(el('p', 'soul-small', TONE_HINT[tone]));
+        arr(undData.states).forEach(function (s) {
+          var dot = el('i', 'tone-' + (s.confidence >= 0.66 ? s.tone : 'neutral'));
+          dot.title = hhmm(s.t) + ' · ' + dmy(s.t);
+          strip.appendChild(dot);
+        });
+        $('u-state-meta').textContent = st ? ago(st.t) : '';
+      }
+      function renderMap() {
+        var box = $('u-map');
+        box.textContent = '';
+        $('u-map-meta').textContent = undData ? undData.total + ' ' + plural(undData.total, 'запись', 'записи', 'записей') : '';
+        if (!undData) { box.appendChild(el('p', 'soul-small', 'Карта появится, когда Яэри подключится к Cloud.ru и вы немного расскажете о себе.')); }
+        arr(undData && undData.sections).forEach(function (sec) {
+          var card = el('div', 'map-sec');
+          card.appendChild(el('h3', '', sec.name));
+          var wrap = el('div', 'soul-list');
+          var ul = el('ul');
+          if (!sec.entries.length) ul.appendChild(el('li', 'empty', 'Пока пусто'));
+          sec.entries.forEach(function (e) {
+            var li = el('li');
+            if (e.hidden) { li.classList.add('held'); li.title = 'Тема не используется без запроса'; }
+            li.appendChild(el('span', '', (e.hidden ? '🔒 ' : '') + e.text));
+            if (online) li.appendChild(smallBtn('×', 'Удалить запись: ' + e.text, function () {
+              api('soul/understanding/map', { action: 'delete', id: e.id }).then(setUnderstanding).catch(undError);
+            }));
+            ul.appendChild(li);
+          });
+          wrap.appendChild(ul);
+          if (online) {
+            var input = el('input', 'field');
+            input.type = 'text';
+            input.maxLength = 220;
+            input.placeholder = '+ добавить';
+            input.setAttribute('aria-label', 'Добавить в раздел «' + sec.name + '»');
+            input.addEventListener('keydown', function (ev) {
+              if (ev.key !== 'Enter' || !input.value.trim()) return;
+              ev.preventDefault();
+              api('soul/understanding/map', { action: 'add', section: sec.id, text: input.value.trim() }).then(function (d) { input.value = ''; setUnderstanding(d); }).catch(undError);
+            });
+            wrap.appendChild(input);
+          }
+          card.appendChild(wrap);
+          box.appendChild(card);
+        });
+        var gl = $('u-gaps');
+        gl.textContent = '';
+        var gaps = arr(undData && undData.gaps);
+        if (undData && !gaps.length) gl.appendChild(el('li', 'empty soul-small', 'Все разделы карты заполнены.'));
+        gaps.forEach(function (g) {
+          var li = el('li', g.dismissed ? 'off' : '');
+          li.appendChild(el('span', '', g.name + (g.dismissed ? ' · не спрашивает' : '')));
+          if (online) {
+            var act = el('span', 'ga');
+            if (!g.dismissed) {
+              act.appendChild(smallBtn('Спросить', 'Пусть спросит про раздел «' + g.name + '»', function () { gapAct(g.id, 'ask'); }, 'mini-btn'));
+              act.appendChild(smallBtn('Не спрашивать', 'Не спрашивать про «' + g.name + '»', function () { gapAct(g.id, 'dismiss'); }, 'mini-btn'));
+            } else act.appendChild(smallBtn('Вернуть', 'Снова спрашивать про «' + g.name + '»', function () { gapAct(g.id, 'restore'); }, 'mini-btn'));
+            li.appendChild(act);
+          }
+          gl.appendChild(li);
+        });
+      }
+      function gapAct(section, action) {
+        api('soul/understanding/gap', { section: section, action: action }).then(setUnderstanding).catch(undError);
+      }
+      function renderTopics() {
+        var box = $('u-topics');
+        box.textContent = '';
+        if (!undData) { box.appendChild(el('p', 'soul-small', 'Настройки тем доступны, когда Яэри подключена к Cloud.ru.')); return; }
+        arr(undData.topics).forEach(function (t) {
+          var row = el('div', 'topic-row');
+          var name = el('span', 'tn');
+          name.appendChild(el('b', '', t.name));
+          name.appendChild(el('small', '', t.count + ' ' + plural(t.count, 'запись', 'записи', 'записей')));
+          row.appendChild(name);
+          var sel = el('select', 'field');
+          sel.setAttribute('aria-label', 'Режим темы «' + t.name + '»');
+          TOPIC_MODES.forEach(function (m) { var o = el('option', '', m[1]); o.value = m[0]; if (m[0] === t.mode) o.selected = true; sel.appendChild(o); });
+          sel.disabled = !online;
+          sel.addEventListener('change', function () {
+            api('soul/understanding/topic', { topic: t.id, mode: sel.value }).then(setUnderstanding).catch(undError);
+          });
+          row.appendChild(sel);
+          box.appendChild(row);
+        });
+      }
+      function renderRatings() {
+        var box = $('u-rate-chart'), list = $('u-rate-list');
+        var r = undData && undData.ratings;
+        list.textContent = '';
+        if (!r || (!r.up && !r.down)) {
+          chartEmpty(box, online ? 'Оценивайте ответы Яэри кнопками 👍 и 👎 под сообщениями в чате. Плохие оценки она разберёт и превратит в правила.' : 'Оценки ответов появятся, когда Яэри подключена к Cloud.ru.');
+          $('u-rate-legend').textContent = '';
+          $('u-rate-meta').textContent = '';
+          return;
+        }
+        var days = arr(r.daily);
+        var W = Math.max(280, Math.round(box.clientWidth) || 420), H = 150, L = 28, R = 8, T = 10, B = 24;
+        var mx = Math.max(3, Math.max.apply(null, days.map(function (d) { return d.up + d.down; })));
+        var slot = (W - L - R) / days.length, bw = Math.min(30, slot * 0.6);
+        function Y(v) { return T + (mx - v) * (H - T - B) / mx; }
+        var s = '<svg viewBox="0 0 ' + W + ' ' + H + '">';
+        for (var g = 0; g <= 2; g++) { var v = mx * g / 2; s += '<line class="grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '"/><text x="' + (L - 6) + '" y="' + (Y(v) + 3).toFixed(1) + '" text-anchor="end">' + Math.round(v) + '</text>'; }
+        days.forEach(function (d, i) {
+          var x = L + slot * i + (slot - bw) / 2, hu = (H - T - B) * d.up / mx, hd = (H - T - B) * d.down / mx;
+          s += '<rect class="bar" x="' + x.toFixed(1) + '" y="' + (H - B - hu).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + hu.toFixed(1) + '" rx="2" style="fill:var(--a)"><title>' + dayLabel(d.day) + ': 👍 ' + d.up + '</title></rect>';
+          s += '<rect class="bar" x="' + x.toFixed(1) + '" y="' + (H - B - hu - hd).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + hd.toFixed(1) + '" rx="2" style="fill:var(--danger)"><title>' + dayLabel(d.day) + ': 👎 ' + d.down + '</title></rect>';
+        });
+        s += '<text x="' + L + '" y="' + (H - 7) + '">' + dayLabel(days[0].day) + '</text>';
+        if (days.length > 1) s += '<text x="' + (W - R) + '" y="' + (H - 7) + '" text-anchor="end">' + dayLabel(days[days.length - 1].day) + '</text>';
+        box.innerHTML = s + '</svg>';
+        var week = r.weekUp + r.weekDown;
+        $('u-rate-meta').textContent = week ? 'за неделю ' + Math.round(r.weekUp * 100 / week) + '% 👍' : '';
+        legendFill($('u-rate-legend'), [{ color: 'var(--a)', label: '👍 всего', value: r.up }, { color: 'var(--danger)', label: '👎 всего', value: r.down }]);
+        arr(r.recentDown).slice().reverse().forEach(function (x) {
+          var li = el('li');
+          li.appendChild(el('b', '', cut(x.user, 70)));
+          li.appendChild(el('span', '', x.rule ? 'Урок: ' + x.rule : (x.status === 'new' ? 'Скоро разберёт…' : 'Урока не вышло')));
+          list.appendChild(li);
+        });
+      }
+      // Оценки под ответами в чате.
+      function decorateRated() {
+        each(document.querySelectorAll('.rate[data-mid]'), function (bar) {
+          var sc = undRated[bar.getAttribute('data-mid')] || 0;
+          bar.querySelector('.up').setAttribute('aria-pressed', sc > 0 ? 'true' : 'false');
+          bar.querySelector('.down').setAttribute('aria-pressed', sc < 0 ? 'true' : 'false');
+        });
+      }
+      function rateBar(m, row) {
+        var bar = el('div', 'rate');
+        bar.setAttribute('data-mid', m.id);
+        var up = el('button', 'up', '👍'), down = el('button', 'down', '👎');
+        [[up, 'Хороший ответ'], [down, 'Ответ не понравился']].forEach(function (p) { p[0].type = 'button'; p[0].title = p[1]; p[0].setAttribute('aria-label', p[1]); p[0].setAttribute('aria-pressed', 'false'); });
+        function send(score, note) {
+          api('soul/rate', { id: m.id, score: score, note: note || '' }).then(setUnderstanding).catch(function () { /* Не страшно: оценку можно поставить ещё раз. */ });
+        }
+        up.addEventListener('click', function () { send(up.getAttribute('aria-pressed') === 'true' ? 0 : 1); });
+        down.addEventListener('click', function () {
+          if (down.getAttribute('aria-pressed') === 'true') { send(0); return; }
+          if (row.querySelector('.rate-note')) return;
+          var form = el('div', 'rate-note');
+          var input = el('input', 'field');
+          input.type = 'text';
+          input.maxLength = 300;
+          input.placeholder = 'Что не так? (необязательно)';
+          input.setAttribute('aria-label', 'Что не так с ответом');
+          var ok = el('button', 'mini-btn solid', 'Отправить');
+          ok.type = 'button';
+          function done() { send(-1, input.value.trim()); form.remove(); }
+          ok.addEventListener('click', done);
+          input.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); done(); } });
+          form.appendChild(input);
+          form.appendChild(ok);
+          bar.insertAdjacentElement('afterend', form);
+          input.focus();
+        });
+        bar.appendChild(up);
+        bar.appendChild(down);
+        row.appendChild(bar);
+        decorateRated();
+      }
+      setInterval(function () {
+        if (online && currentView === 'soul' && !document.hidden) loadUnderstanding();
+      }, 60000);
 
       /* ---------- Soul 3.0: consent, growth, goals and explicit promises ---------- */
       function soul3Error(err) {
@@ -3907,6 +4188,7 @@
           setSoul(data);
           loadEvolution();
           loadGrowth();
+          loadUnderstanding();
           loadSoul3();
         });
       }

@@ -16,6 +16,7 @@ $script:Utf8 = [System.Text.UTF8Encoding]::new($false)
 . (Join-Path $PSScriptRoot 'yaeri-evolution.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-growth.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-curiosity.ps1')
+. (Join-Path $PSScriptRoot 'yaeri-understanding.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-bond.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-reason.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-relationship.ps1')
@@ -311,6 +312,7 @@ function Import-YStore {
     Import-YEvolution
     Import-Y3
     Import-YCuriosity
+    Import-YUnderstanding
 }
 
 function Save-YHistory { Write-YJsonFile $script:HistoryFile @{ version = 1; messages = $script:History.ToArray() } }
@@ -686,6 +688,7 @@ function Get-YNotesPrompt {
     $lines = New-Object System.Collections.Generic.List[string]
     $size = 0
     foreach ($n in $sorted) {
+        if (-not (Test-YTopicVisible ([string]$n['text']))) { continue }
         $line = '- [' + [string]$n['cat'] + '] ' + [string]$n['text']
         if ($size + $line.Length -gt 6000) { break }
         $lines.Add($line)
@@ -820,6 +823,8 @@ function Invoke-YChat($Req) {
     $userMsg = @{ id = (New-YId); role = 'user'; text = $text; t = (Get-YNow) }
     [void]$script:History.Add($userMsg)
     Save-YHistory
+    # Состояние хозяина и темы, которые он сам упомянул в этой реплике (для приватности и подстройки тона).
+    try { Update-YUndTurn $text } catch { }
 
     # Поиск по документам и памяти.
     $sources = New-Object System.Collections.Generic.List[object]
@@ -888,6 +893,11 @@ function Invoke-YChat($Req) {
         $curiosity = Get-YCuriosityPrompt
         if ($curiosity) { $system += [Environment]::NewLine + 'Твоё самообучение:' + [Environment]::NewLine + $curiosity }
     }
+    if ($useSoul) {
+        $understanding = ''
+        try { $understanding = Get-YUnderstandingPrompt $text } catch { $understanding = '' }
+        if ($understanding) { $system += [Environment]::NewLine + [Environment]::NewLine + 'Понимание хозяина:' + [Environment]::NewLine + $understanding }
+    }
     if ($innerVoice) {
         $system += "`n`nПеред ответом коротко подумай про себя в теге <мысли>…</мысли> (2–4 фразы): что хозяин сейчас чувствует и чего хочет, " +
             'что ты о нём помнишь, что подсказывают твоя душа и память, нет ли противоречий. Затем дай сам ответ. Хозяин твои мысли не видит, не упоминай их.'
@@ -938,6 +948,7 @@ function Invoke-YChat($Req) {
     $newNotes = New-Object System.Collections.Generic.List[object]
     foreach ($tag in [regex]::Matches($content, $script:NoteTag)) {
         if (-not $autoNotes) { continue }
+        if (Test-YTopicBlocked ([string]$tag.Groups[2].Value)) { continue }
         $item = Add-YNoteItem $tag.Groups[1].Value $tag.Groups[2].Value 'yaeri'
         if ($null -ne $item) { $newNotes.Add($item) }
     }
@@ -1076,6 +1087,12 @@ function Invoke-YApi([string]$Method, [string]$Path, [string]$BodyText) {
         'POST /api/soul/growth/insight'  { return Set-YGrowthInsight $req }
         'POST /api/soul/growth/run'      { return Invoke-YGrowthRun }
         'POST /api/soul/growth/clear'    { return Clear-YCuriosity }
+        'GET /api/soul/understanding'          { return Get-YUnderstandingView }
+        'POST /api/soul/understanding/map'     { return Set-YUndMap $req }
+        'POST /api/soul/understanding/topic'   { return Set-YUndTopic $req }
+        'POST /api/soul/understanding/gap'     { return Set-YUndGap $req }
+        'POST /api/soul/understanding/clear'   { return Clear-YUnderstanding }
+        'POST /api/soul/rate'                  { return Add-YRating $req }
         'POST /api/soul/evolution' { return Set-YEvolution $req }
         'POST /api/soul/evolution/clear' { return Clear-YEvolution }
         'POST /api/soul/reflect'   { return Invoke-YEvolutionReflect $req }

@@ -134,14 +134,21 @@ function Update-YCurSeries {
 function Get-YCurOwnerContext {
     $lines = New-Object System.Collections.Generic.List[string]
     $o = $script:Soul.owner
-    if ([string]$o.portrait) { $lines.Add('Портрет хозяина (твои наблюдения): ' + [string]$o.portrait) }
-    if (@($o.goals).Count) { $lines.Add('Цели хозяина: ' + ((@($o.goals) | Select-Object -First 5) -join '; ')) }
-    if (@($o.likes).Count) { $lines.Add('Нравится хозяину: ' + ((@($o.likes) | Select-Object -First 5) -join '; ')) }
-    if (@($o.worries).Count) { $lines.Add('Тревожит хозяина: ' + ((@($o.worries) | Select-Object -First 5) -join '; ')) }
-    foreach ($f in @($script:Evo.facts | Where-Object { [string]$_.status -eq 'active' } | Select-Object -Last 12)) {
+    $portrait = Get-YUndPrivText ([string]$o.portrait)
+    if ($portrait) { $lines.Add('Портрет хозяина (твои наблюдения): ' + $portrait) }
+    $oGoals = @(Get-YUndPrivList $o.goals)
+    $oLikes = @(Get-YUndPrivList $o.likes)
+    $oWorries = @(Get-YUndPrivList $o.worries)
+    if ($oGoals.Count) { $lines.Add('Цели хозяина: ' + (($oGoals | Select-Object -First 5) -join '; ')) }
+    if ($oLikes.Count) { $lines.Add('Нравится хозяину: ' + (($oLikes | Select-Object -First 5) -join '; ')) }
+    if ($oWorries.Count) { $lines.Add('Тревожит хозяина: ' + (($oWorries | Select-Object -First 5) -join '; ')) }
+    foreach ($m in @($script:Und.map | Select-Object -Last 8)) {
+        if (Test-YTopicVisible ([string]$m.text)) { $lines.Add('Карта: ' + [string]$m.text) }
+    }
+    foreach ($f in @($script:Evo.facts | Where-Object { [string]$_.status -eq 'active' -and (Test-YTopicVisible ([string]$_.key + ' ' + [string]$_.value)) } | Select-Object -Last 12)) {
         $lines.Add('Факт: ' + [string]$f.key + ': ' + [string]$f.value)
     }
-    foreach ($e in @($script:Evo.episodes | Where-Object { [string]$_.status -eq 'active' } | Select-Object -Last 6)) {
+    foreach ($e in @($script:Evo.episodes | Where-Object { [string]$_.status -eq 'active' -and (Test-YTopicVisible ([string]$_.text)) } | Select-Object -Last 6)) {
         $lines.Add('Эпизод: ' + [string]$e.title + ' — ' + [string]$e.text)
     }
     return $lines.ToArray()
@@ -345,6 +352,11 @@ function Invoke-YCuriosityGoals {
 
 # ---------- Планировщик ----------
 function Test-YCurDue([string]$Kind, [long]$Now, [bool]$Force) {
+    if ($Kind -eq 'ratings') {
+        # Явная обратная связь хозяина учитывается и в режиме «Выкл», но не чаще раза в 5 минут.
+        if (@(Get-YPendingRatings).Count -eq 0) { return $false }
+        return ($Force -or $Now - [long]$script:Und.lastRatings -ge 300000)
+    }
     $p = Get-YCurProfile
     $every = [long]$p[$Kind]
     if ($every -le 0) { return $false }
@@ -386,6 +398,9 @@ function Invoke-YEvolutionTick([bool]$Force = $false) {
             $task = 'lessons'
             Invoke-YCuriosityLessons
             $script:Cur.lastLessons = Get-YNow
+        } elseif (Test-YCurDue 'ratings' $now $Force) {
+            $task = 'ratings'
+            Invoke-YUnderstandingRatings
         } elseif ($now - [long]$script:Evo.lastMaintenance -ge $script:EvoReviewInterval -and $script:Evo.facts.Count + $script:Evo.episodes.Count -gt 0) {
             $task = 'maintenance'
             Invoke-YEvolutionMaintenance

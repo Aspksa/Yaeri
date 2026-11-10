@@ -396,13 +396,17 @@ function Get-YSoulPrompt([string]$Name) {
     if ($s.mood.name) { $lines.Add('Настроение: ' + $s.mood.name + $(if ($s.mood.why) { ' — ' + $s.mood.why } else { '' })) }
     $lines.Add('Близость с ' + $Name + ': ' + [int]$s.bond + '/100. ' + $s.bondNote)
     $o = $s.owner
-    if ($o.portrait) { $lines.Add('Каким ты видишь хозяина: ' + $o.portrait) }
-    if (@($o.goals).Count) { $lines.Add('Цели и мечты хозяина: ' + (@($o.goals) -join '; ')) }
-    if (@($o.likes).Count) { $lines.Add('Что хозяину нравится: ' + (@($o.likes) -join '; ')) }
-    if (@($o.worries).Count) { $lines.Add('Что его тревожит: ' + (@($o.worries) -join '; ')) }
+    $portrait = Get-YUndPrivText ([string]$o.portrait)
+    if ($portrait) { $lines.Add('Каким ты видишь хозяина: ' + $portrait) }
+    $oGoals = @(Get-YUndPrivList $o.goals)
+    $oLikes = @(Get-YUndPrivList $o.likes)
+    $oWorries = @(Get-YUndPrivList $o.worries)
+    if ($oGoals.Count) { $lines.Add('Цели и мечты хозяина: ' + ($oGoals -join '; ')) }
+    if ($oLikes.Count) { $lines.Add('Что хозяину нравится: ' + ($oLikes -join '; ')) }
+    if ($oWorries.Count) { $lines.Add('Что его тревожит: ' + ($oWorries -join '; ')) }
     if (@($s.lessons).Count) { $lines.Add("Что ты поняла о том, как говорить с хозяином:`n- " + (@($s.lessons) -join "`n- ")) }
     $lines.Add((Get-YNeedsPrompt))
-    $top = Get-YTopItems $s.moments 5
+    $top = @(Get-YTopItems $s.moments 5 | Where-Object { Test-YTopicVisible ([string]$_.title + ' ' + [string]$_.text) })
     if ($top.Count) { $lines.Add("Важные моменты с хозяином, которые ты помнишь:`n- " + (@($top | ForEach-Object { $_.title + ': ' + $_.text }) -join "`n- ")) }
     $ints = Get-YTopItems $s.interests 5
     if ($ints.Count) { $lines.Add('Твои собственные увлечения (о них ты иногда рассказываешь сама, если к месту): ' + (@($ints | ForEach-Object { $_.name + $(if ($_.note) { ' (' + $_.note + ')' } else { '' }) }) -join '; ')) }
