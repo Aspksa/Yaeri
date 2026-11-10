@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 # Soul Evolution: event journal, grounded memory and server-side background scheduler.
 # Loaded after yaeri-soul.ps1 and stored separately for backward compatibility.
 
@@ -224,7 +224,7 @@ function Update-YEvolutionAssociations {
     $missing = @($items | Where-Object { -not $_.vec -or $_.vecModel -ne [string]$script:Config.embeddingModel })
     if ($missing.Count -gt 0) {
         $batch = @($missing | Select-Object -First 16)
-        $inputs = @($batch | ForEach-Object { if ($_.Contains('key')) { [string]$_.key + ': ' + [string]$_.value } else { [string]$_.text } })
+        $inputs = @($batch | ForEach-Object { if ((Test-YKey $_ 'key')) { [string]$_.key + ': ' + [string]$_.value } else { [string]$_.text } })
         $vectors = @(Get-YEmbeddings $inputs)
         for ($i = 0; $i -lt $batch.Count; $i++) {
             $batch[$i].vec = [string]$vectors[$i]
