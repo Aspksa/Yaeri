@@ -1545,7 +1545,7 @@
       function applyMode() {
         showServerParts(online);
         body.classList.toggle('is-online', online);
-        $('connect-banner').hidden = online || !serverStatus;
+        $('connect-banner').hidden = online || location.protocol === 'file:';
         if (online) {
           setStatus('online', 'Cloud.ru · онлайн', 'AI подключён: Cloud.ru Foundation Models. Нажмите, чтобы открыть подключение');
           $('ai-note').textContent = 'Яэри подключена к Cloud.ru. Здесь можно решить, что ей запоминать и где искать ответы.';
@@ -1554,7 +1554,7 @@
           $('about-storage').textContent = 'папка data на этом компьютере';
           $('mem-foot').textContent = 'Яэри видит эти заметки в каждом ответе';
         } else {
-          setStatus(serverStatus ? 'warn' : '', 'Демо-режим', serverStatus ? 'Ключ Cloud.ru не задан. Нажмите, чтобы подключить' : 'Сервер Яэри не найден: запустите Yaeri.bat');
+          setStatus(serverStatus ? 'warn' : '', location.protocol === 'file:' ? 'Демо-режим' : 'Подключить AI', serverStatus ? 'Ключ Cloud.ru не задан. Нажмите, чтобы подключить' : 'Сервер Яэри не найден: запустите Yaeri.bat');
           $('ai-note').textContent = 'Эти настройки появятся, когда Яэри подключится к Cloud.ru.';
           $('about-model').textContent = 'не подключена';
           $('about-embed').textContent = '—';
@@ -1569,6 +1569,7 @@
       var keyField = $('set-key');
       var keyStatus = $('key-status');
       var keyBusy = false;
+      var statusError = '';
       function keyMsg(text, kind) {
         keyStatus.textContent = text || '';
         keyStatus.className = 'form-status' + (kind ? ' ' + kind : '');
@@ -1576,11 +1577,13 @@
       function renderConn(checkText) {
         var state = $('conn-state');
         var src = serverStatus && serverStatus.keySource;
-        keyForm.hidden = !serverStatus;
-        $('no-server-note').hidden = !!serverStatus;
+        // Поле ключа видно всегда, когда сайт открыт через Yaeri.bat (http), даже если статус не пришёл.
+        var served = location.protocol !== 'file:';
+        keyForm.hidden = !served;
+        $('no-server-note').hidden = served;
         state.classList.toggle('ok', online);
         state.classList.toggle('warn', !!serverStatus && !online);
-        if (!serverStatus) $('conn-state-text').textContent = location.protocol === 'file:' ? 'Сайт открыт без сервера Яэри' : 'Сервер Яэри не отвечает';
+        if (!serverStatus) $('conn-state-text').textContent = !served ? 'Сайт открыт как файл, без сервера Яэри' : ('Сервер Яэри не ответил на проверку' + (statusError ? ': ' + statusError : '') + '. Ключ всё равно можно вставить ниже.');
         else if (online) $('conn-state-text').textContent = checkText || ('Подключено' + (src === 'env' ? ' (ключ из переменной CLOUDRU_API_KEY)' : '') + ' · ' + shortModel(modelSelect.value || serverStatus.chatModel));
         else $('conn-state-text').textContent = 'Ключ не задан: Яэри работает в демо-режиме';
         $('key-label').textContent = online ? 'Заменить ключ' : 'API-ключ';
@@ -3134,7 +3137,8 @@
           serverStatus = st;
           if (st.configured) return startOnline();
           startDemo();
-        }).catch(function () {
+        }).catch(function (error) {
+          statusError = error && error.message || '';
           startDemo();
         });
       }
