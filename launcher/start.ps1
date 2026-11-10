@@ -151,6 +151,10 @@ try {
             $clock = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
             if ($clock - $lastEvolutionPoll -ge 60000) {
                 $lastEvolutionPoll = $clock
+                # Soul 3.0 proactive reminders share the same server thread and JSON owner.
+                try { Invoke-Y3Tick } catch {
+                    Write-Host ('Ошибка фоновой заботы: ' + $_.Exception.Message) -ForegroundColor Yellow
+                }
                 try { Invoke-YEvolutionTick } catch {
                     Write-Host ('Ошибка фоновой задачи: ' + $_.Exception.Message) -ForegroundColor Yellow
                 }
