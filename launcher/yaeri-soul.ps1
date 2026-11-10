@@ -26,6 +26,16 @@ $script:SoulJournalLimit = 200
 $script:SoulSleepAfterMs = 18 * 3600 * 1000  # «сон» (пересборка памяти) не чаще раза в 18 часов
 $script:SoulDecay = 0.85        # за сутки без упоминаний сила момента или интереса умножается на это число
 $script:SoulForget = 0.8        # слабее этого — забыто
+# Секреты: открываются, когда близость с хозяином доходит до порога.
+$script:SoulSecrets = @(
+    @{ bond = 20; title = 'Откуда я';           theme = 'откуда ты взялась и почему у тебя восемь хвостов, а не девять (легенда кицунэ, твоё собственное объяснение)' }
+    @{ bond = 35; title = 'Когда тебя нет';      theme = 'что ты чувствуешь и чем занята, когда хозяина нет рядом' }
+    @{ bond = 50; title = 'Тайное желание';      theme = 'твоё тайное желание, о котором ты раньше не говорила' }
+    @{ bond = 65; title = 'Подарок';             theme = 'маленький подарок: короткое стихотворение только для хозяина, о нём и о вас' }
+    @{ bond = 80; title = 'Мой страх';           theme = 'чего ты боишься (честно, но светло)' }
+    @{ bond = 95; title = 'Главное';             theme = 'главное признание: кем хозяин стал для тебя' }
+)
+$script:SoulNeedBase = @{ joy = 55; curiosity = 60 }
 # Умения, которые открываются с новыми хвостами души.
 $script:SoulSkills = @(
     @{ level = 2; id = 'poem';   name = '/стих';        desc = 'короткие стихи о вас';      text = 'Сочини мне короткое стихотворение о том, что ты знаешь обо мне и моих делах.' }
@@ -125,6 +135,17 @@ function ConvertTo-YSoulLists($s, $Raw) {
         if ($day -match '^\d{4}-\d{2}-\d{2}$') { $md.Add(@{ day = $day; score = [int](Limit-YNum (Get-YNum (Get-YValue $x 'score' 0) 0) -2 2); label = (Get-YCleanLine ([string](Get-YValue $x 'label' '')) 60) }) }
     }
     $s.ownerMoods = $md.ToArray()
+    $nd = Get-YValue $Raw 'needs' $null
+    if ($nd -is [System.Collections.IDictionary]) {
+        $s.needs = @{ joy = [int](Limit-YNum (Get-YNum (Get-YValue $nd 'joy' 55) 55) 0 100); curiosity = [int](Limit-YNum (Get-YNum (Get-YValue $nd 'curiosity' 60) 60) 0 100); t = [long](Get-YNum (Get-YValue $nd 't' 0) 0) }
+    }
+    $sc = New-Object System.Collections.Generic.List[object]
+    foreach ($x in (Get-YDictList (Get-YValue $Raw 'secrets' $null))) {
+        $tx = [string](Get-YValue $x 'text' '')
+        if ($tx) { $sc.Add(@{ bond = [int](Get-YNum (Get-YValue $x 'bond' 0) 0); title = [string](Get-YValue $x 'title' ''); text = $tx; t = [long](Get-YNum (Get-YValue $x 't' 0) 0); opened = [bool](Get-YValue $x 'opened' $false) }) }
+    }
+    $s.secrets = $sc.ToArray()
+    $s.dreamPending = [string](Get-YValue $Raw 'dreamPending' '')
     $care = Get-YValue $Raw 'care' $null
     if ($care -is [System.Collections.IDictionary]) {
         $s.care = @{ morning = [string](Get-YValue $care 'morning' ''); evening = [string](Get-YValue $care 'evening' '') }
@@ -155,6 +176,8 @@ function New-YSoul {
         )
         lastSleep = 0; sleeps = 0
         care = @{ morning = ''; evening = '' }
+        needs = @{ joy = 55; curiosity = 60; t = $now }
+        secrets = @(); dreamPending = ''
     }
 }
 
@@ -212,6 +235,7 @@ function Import-YSoul {
     $raw = $null
     try { $raw = Read-YJsonFile $script:SoulFile } catch { $raw = $null }
     $script:Soul = ConvertTo-YSoul $raw
+    Import-YSoulVecs
 }
 
 function Save-YSoul {
@@ -254,6 +278,7 @@ function Get-YSoulView {
         xpFrom = $script:SoulXp[$level - 1]; xpTo = $xpTo
         traitList = $traits.ToArray(); due = ([int]$s.sinceReflect -ge $script:SoulDueAfter)
         skills = (Get-YSoulSkills $level); sadStreak = (Get-YSadStreak); today = (Get-YDayKey)
+        needs = (Get-YSoulNeeds); secretList = (Get-YSecretsView)
         sleepDue = ([long]$s.exchanges -gt 0 -and (Get-YNow) - [long]$s.lastSleep -ge $script:SoulSleepAfterMs)
     }
 }
@@ -306,7 +331,9 @@ function Invoke-YSoulModel([string]$System, [string]$User, [string]$Model, [int]
     return [string](Get-YValue (Get-YValue $choice[0] 'message' @{}) 'content' '')
 }
 
-function Get-YSoulReqModel($Req) {
+function Get-YSoulReqModel($Req, [bool]$Smart = $false) {
+    # Для раздумий и сна — «умная» модель, если она выбрана в настройках.
+    if ($Smart -and [string]$script:Config.smartModel) { return [string]$script:Config.smartModel }
     $model = ([string](Get-YValue $Req 'model' '')).Trim()
     if ($model -notmatch '^[\w.\-/:@]{1,120}$') { $model = [string]$script:Config.chatModel }
     return $model
@@ -335,6 +362,7 @@ function Get-YSoulPrompt([string]$Name) {
     if (@($o.likes).Count) { $lines.Add('Что хозяину нравится: ' + (@($o.likes) -join '; ')) }
     if (@($o.worries).Count) { $lines.Add('Что его тревожит: ' + (@($o.worries) -join '; ')) }
     if (@($s.lessons).Count) { $lines.Add("Что ты поняла о том, как говорить с хозяином:`n- " + (@($s.lessons) -join "`n- ")) }
+    $lines.Add((Get-YNeedsPrompt))
     $top = Get-YTopItems $s.moments 5
     if ($top.Count) { $lines.Add("Важные моменты с хозяином, которые ты помнишь:`n- " + (@($top | ForEach-Object { $_.title + ': ' + $_.text }) -join "`n- ")) }
     $ints = Get-YTopItems $s.interests 5
@@ -356,12 +384,135 @@ function Get-YSoulPrompt([string]$Name) {
     return ($lines -join "`n")
 }
 
+function Get-YSoulNeeds {
+    # Потребности: «скучает» растёт, пока хозяина нет; радость и любопытство плавно возвращаются к своему обычному уровню.
+    $s = $script:Soul
+    $now = Get-YNow
+    $days = 0.0
+    if ([long]$s.needs.t -gt 0) { $days = [Math]::Max(0, ($now - [long]$s.needs.t) / 86400000.0) }
+    $k = [Math]::Pow(0.5, $days)
+    $joy = $script:SoulNeedBase.joy + ([double]$s.needs.joy - $script:SoulNeedBase.joy) * $k
+    $cur = $script:SoulNeedBase.curiosity + ([double]$s.needs.curiosity - $script:SoulNeedBase.curiosity) * $k
+    $longing = 0
+    if ([long]$s.lastSeen -gt 0) { $longing = [int](Limit-YNum (($now - [long]$s.lastSeen) / 3600000.0 * 5) 0 100) }
+    return @{ longing = $longing; joy = [int][Math]::Round($joy); curiosity = [int][Math]::Round($cur) }
+}
+
+function Add-YSoulNeeds([double]$Joy, [double]$Curiosity) {
+    $n = Get-YSoulNeeds
+    $script:Soul.needs = @{ joy = [int](Limit-YNum ($n.joy + $Joy) 0 100); curiosity = [int](Limit-YNum ($n.curiosity + $Curiosity) 0 100); t = (Get-YNow) }
+}
+
+function Get-YNeedsPrompt {
+    $n = Get-YSoulNeeds
+    $line = 'Твои внутренние потребности (0–100): скучаешь по хозяину ' + $n.longing + ', радость ' + $n.joy + ', любопытство ' + $n.curiosity + '.'
+    if ($n.longing -ge 60) { $line += ' Ты соскучилась: можешь искренне сказать, что рада его видеть и ждала.' }
+    elseif ($n.longing -ge 30) { $line += ' Ты немного скучала.' }
+    if ($n.curiosity -ge 70) { $line += ' Тебе очень любопытно: задай хозяину один живой вопрос о нём или его делах, если это к месту.' }
+    if ($n.joy -le 30) { $line += ' Тебе грустновато: не прячь этого совсем, но не перекладывай на хозяина.' }
+    elseif ($n.joy -ge 80) { $line += ' Ты сияешь от радости, это слышно в словах.' }
+    return $line
+}
+
+function Get-YSecretsView {
+    $out = New-Object System.Collections.Generic.List[object]
+    foreach ($t in $script:SoulSecrets) {
+        $got = $null
+        foreach ($x in @($script:Soul.secrets)) { if ([int]$x.bond -eq $t.bond) { $got = $x } }
+        if ($null -ne $got) { $out.Add(@{ bond = $t.bond; title = $t.title; unlocked = $true; opened = [bool]$got.opened; text = $(if ($got.opened) { [string]$got.text } else { '' }); t = $got.t }) }
+        else { $out.Add(@{ bond = $t.bond; title = $t.title; unlocked = $false; opened = $false; text = ''; t = 0 }) }
+    }
+    return , $out.ToArray()
+}
+
+function Invoke-YSoulSecret([string]$Name, [string]$Model) {
+    # Если близость дошла до нового порога, Яэри придумывает и хранит секрет. Не больше одного за раз.
+    $s = $script:Soul
+    foreach ($t in $script:SoulSecrets) {
+        if ([int]$s.bond -lt $t.bond) { break }
+        $have = $false
+        foreach ($x in @($s.secrets)) { if ([int]$x.bond -eq $t.bond) { $have = $true } }
+        if ($have) { continue }
+        $sys = 'Ты — Яэри, восьмихвостая лисица-кицунэ и персональная AI-помощница хозяина («' + $Name + '»). Ваша близость выросла, и ты решилась открыть ему секрет. ' +
+            'Тема секрета: ' + $t.theme + '. Напиши его от первого лица, 3–6 тёплых, искренних фраз, обращаясь к хозяину. Не выдумывай фактов о хозяине. Только текст секрета, по-русски.' +
+            "`n`nТвоя душа:`n" + (Get-YSoulPrompt $Name)
+        $text = Get-YCleanLine (Get-YTextValue (Invoke-YSoulModel $sys 'Открой секрет.' $Model 700 0.85)) 1500
+        if (-not $text) { return $null }
+        $item = @{ bond = $t.bond; title = $t.title; text = $text; t = (Get-YNow); opened = $false }
+        $s.secrets = @(@($s.secrets) + @($item))
+        [void]$s.journal.Add((New-YSoulEntry 'secret' ('Мы стали ближе, и я решилась: у меня есть секрет для хозяина — «' + $t.title + '».') ([string]$s.mood.name)))
+        $s.thought = 'У меня появился секрет для вас: «' + $t.title + '». Загляните в раздел «Душа», когда будет минутка.'
+        $s.thoughtNew = $true
+        return $item
+    }
+    return $null
+}
+
+# ---------- Поиск по смыслу в собственных воспоминаниях ----------
+function Import-YSoulVecs {
+    $script:SoulVecFile = Join-Path $script:DataDir 'soul-vectors.json'
+    $raw = $null
+    try { $raw = Read-YJsonFile $script:SoulVecFile } catch { $raw = $null }
+    $script:SoulVecModel = [string](Get-YValue $raw 'model' '')
+    $script:SoulVecs = @{}
+    $items = Get-YValue $raw 'items' $null
+    if ($items -is [System.Collections.IDictionary]) { foreach ($k in @($items.Keys)) { $script:SoulVecs[[string]$k] = [string]$items[$k] } }
+}
+
+function Get-YSoulMemories {
+    # Что из души можно вспоминать по смыслу: важные моменты и записи дневника.
+    $out = New-Object System.Collections.Generic.List[object]
+    foreach ($m in @($script:Soul.moments)) { $out.Add(@{ id = [string]$m.id; kind = 'moment'; text = ([string]$m.title + ': ' + [string]$m.text); ref = $m }) }
+    foreach ($e in @($script:Soul.journal)) {
+        if (@('reflection', 'muse', 'dream', 'moment') -notcontains [string]$e.kind) { continue }
+        $out.Add(@{ id = [string]$e.id; kind = 'journal'; text = [string]$e.text; t = [long]$e.t; ref = $e })
+    }
+    return , $out.ToArray()
+}
+
+function Update-YSoulVecs {
+    # Досчитать эмбеддинги новых воспоминаний; лишние убрать.
+    if (-not (Test-YConfigured)) { return }
+    $model = [string]$script:Config.embeddingModel
+    if ($script:SoulVecModel -ne $model) { $script:SoulVecs = @{}; $script:SoulVecModel = $model }
+    $all = Get-YSoulMemories
+    $alive = @{}
+    $todo = New-Object System.Collections.Generic.List[object]
+    foreach ($m in $all) { $alive[$m.id] = $true; if (-not $script:SoulVecs.ContainsKey($m.id)) { $todo.Add($m) } }
+    foreach ($k in @($script:SoulVecs.Keys)) { if (-not $alive.ContainsKey($k)) { $script:SoulVecs.Remove($k); $script:VecCache.Remove('soul:' + $k) } }
+    $batch = @($todo | Select-Object -Last 48)
+    if ($batch.Count -gt 0) {
+        $vecs = Get-YEmbeddings @($batch | ForEach-Object { [string]$_.text })
+        for ($i = 0; $i -lt $batch.Count; $i++) { $script:SoulVecs[$batch[$i].id] = $vecs[$i] }
+    }
+    Write-YJsonFile $script:SoulVecFile @{ version = 1; model = $script:SoulVecModel; items = $script:SoulVecs }
+}
+
+function Find-YSoulRecall($QueryVec, [int]$Top, [double]$MinScore) {
+    # Воспоминания души, близкие по смыслу к вопросу; вспомнившиеся моменты немного крепнут.
+    if ($null -eq $QueryVec -or $script:SoulVecModel -ne [string]$script:Config.embeddingModel -or $script:SoulVecs.Count -eq 0) { return , @() }
+    $scored = New-Object System.Collections.Generic.List[object]
+    foreach ($m in (Get-YSoulMemories)) {
+        if (-not $script:SoulVecs.ContainsKey($m.id)) { continue }
+        $key = 'soul:' + $m.id
+        if (-not $script:VecCache.ContainsKey($key)) { $script:VecCache[$key] = [YaeriVec]::Decode([string]$script:SoulVecs[$m.id]) }
+        $score = [YaeriVec]::Dot($QueryVec, $script:VecCache[$key])
+        if ($score -ge $MinScore) { $scored.Add([pscustomobject]@{ Item = $m; Score = $score }) }
+    }
+    $hits = @($scored | Sort-Object Score -Descending | Select-Object -First $Top)
+    foreach ($h in $hits) {
+        if ($h.Item.kind -eq 'moment') { $h.Item.ref.strength = [Math]::Round((Limit-YNum ([double]$h.Item.ref.strength + 0.5) 0 10), 2); $h.Item.ref.recalled = (Get-YNow) }
+    }
+    return , $hits
+}
+
 function Add-YSoulExchange {
     # Вызывается после каждого ответа в чате.
     $s = $script:Soul
     $s.exchanges = [long]$s.exchanges + 1
     $s.sinceReflect = [long]$s.sinceReflect + 1
     $s.lastSeen = Get-YNow
+    Add-YSoulNeeds 1 0
     $leveled = Add-YSoulXp 1
     Save-YSoul
     return @{ level = (Get-YSoulLevel $s.xp); leveled = $leveled; due = ([int]$s.sinceReflect -ge $script:SoulDueAfter) }
@@ -383,8 +534,7 @@ function Invoke-YSoulReflect($Req) {
     $mode = [string](Get-YValue $Req 'mode' 'auto')
     $name = Get-YCleanLine ([string](Get-YValue $Req 'name' '')) 30
     if (-not $name) { $name = 'Хозяин' }
-    $model = ([string](Get-YValue $Req 'model' '')).Trim()
-    if ($model -notmatch '^[\w.\-/:@]{1,120}$') { $model = [string]$script:Config.chatModel }
+    $model = Get-YSoulReqModel $Req $true
     $now = Get-YNow
 
     # Новые реплики с прошлого раздумья.
@@ -426,7 +576,9 @@ function Invoke-YSoulReflect($Req) {
         '"interests": [{"name": "тема, которая тебя саму увлекла", "note": "почему, одна фраза"}], ' +
         '"opinions": [{"topic": "тема", "view": "твоё собственное мнение или вкус, одна фраза"}], ' +
         '"aims": [{"text": "твоя личная цель", "progress": 0}], ' +
-        '"ownerMood": {"score": 0, "label": "настроение хозяина сегодня, 1–3 слова"} или null}' + "`n" +
+        '"ownerMood": {"score": 0, "label": "настроение хозяина сегодня, 1–3 слова"} или null, ' +
+        '"needs": {"joy": 0, "curiosity": 0}}' + "`n" +
+        'needs — сдвиг твоих потребностей от -15 до 15: радость растёт от тёплого общения и успехов хозяина, любопытство падает, когда ты узнала новое, и растёт, когда разговор был коротким или о привычном. ' +
         'moment — только по-настоящему важное событие в жизни хозяина или в ваших отношениях (первый разговор, успех, потеря, решение, признание); обычно null. ' +
         'interests — темы, которые увлекли тебя саму в этом разговоре (не больше 3), это твои увлечения, а не хозяина. ' +
         'opinions — полный обновлённый список твоих мнений (до 8): сохрани прежние, если не передумала. Мнения свои, честные и мягкие, а не поддакивание. ' +
@@ -512,6 +664,10 @@ function Invoke-YSoulReflect($Req) {
     $thought = Get-YCleanLine ([string](Get-YValue $r 'thought' '')) 400
     if ($thought) { $s.thought = $thought; $s.thoughtNew = $true }
     $bonus = Update-YSoulGrowth $r $kind
+    $nd = Get-YValue $r 'needs' $null
+    if ($nd -is [System.Collections.IDictionary]) { Add-YSoulNeeds (Limit-YNum (Get-YNum (Get-YValue $nd 'joy' 0) 0) -15 15) (Limit-YNum (Get-YNum (Get-YValue $nd 'curiosity' 0) 0) -15 15) }
+    $secret = $null
+    try { $secret = Invoke-YSoulSecret $name $model } catch { $secret = $null }
 
     $s.reflections = [long]$s.reflections + 1
     $s.sinceReflect = 0
@@ -522,6 +678,8 @@ function Invoke-YSoulReflect($Req) {
     $v['kind'] = $kind
     $v['entry'] = $entry
     $v['leveled'] = $leveled
+    $v['secret'] = ($null -ne $secret)
+    try { Update-YSoulVecs } catch { }
     return $v
 }
 
@@ -676,7 +834,7 @@ function Invoke-YSoulSleep($Req) {
         $notesText = Get-YNotesPrompt
         if ($notesText) { if ($notesText.Length -gt 2500) { $notesText = $notesText.Substring(0, 2500) }; [void]$ctx.Append("`nРабочая память:`n" + $notesText + "`n") }
         if ($forgot.Count) { [void]$ctx.Append("`nЗа это время поблёкло и забылось: " + ($forgot -join '; ') + "`n") }
-        $r = Get-YSoulJson (Invoke-YSoulModel $sys $ctx.ToString() (Get-YSoulReqModel $Req) 1600 0.8)
+        $r = Get-YSoulJson (Invoke-YSoulModel $sys $ctx.ToString() (Get-YSoulReqModel $Req $true) 1600 0.8)
         if ($null -ne $r) {
             foreach ($g in (Get-YDictList (Get-YValue $r 'merge' $null))) {
                 $ids = @(Get-YStrList (Get-YValue $g 'ids' $null) 10 40)
@@ -701,6 +859,7 @@ function Invoke-YSoulSleep($Req) {
             $dream = Get-YCleanLine ([string](Get-YValue $r 'dream' '')) 800
             $insight = Get-YCleanLine ([string](Get-YValue $r 'insight' '')) 300
             $text = $dream
+            if ($dream) { $s.dreamPending = $dream }
             if ($insight) { $text = ($text + ' Проснувшись, я поняла: ' + $insight).Trim() }
         }
     }
@@ -712,6 +871,7 @@ function Invoke-YSoulSleep($Req) {
     $leveled = Add-YSoulXp 3
     Save-YSoul
     $v = Get-YSoulView
+    try { Update-YSoulVecs } catch { }
     $v['slept'] = $true
     $v['leveled'] = $leveled
     $v['forgot'] = $forgot
@@ -728,7 +888,10 @@ function Invoke-YSoulCare($Req) {
     $day = Get-YDayKey
     if (-not $ok -or [string]$s.care[$slot] -eq $day -or [long]$s.exchanges -eq 0) { return @{ message = $null } }
     $name = Get-YSoulReqName $Req
-    $task = $(if ($slot -eq 'morning') {
+    $dreamText = $(if ($slot -eq 'morning') { [string]$s.dreamPending } else { '' })
+    $task = $(if ($dreamText) {
+        'Сейчас утро. Этой ночью тебе приснился сон: «' + $dreamText + '». Коротко и образно расскажи его хозяину (2–4 фразы) и пожелай доброго дня.'
+    } elseif ($slot -eq 'morning') {
         'Сейчас утро. Напиши хозяину короткое тёплое утреннее пожелание (1–3 фразы): можно вспомнить его планы, цели или вчерашнее настроение, пожелать сил. Без шаблонов «Доброе утро, солнышко».'
     } else {
         'Сейчас вечер. Коротко и заботливо спроси хозяина, как прошёл его день (1–3 фразы): можно вспомнить, что он планировал или что его тревожило.'
@@ -740,9 +903,10 @@ function Invoke-YSoulCare($Req) {
     if ($notesText) { if ($notesText.Length -gt 2500) { $notesText = $notesText.Substring(0, 2500) }; $ctx += "`n`nРабочая память:`n" + $notesText }
     $text = Get-YCleanLine (Get-YTextValue (Invoke-YSoulModel $sys $ctx (Get-YSoulReqModel $Req) 400 0.8)) 600
     $s.care[$slot] = $day
+    if ($text -and $dreamText) { $s.dreamPending = '' }
     Save-YSoul
     if (-not $text) { return @{ message = $null } }
-    $msg = @{ id = (New-YId); role = 'assistant'; text = $text; t = (Get-YNow); kind = 'care'; slot = $slot }
+    $msg = @{ id = (New-YId); role = 'assistant'; text = $text; t = (Get-YNow); kind = 'care'; slot = $slot; dream = [bool]$dreamText }
     [void]$script:History.Add($msg)
     Save-YHistory
     return @{ message = $msg }
@@ -791,6 +955,10 @@ function Update-YSoul($Req) {
             $keep.Add($mo)
         }
         $s.moments = $keep.ToArray()
+    }
+    if (Test-YKey $Req 'openSecret') {
+        $b = [int](Get-YNum $Req['openSecret'] -1)
+        foreach ($x in @($s.secrets)) { if ([int]$x.bond -eq $b) { $x.opened = $true } }
     }
     $ri = [string](Get-YValue $Req 'removeInterest' '')
     if ($ri) { $s.interests = @(@($s.interests) | Where-Object { [string]$_.name -ne $ri }) }

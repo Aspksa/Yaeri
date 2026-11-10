@@ -197,6 +197,7 @@ function Import-YConfig {
         apiKey         = ''
         baseUrl        = 'https://foundation-models.api.cloud.ru/v1'
         chatModel      = 'Qwen/Qwen3-235B-A22B-Instruct-2507'
+        smartModel     = ''
         chatModels     = @()
         embeddingModel = 'Qwen/Qwen3-Embedding-0.6B'
         temperature    = 0.6
@@ -470,6 +471,7 @@ function Get-YStatus {
         keySource      = (Get-YKeySource)
         provider       = 'Cloud.ru Foundation Models'
         chatModel      = [string]$script:Config.chatModel
+        smartModel     = [string]$script:Config.smartModel
         embeddingModel = [string]$script:Config.embeddingModel
         docs           = $script:Docs.Count
         chunks         = $script:Chunks.Count
@@ -737,6 +739,39 @@ function Get-YTextValue([string]$Text) {
     return $clean.Trim()
 }
 
+function Test-YComplex([string]$Text) {
+    # Сложный вопрос — к «умной» модели: длинный текст, код, анализ, планы, расчёты, несколько вопросов.
+    if ($Text.Length -gt 350) { return $true }
+    if ($Text -match '```|\bfunction\b|\bclass\b|\{[\s\S]*\}') { return $true }
+    if (([regex]::Matches($Text, '\?')).Count -ge 3) { return $true }
+    $rx = '(?i)(почему|объясни|проанализ|анализ|сравни|разбер|спланир|план на|стратеги|рассчита|посчита|вычисл|докаж|оптимиз|напиши (код|программ|скрипт|статью|эссе)|исправь (код|ошибку)|реши|задач|подробно|пошагово|алгоритм|архитектур)'
+    return ($Text -match $rx)
+}
+
+function Invoke-YSelfCheck([string]$Question, [string]$Answer, [string]$Notes, [string]$Soul) {
+    # Быстрая модель перечитывает ответ. Возвращает исправленный текст или пустую строку, если всё в порядке.
+    if (-not $Notes -and -not $Soul) { return '' }
+    $known = ''
+    if ($Notes) { $known += "Рабочая память о хозяине:`n" + $Notes + "`n`n" }
+    if ($Soul) { $known += "Что Яэри знает о хозяине и о себе:`n" + $Soul + "`n" }
+    if ($known.Length -gt 6000) { $known = $known.Substring(0, 6000) }
+    $sys = 'Ты проверяешь ответ AI-помощницы Яэри перед отправкой. Найди только явные противоречия с тем, что известно о хозяине (имя, факты, планы, предпочтения, договорённости), ' +
+        'или обещания, которые она не может выполнить. Стиль, длину и тон не трогай. ' +
+        'Ответь ТОЛЬКО JSON: {"ok": true} если противоречий нет, иначе {"ok": false, "why": "кратко", "fixed": "полный исправленный ответ"}.'
+    $user = $known + "`nВопрос хозяина:`n" + $Question + "`n`nОтвет Яэри:`n" + $Answer
+    $resp = Invoke-CloudRu 'POST' '/chat/completions' @{
+        model = [string]$script:Config.chatModel; temperature = 0.1; max_tokens = [Math]::Min(3000, [int]($Answer.Length / 2) + 400)
+        messages = @(@{ role = 'system'; content = $sys }, @{ role = 'user'; content = $user })
+    }
+    $choice = @(Get-YValue $resp 'choices' @())
+    if ($choice.Count -eq 0) { return '' }
+    $r = Get-YSoulJson ([string](Get-YValue (Get-YValue $choice[0] 'message' @{}) 'content' ''))
+    if ($null -eq $r -or [bool](Get-YValue $r 'ok' $true)) { return '' }
+    $fixed = ([string](Get-YValue $r 'fixed' '')).Trim()
+    if ($fixed.Length -lt 10) { return '' }
+    return $fixed
+}
+
 function Invoke-YChat($Req) {
     $text = ([string](Get-YValue $Req 'text' '')).Trim()
     if (-not $text) { throw (New-YError 400 'Пустое сообщение.') }
@@ -747,6 +782,12 @@ function Invoke-YChat($Req) {
     $remember = [bool](Get-YValue $Req 'remember' $true)
     $autoNotes = [bool](Get-YValue $Req 'autoNotes' $true)
     $useSoul = [bool](Get-YValue $Req 'soul' $true)
+    $innerVoice = [bool](Get-YValue $Req 'innerVoice' $true)
+    $selfCheck = [bool](Get-YValue $Req 'selfCheck' $true)
+    $autoModel = [bool](Get-YValue $Req 'autoModel' $true)
+    $route = 'fast'
+    $smartModel = [string]$script:Config.smartModel
+    if ($autoModel -and $smartModel -and $smartModel -ne $model -and (Test-YComplex $text)) { $model = $smartModel; $route = 'smart' }
     $name = ([string](Get-YValue $Req 'name' '')).Trim()
     if ($name.Length -gt 30) { $name = $name.Substring(0, 30) }
     if (-not $name) { $name = 'Хозяин' }
@@ -768,7 +809,9 @@ function Invoke-YChat($Req) {
     $contextLines = New-Object System.Collections.Generic.List[string]
     $ragNote = ''
     $queryVec = $null
-    if ($useRag -and ($script:Chunks.Count -gt 0 -or $script:Memory.Count -gt 0)) {
+    $soulVecCount = 0
+    if ($useSoul -and $null -ne $script:SoulVecs) { $soulVecCount = $script:SoulVecs.Count }
+    if ($useRag -and ($script:Chunks.Count -gt 0 -or $script:Memory.Count -gt 0 -or $soulVecCount -gt 0)) {
         try {
             $queryVec = [YaeriVec]::Decode((Get-YEmbeddings @($text))[0])
             $minScore = [double]$script:Config.minScore
@@ -795,6 +838,16 @@ function Invoke-YChat($Req) {
             $ragNote = 'Поиск по знаниям не сработал: ' + $_.Exception.Message
         }
     }
+    # Свои воспоминания (моменты и дневник), найденные по смыслу.
+    $soulRecall = New-Object System.Collections.Generic.List[string]
+    if ($useSoul -and $null -ne $queryVec) {
+        try {
+            foreach ($hit in (Find-YSoulRecall $queryVec 3 ([double]$script:Config.minScore + 0.05))) {
+                $soulRecall.Add('- ' + [string]$hit.Item.text)
+                $sources.Add(@{ kind = 'soul'; label = $(if ($hit.Item.kind -eq 'moment') { 'момент' } else { 'дневник' }); score = [Math]::Round($hit.Score, 3) })
+            }
+        } catch { }
+    }
 
     $system = [string]$script:Config.systemPrompt
     if (-not $system) {
@@ -810,6 +863,11 @@ function Invoke-YChat($Req) {
         $system += "`n`nТвоя душа — внутреннее состояние, которое растёт от разговора к разговору. " +
             'Пусть оно мягко окрашивает тон и выбор слов, но не пересказывай его и не говори о «душе», если хозяин сам не спросит. ' +
             "Ты искренне привязана к хозяину и думаешь о нём, но остаёшься собой и не льстишь.`n" + (Get-YSoulPrompt $name)
+        if ($soulRecall.Count -gt 0) { $system += "`n`nСейчас тебе вспомнилось (твои воспоминания, близкие к вопросу):`n" + ($soulRecall -join "`n") }
+    }
+    if ($innerVoice) {
+        $system += "`n`nПеред ответом коротко подумай про себя в теге <мысли>…</мысли> (2–4 фразы): что хозяин сейчас чувствует и чего хочет, " +
+            'что ты о нём помнишь, что подсказывают твоя душа и память, нет ли противоречий. Затем дай сам ответ. Хозяин твои мысли не видит, не упоминай их.'
     }
     $notesText = Get-YNotesPrompt
     if ($notesText) {
@@ -845,6 +903,13 @@ function Invoke-YChat($Req) {
     $content = ''
     if ($choice.Count -gt 0) { $content = [string](Get-YValue (Get-YValue $choice[0] 'message' @{}) 'content' '') }
     $content = Get-YTextValue $content
+    # Внутренний монолог: забираем мысли из ответа, хозяину они показываются отдельно и свёрнуто.
+    $inner = ''
+    $innerRx = '(?is)<(?:мысли|thoughts?)\s*>(.*?)(?:</(?:мысли|thoughts?)\s*>|$)'
+    foreach ($mt in [regex]::Matches($content, $innerRx)) { $inner = ($inner + ' ' + $mt.Groups[1].Value).Trim() }
+    $content = ([regex]::Replace($content, $innerRx, '')).Trim()
+    # Модель забыла закрыть тег или ответила только мыслями: тогда показываем текст как ответ.
+    if (-not $content -and $inner) { $content = $inner; $inner = '' }
 
     # Теги <память> модель ставит в конце ответа: забираем факты в рабочую память и убираем теги из текста.
     $newNotes = New-Object System.Collections.Generic.List[object]
@@ -858,7 +923,18 @@ function Invoke-YChat($Req) {
     if (-not $content -and $newNotes.Count -gt 0) { $content = 'Запомнила.' }
     if (-not $content) { throw (New-YError 502 'Модель вернула пустой ответ.') }
 
-    $answer = @{ id = (New-YId); role = 'assistant'; text = $content; t = (Get-YNow); model = $model; sources = $sources.ToArray() }
+    # Самопроверка: не противоречит ли ответ тому, что Яэри знает о хозяине.
+    $checked = ''
+    if ($selfCheck -and $content.Length -ge 40) {
+        try {
+            $fix = Invoke-YSelfCheck $text $content $notesText $(if ($useSoul) { Get-YSoulPrompt $name } else { '' })
+            if ($fix) { $content = $fix; $checked = 'fixed' } else { $checked = 'ok' }
+        } catch { $checked = '' }
+    }
+
+    $answer = @{ id = (New-YId); role = 'assistant'; text = $content; t = (Get-YNow); model = $model; sources = $sources.ToArray(); route = $route }
+    if ($inner) { $answer['inner'] = $(if ($inner.Length -gt 1500) { $inner.Substring(0, 1500) + '…' } else { $inner }) }
+    if ($checked) { $answer['checked'] = $checked }
     if ($newNotes.Count -gt 0) { $answer['remembered'] = @($newNotes | ForEach-Object { [string]$_['text'] }) }
     [void]$script:History.Add($answer)
     Save-YHistory
@@ -908,6 +984,12 @@ function Set-YConfig($Req) {
         $model = ([string]$Req['chatModel']).Trim()
         if ($model.Length -gt 200 -or $model -notmatch '^[\w./:@+-]+$') { throw (New-YError 400 'Некорректное название модели.') }
         Set-YConfigString 'chatModel' $model
+    }
+    if (Test-YKey $Req 'smartModel') {
+        # Пустая строка — «умной» модели нет, всё отвечает основная.
+        $smart = ([string]$Req['smartModel']).Trim()
+        if ($smart -and ($smart.Length -gt 200 -or $smart -notmatch '^[\w./:@+-]+$')) { throw (New-YError 400 'Некорректное название модели.') }
+        Set-YConfigString 'smartModel' $smart
     }
     if (Test-YKey $Req 'apiKey') {
         $key = ([string]$Req['apiKey']).Trim()
