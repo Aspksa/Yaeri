@@ -142,6 +142,11 @@ try {
     if ($script:Und.map.Count -ne 0 -or $script:Und.ratings.Count -ne 0) { throw 'Reset incomplete.' }
     if ((Get-YTopicMode 'money') -ne 'off') { throw 'Reset must preserve topic settings.' }
     Write-Host 'Soul Understanding tests passed.' -ForegroundColor Green
+} catch {
+    # В CI (Windows PowerShell 5.1) нужен стек: без него неясно, какой шаг упал.
+    Write-Host ('FAILED: ' + $_.Exception.Message) -ForegroundColor Red
+    Write-Host $_.ScriptStackTrace
+    throw
 } finally {
     if (Test-Path $script:DataDir) { Remove-Item $script:DataDir -Force -Recurse }
 }

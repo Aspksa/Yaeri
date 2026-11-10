@@ -129,6 +129,11 @@ try {
     [void](Clear-YCuriosity)
     if ($script:Cur.lessons.Count -ne 0 -or $script:Cur.goals.Count -ne 0 -or $script:Cur.intensity -ne 'active') { throw 'Curiosity reset incorrect.' }
     Write-Host 'Soul Curiosity tests passed.' -ForegroundColor Green
+} catch {
+    # В CI (Windows PowerShell 5.1) нужен стек: без него неясно, какой шаг упал.
+    Write-Host ('FAILED: ' + $_.Exception.Message) -ForegroundColor Red
+    Write-Host $_.ScriptStackTrace
+    throw
 } finally {
     if (Test-Path $script:DataDir) { Remove-Item $script:DataDir -Force -Recurse }
 }
