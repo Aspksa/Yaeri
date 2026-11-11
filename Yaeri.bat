@@ -23,6 +23,14 @@ if exist "%YAERI_UPDATER%" (
     powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%YAERI_UPDATER%"
 )
 
+rem Install required runtimes on first launch (winget, if available).
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0launcher\bootstrap-runtimes.ps1"
+if errorlevel 1 (
+    echo Не удалось автоматически подготовить Python и Node.js.
+    pause
+    exit /b 1
+)
+
 powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%YAERI_SCRIPT%"
 set "YAERI_EXIT=%ERRORLEVEL%"
 
