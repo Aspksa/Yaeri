@@ -13,7 +13,9 @@
         sorry:  { pose: 'sorry',  cap: 'Простите, не вышло',  text: 'извиняется' },
         ponder: { pose: 'think',  cap: 'Думаю о вас…',        text: 'размышляет' },
         miss:   { pose: 'greet',  cap: 'Я скучала!',          text: 'рада вас видеть' },
-        grow:   { pose: 'happy',  cap: 'Зажёгся новый хвост!', text: 'растёт' }
+        grow:   { pose: 'happy',  cap: 'Зажёгся новый хвост!', text: 'растёт' },
+        tasks:  { pose: 'happy',  cap: 'Обновила дела',       text: 'обновила дела' },
+        remind: { pose: 'greet',  cap: 'Напоминаю о делах',   text: 'напоминает о делах' }
       };
       var stage = $('yaeri-stage');
       var mood = { base: 'idle', cur: '', flash: 0, swap: 0 };

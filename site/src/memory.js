@@ -269,9 +269,10 @@
           var x = pcDay(y, m, d);
           var cell = el(opts && opts.buttons ? 'button' : 'span', pcCellClass(x, today) + (opts && opts.sel === d ? ' sel' : ''), String(d));
           cell.title = pcDayText(x).replace(/<[^>]+>/g, '');
+          tasksDecorateCell(cell, y, m, d);
           if (opts && opts.buttons) {
             cell.type = 'button';
-            cell.setAttribute('aria-label', cell.title);
+            if (!cell.hasAttribute('aria-label')) cell.setAttribute('aria-label', cell.title);
             (function (xx) { cell.addEventListener('click', function () { opts.onPick(xx); }); }(x));
           }
           box.appendChild(cell);
@@ -337,10 +338,10 @@
         $('pc-next').disabled = y === PC_LAST && m === 11;
         var now = new Date();
         var sel = pcState.sel || (now.getFullYear() === y && now.getMonth() === m ? now.getDate() : 0);
-        pcFillGrid($('pc-grid'), y, m, { buttons: true, sel: pcState.sel, onPick: function (x) { pcState.sel = x.d; renderProdCalendar(true); } });
+        pcFillGrid($('pc-grid'), y, m, { buttons: true, sel: pcState.sel, onPick: function (x) { pcState.sel = pcState.sel === x.d ? 0 : x.d; tasksPickDay(x); renderProdCalendar(true); } });
         // Подпись под сеткой: выбранный день, иначе ближайший праздник месяца.
         var detail = $('pc-detail');
-        if (sel) detail.innerHTML = pcDayText(pcDay(y, m, sel));
+        if (sel) { detail.innerHTML = pcDayText(pcDay(y, m, sel)); tasksDayDetail(detail, y, m, sel); }
         else {
           var hols = [];
           var n = new Date(y, m + 1, 0).getDate();

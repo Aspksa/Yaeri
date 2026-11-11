@@ -108,7 +108,7 @@
     .view { flex: 1; min-height: 0; }
     .deck {
       display: grid; gap: 10px; padding: 10px;
-      grid-template-columns: minmax(360px, 420px) minmax(0, 1fr) minmax(260px, 320px);
+      grid-template-columns: minmax(360px, 420px) minmax(0, 1fr) minmax(320px, 400px);
     }
     .col { min-height: 0; display: flex; flex-direction: column; gap: 10px; }
     .card {
@@ -1103,10 +1103,108 @@
     .rate-note { display: flex; gap: 6px; margin-top: 6px; }
     .rate-note .field { flex: 1; min-width: 0; padding: 5px 8px; font-size: .78rem; }
 
+    /* ---------- Дела ---------- */
+    .tasks-card { min-height: 300px; --t-hi: hsl(350 88% 66%); --t-low: hsl(var(--h) 10% 55%); }
+    .tasks-card .card-meta.late { color: var(--t-hi); }
+    .tasks-tabs { flex: none; display: flex; gap: 3px; padding: 8px 12px 0; overflow-x: auto; scrollbar-width: none; }
+    .tasks-tabs button {
+      flex: 1 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 6px 8px;
+      border: 1px solid var(--line); border-radius: 8px; background: none; color: var(--muted);
+      font: 600 .66rem/1.2 var(--mono); letter-spacing: .06em; white-space: nowrap;
+    }
+    .tasks-tabs button:hover { color: var(--ink); border-color: var(--line-2); }
+    .tasks-tabs button[aria-selected="true"] { color: var(--on-a); background: var(--a); border-color: var(--a); }
+    .tasks-tabs i { font-style: normal; opacity: .75; }
+    .tasks-tabs i:empty { display: none; }
+    .tasks-day {
+      flex: none; display: flex; align-items: center; gap: 8px; margin: 8px 12px 0; padding: 7px 10px;
+      border: 1px solid hsl(42 70% 45% / .5); border-radius: 9px; background: hsl(42 80% 45% / .1);
+      color: hsl(46 90% 78%); font-size: .86rem; font-weight: 600;
+    }
+    .tasks-day[hidden] { display: none; }
+    .tasks-day .mini-btn { margin-left: auto; }
+    .tasks-add { flex: none; display: grid; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+    .tasks-add .field { font-size: .9rem; padding: 8px 10px; }
+    .tasks-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .tasks-row .field { flex: 1 1 0; min-width: 0; padding: 6px 8px; font-size: .8rem; color-scheme: dark; }
+    .tasks-row #tasks-due { flex: 1.6 1 0; }
+    .tasks-row select.field { flex: 1.2 1 0; }
+    .tasks-card.note-mode .task-only { display: none; }
+    .tasks-hint { flex: 1; min-width: 0; color: var(--faint); font: 500 .68rem/1.3 var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tasks-hint.warn { color: hsl(28 95% 66%); white-space: normal; }
+    .tasks-hint.ok { color: var(--a); }
+    .tasks-hint.bad { color: var(--t-hi); white-space: normal; }
+    .tasks-body { padding: 6px 8px 8px; }
+    .tasks-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+    .tasks-empty { padding: 14px 8px; color: var(--muted); font-size: .86rem; line-height: 1.45; text-align: center; }
+    .task {
+      position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 8px;
+      padding: 8px 6px 8px 10px; border: 1px solid transparent; border-radius: 9px; background: var(--bg-2);
+    }
+    .task::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 3px; background: var(--a); opacity: .55; }
+    .task.p-high::before { background: var(--t-hi); opacity: 1; box-shadow: 0 0 8px var(--t-hi); }
+    .task.p-low::before { background: var(--t-low); opacity: .5; }
+    .task.note::before { background: hsl(268 80% 72%); opacity: .7; }
+    .task:hover { border-color: var(--line-2); }
+    .task.editing { border-color: var(--a); }
+    .task.late { background: linear-gradient(90deg, hsl(350 70% 40% / .16), transparent 70%), var(--bg-2); }
+    .t-check {
+      width: 20px; height: 20px; margin-top: 1px; padding: 0; border: 1.5px solid var(--line-2); border-radius: 6px; background: none; color: var(--on-a);
+      font: 700 .8rem/1 var(--mono); display: grid; place-items: center;
+    }
+    .t-check:hover { border-color: var(--a); }
+    .t-check[aria-checked="true"] { background: var(--a); border-color: var(--a); }
+    .t-check[aria-checked="true"]::after { content: "✓"; }
+    .t-note-mark { width: 20px; text-align: center; color: hsl(268 80% 76%); }
+    .t-main { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+    .t-text { color: var(--ink); font-size: .92rem; line-height: 1.35; overflow-wrap: anywhere; white-space: pre-wrap; }
+    .task.done .t-text { color: var(--faint); text-decoration: line-through; }
+    .t-meta { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
+    .t-meta > * { padding: 1px 6px; border-radius: 99px; font: 600 .62rem/1.5 var(--mono); letter-spacing: .04em; }
+    .t-due { border: 1px solid var(--line-2); background: none; color: var(--muted); cursor: pointer; }
+    .t-due:hover { color: var(--ink); border-color: var(--a); }
+    .t-due.today { color: hsl(46 95% 70%); border-color: hsl(42 80% 50% / .6); }
+    .t-due.late { color: var(--t-hi); border-color: hsl(350 80% 60% / .6); }
+    .t-off { color: hsl(28 95% 66%); background: hsl(28 90% 50% / .12); }
+    .t-nodue { color: var(--faint); }
+    .t-prio { color: var(--t-hi); background: hsl(350 80% 55% / .14); }
+    .t-src { color: hsl(338 80% 78%); background: hsl(338 70% 50% / .12); }
+    .t-acts { display: flex; gap: 1px; opacity: .35; transition: opacity .15s; }
+    .task:hover .t-acts, .task:focus-within .t-acts { opacity: 1; }
+    .t-acts button { width: 26px; height: 26px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--muted); font-size: .9rem; }
+    .t-acts button:hover { color: var(--ink); background: var(--surface-2); }
+    .tasks-foot-acts { display: flex; gap: 6px; }
+    .brain-mini-card { flex: none; }
+    .brain-mini-card .mini-brain { height: 130px; min-height: 0; flex: none; }
+    .msg .remembered.tasks-done { background: none; cursor: pointer; text-align: left; }
+    .msg .remembered.tasks-done:hover { border-style: solid; }
+    .msg.remind .thought-tag { color: hsl(42 96% 66%); }
+    /* Дела на днях календаря */
+    .pc-d .pc-dots { position: absolute; left: 0; right: 0; bottom: 4px; display: flex; justify-content: center; gap: 3px; pointer-events: none; }
+    .pc-d .pc-dots b { width: 5px; height: 5px; border-radius: 50%; background: hsl(186 90% 62%); box-shadow: 0 0 5px hsl(186 90% 62% / .8); }
+    .pc-d .pc-dots b.hi { background: hsl(350 95% 68%); box-shadow: 0 0 5px hsl(350 95% 68%); }
+    .pc-d .pc-dots b.late { background: hsl(350 95% 68%); }
+    .pc-d .pc-dots b.ok { background: hsl(140 60% 55%); box-shadow: none; }
+    .pc-d .pc-dots b.note { background: hsl(268 90% 78%); box-shadow: none; border-radius: 1px; }
+    .pc-d.today .pc-dots b { box-shadow: 0 0 0 1px hsl(30 60% 8% / .7); }
+    .pc-d.has-tasks { font-weight: 800; }
+    .pc-m .pc-d .pc-dots { bottom: 1px; gap: 1px; }
+    .pc-m .pc-d .pc-dots b { width: 3px; height: 3px; }
+    .pc-legend .lg-task { border-radius: 50%; width: 8px; height: 8px; background: hsl(186 90% 62%); border-color: transparent; }
+    .pc-day-tasks { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+    .pc-day-tasks ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+    .pc-day-tasks li { display: flex; gap: 6px; color: var(--ink); font-size: .84rem; line-height: 1.35; }
+    .pc-day-tasks li .mk { width: 12px; flex: none; color: hsl(186 90% 62%); text-align: center; }
+    .pc-day-tasks li.p-high .mk { color: hsl(350 95% 68%); }
+    .pc-day-tasks li.note .mk { color: hsl(268 90% 78%); }
+    .pc-day-tasks li.done { color: var(--faint); text-decoration: line-through; }
+    .pc-day-tasks li.more { color: var(--faint); }
+    .pc-day-tasks .mini-btn { align-self: flex-start; }
+
     /* ---------- Узкие экраны ---------- */
     @media (max-width: 1180px) {
-      .deck { grid-template-columns: minmax(340px, 380px) minmax(0, 1fr); }
-      .col-right { display: none; }
+      .deck { grid-template-columns: minmax(330px, 370px) minmax(0, 1fr) minmax(300px, 340px); }
+      .col-right .soul-mini, .col-right .brain-mini-card { display: none; }
     }
     @media (max-width: 820px) {
       body { overflow: auto; }

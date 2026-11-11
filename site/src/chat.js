@@ -19,10 +19,18 @@
         var row = el('div', 'msg ' + (m.role === 'user' ? 'user' : 'assistant') + (m.error ? ' error' : '') + (animate ? ' enter' : ''));
         row.appendChild(el('div', 'who', m.role === 'user' ? settings.name : 'Яэри'));
         if (m.kind === 'thought') { row.classList.add('thought'); row.appendChild(el('div', 'thought-tag', '✦ думала о вас')); }
+        if (m.kind === 'remind') { row.classList.add('thought', 'remind'); row.appendChild(el('div', 'thought-tag', '⏰ напоминание о делах')); }
         if (m.kind === 'care') { row.classList.add('thought'); row.appendChild(el('div', 'thought-tag', m.dream ? '☾ мой сон' : (m.slot === 'evening' ? '☾ вечер' : '☀ утро'))); }
         row.appendChild(el('div', 'text', m.text));
         if (Array.isArray(m.remembered) && m.remembered.length) {
           row.appendChild(el('div', 'remembered', '✦ Записала в память: ' + m.remembered.join('; ')));
+        }
+        if (Array.isArray(m.tasks) && m.tasks.length) {
+          var tl = el('button', 'remembered tasks-done', '✓ Дела: ' + m.tasks.join('; '));
+          tl.type = 'button';
+          tl.title = 'Открыть «Дела»';
+          tl.addEventListener('click', function () { if (currentView !== 'deck') showView('deck'); var c = $('tasks-card'); if (c) c.scrollIntoView({ block: 'nearest' }); });
+          row.appendChild(tl);
         }
         if (m.inner) {
           var det = el('details', 'inner');
@@ -104,7 +112,7 @@
         sendBtn.disabled = true;
         showTyping();
         setBase('think');
-        api('chat', { text: message, model: modelSelect.value, rag: settings.rag, remember: settings.remember, autoNotes: settings.autoNotes, soul: settings.soul, innerVoice: settings.inner, selfCheck: settings.selfCheck, autoModel: settings.autoModel, name: settings.name })
+        api('chat', { text: message, model: modelSelect.value, rag: settings.rag, remember: settings.remember, autoNotes: settings.autoNotes, soul: settings.soul, innerVoice: settings.inner, selfCheck: settings.selfCheck, autoModel: settings.autoModel, name: settings.name, tasks: true, days: tasksCalendarDays(21) })
           .then(function (data) {
             if (epoch !== chatEpoch) return;
             var m = data.reply;
@@ -114,7 +122,9 @@
             bubble(m, true);
             refreshBrain();
             setBase(restMood());
+            var tasksTouched = tasksAfterReply(m);
             if (data.soul && data.soul.leveled) flash('grow', 5200);
+            else if (tasksTouched) flash('tasks', 4200);
             else if (Array.isArray(m.remembered) && m.remembered.length) flash('memo', 4200);
             else flash('happy', 3200);
             if (data.soul) soulAfterChat(data.soul);
@@ -189,7 +199,11 @@
           aiReply(message);
         } else {
           add('user', message);
-          demoReply();
+          var local = tasksDemoCommand(message);
+          if (local) {
+            add('assistant', local);
+            flash('tasks', 3200);
+          } else demoReply();
         }
         return true;
       }

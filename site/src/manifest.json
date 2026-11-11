@@ -15,6 +15,7 @@
     "site/src/life.js",
     "site/src/depth.js",
     "site/src/evolution5.js",
+    "site/src/tasks.js",
     "site/src/bootstrap.js"
   ]
 }

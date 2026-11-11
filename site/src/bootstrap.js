@@ -20,6 +20,7 @@
         }
         refreshBrain();
         soulDemo();
+        tasksLoad();
       }
       function startOnline() {
         online = true;
@@ -33,6 +34,7 @@
           if (history.length) history.forEach(function (m) { bubble(m, false); });
           else greet();
           soulStart();
+          tasksLoad();
         });
       }
 
