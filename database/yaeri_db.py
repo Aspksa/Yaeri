@@ -7,7 +7,6 @@ from __future__ import annotations
 import json
 import sqlite3
 import uuid
-from contextlib import contextmanager
 from pathlib import Path
 
 SCHEMA = Path(__file__).with_name("schema.sql")
@@ -77,30 +76,3 @@ class YaeriDB:
                 (from_id, to_id, relation, weight),
             )
 
-    def create_job(self, agent: str, task: str) -> str:
-        job_id = str(uuid.uuid4())
-        with self.conn:
-            self.conn.execute(
-                "INSERT INTO agent_jobs(id,agent,task) VALUES(?,?,?)",
-                (job_id, agent, task),
-            )
-        return job_id
-
-    def set_job_status(self, job_id: str, status: str, *,
-                       result: dict | None = None, error: str | None = None):
-        with self.conn:
-            cur = self.conn.execute(
-                """UPDATE agent_jobs SET status=?,result_json=?,error=?,
-                   updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?""",
-                (status, json.dumps(result, ensure_ascii=False) if result is not None else None,
-                 error, job_id),
-            )
-            if cur.rowcount != 1:
-                raise KeyError(job_id)
-
-    def add_agent_event(self, job_id: str, event_type: str, payload: dict | None = None):
-        with self.conn:
-            self.conn.execute(
-                "INSERT INTO agent_events(job_id,event_type,payload_json) VALUES(?,?,?)",
-                (job_id, event_type, json.dumps(payload or {}, ensure_ascii=False)),
-            )
