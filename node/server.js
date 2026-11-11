@@ -2,6 +2,7 @@
 const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
+const { rejectApiRequest } = require("./api-security");
 
 const SITE_ROOT = fs.realpathSync(path.join(__dirname, "..", "site"));
 const MIME = Object.freeze({
@@ -85,6 +86,13 @@ function createServer(backendPort, options = {}) {
         "x-content-type-options": "nosniff"
       });
       res.end(req.method === "HEAD" ? undefined : body);
+      return;
+    }
+    const policyError = rejectApiRequest(req);
+    if (policyError) {
+      res.writeHead(403, { "content-type": "application/json; charset=utf-8",
+        "cache-control": "no-store" });
+      res.end(JSON.stringify({ error: policyError }));
       return;
     }
     let received = 0;
