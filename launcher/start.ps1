@@ -16,7 +16,7 @@ function Assert-YRuntime([string]$Name, [string[]]$Arguments, [int]$MinimumMajor
     if ($LASTEXITCODE -ne 0 -or $versionOutput -notmatch '(\d+)\.(\d+)') {
         throw ('Не удалось определить версию ' + $Name + ': ' + $versionOutput.Trim())
     }
-    if ([int]$Matches[1] -lt $MinimumMajor -or ($Name -eq 'python' -and [int]$Matches[2] -lt 9)) {
+    if ([int]$Matches[1] -lt $MinimumMajor -or ($Name -eq 'python' -and [int]$Matches[1] -eq 3 -and [int]$Matches[2] -lt 9)) {
         throw ('Для Yaeri требуется ' + $Name + ' версии ' + $MinimumMajor + '+. Найдено: ' + $versionOutput.Trim())
     }
 }
