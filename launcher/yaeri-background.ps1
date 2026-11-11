@@ -26,6 +26,7 @@ function Test-YAsyncApiRoute([string]$Method, [string]$Path) {
         'POST /api/chat', 'GET /api/models', 'POST /api/models/refresh',
         'POST /api/config/test', 'POST /api/docs', 'POST /api/reindex',
         'POST /api/vector/search', 'POST /api/life/local/test',
+        'POST /api/evolution5/research',
         'POST /api/soul/reflect', 'POST /api/soul/sleep',
         'POST /api/soul/care', 'POST /api/soul/share',
         'POST /api/soul3/plans', 'POST /api/soul/growth/run',
