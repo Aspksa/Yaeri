@@ -100,15 +100,19 @@ function Update-YVectorIndex {
         model = $model
     }
 }
+function Get-YMemory3NormalizedFact([string]$Text) {
+    return ([regex]::Replace(([string]$Text).Trim().ToLowerInvariant(), '\s+', ' '))
+}
 function Get-YVectorConflicts {
     $known = @{}
     $conflicts = New-Object System.Collections.Generic.List[object]
     foreach ($fact in $script:Evo.facts) {
         if (@('active','unverified','needs-review') -notcontains [string]$fact.status) { continue }
-        $key = [string]$fact.key
-        $value = [string]$fact.value
+        if (-not (Test-YMemory3Eligible $fact (Get-YNow))) { continue }
+        $key = Get-YMemory3NormalizedFact ([string]$fact.key)
+        $value = Get-YMemory3NormalizedFact ([string]$fact.value)
         if (-not $key) { continue }
-        if ($known.ContainsKey($key) -and [string]$known[$key].value -ne $value) {
+        if ($known.ContainsKey($key) -and (Get-YMemory3NormalizedFact ([string]$known[$key].value)) -ne $value) {
             $conflicts.Add(@{
                 key = $key; a = [string]$known[$key].value; b = $value
                 first = [string]$known[$key].id; second = [string]$fact.id
@@ -191,7 +195,7 @@ function Get-YVectorQuality {
         duplicates = $clusters.ToArray(); duplicateCount = $clusters.Count
         nearDuplicates = $near.ToArray(); nearDuplicateCount = $near.Count
         conflicts = $conflicts; conflictCount = $conflicts.Count
-        old = $stale; status = 'informational-no-automatic-deletion'
+        old = $stale; status = 'informational-no-automatic-deletion'; memoryVersion = 3
         savedEmbeddings = [long]$script:YVector.reused
         newEmbeddings = [long]$script:YVector.embedded
     }
