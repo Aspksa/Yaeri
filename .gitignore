@@ -3,3 +3,7 @@ config/yaeri.config.json
 # Локальная база Яэри: история, память, документы.
 data/
 *.tmp
+
+# Optional, user-installed offline GGUF model and inference binaries
+/models/
+/local/

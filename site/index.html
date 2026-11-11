@@ -623,6 +623,53 @@
                     <p class="soul-small" id="evidence-summary">Загружаю источники воспоминаний…</p>
                     <ul class="journal" id="evidence-list"></ul>
                     <p class="soul-small">Цитата подтверждает, что фраза была сказана, но не доказывает истинность утверждения. Старые записи без источника помечаются как непроверенные.</p>
+
+                    <span class="soul-lbl soul-gap">Yaeri Life 4.0 · модель мира и самооценка</span>
+                    <p id="life4-status" class="soul-small" role="status">Загружаю данные…</p>
+                    <p class="soul-small" id="life4-review"></p>
+                    <ul class="journal" id="life4-world"></ul>
+                    <span class="soul-lbl soul-gap">Проверка предсказаний</span>
+                    <ul class="journal" id="life4-forecasts"></ul>
+                    <span class="soul-lbl soul-gap">Личный язык нежности</span>
+                    <label class="lbl" for="life4-language">Манера общения</label>
+                    <select class="field server-only" id="life4-language">
+                      <option value="gentle">Мягкая нежность</option>
+                      <option value="playful">Ласковый юмор</option>
+                      <option value="practical">Забота поступками</option>
+                      <option value="quiet">Сдержанный стиль</option>
+                    </select>
+                    <label class="lbl" for="life4-nickname">Любимое обращение (необязательно)</label>
+                    <input class="field server-only" id="life4-nickname" type="text" maxlength="24" placeholder="Как Яэри может к тебе обращаться">
+                    <button class="mini-btn server-only" id="life4-save-style" type="button">Сохранить стиль</button>
+                    <span class="soul-lbl soul-gap">Автономность без облака</span>
+                    <label class="toggle server-only">
+                      <span class="t-text">
+                        <span class="t-name">Автономный режим</span>
+                        <span class="t-desc">Запрет Cloud.ru; встроенный поиск по памяти без установок. Для свободной речи — необязательная GGUF-модель через llama.cpp, без Ollama.</span>
+                      </span>
+                      <input class="vh" id="life4-offline" type="checkbox" role="switch">
+                      <span class="track" aria-hidden="true"></span>
+                    </label>
+                    <label class="lbl" for="life4-model">Имя локальной GGUF-модели (алиас llama.cpp)</label>
+                    <input class="field server-only" id="life4-model" type="text" maxlength="80" value="yaeri-local" placeholder="yaeri-local">
+                    <button class="mini-btn server-only" type="button" id="life4-test">Проверить локальную модель</button>
+                    <p class="soul-small" id="life4-local-status">При отсутствии локальной модели работает ограниченный диалог и поиск по сохранённой памяти.</p>
+                    <span class="soul-lbl soul-gap">Собственные инструменты с разрешения</span>
+                    <form id="life4-tool-form">
+                      <label class="lbl" for="life4-kind">Безопасное действие</label>
+                      <select class="field" id="life4-kind">
+                        <option value="world-map">Посмотреть модель мира</option>
+                        <option value="memory-search">Поиск в локальной памяти</option>
+                        <option value="memory-quality">Проверить качество памяти</option>
+                        <option value="notes-list">Показать заметки</option>
+                        <option value="plans-overview">Показать планы</option>
+                      </select>
+                      <label class="lbl" for="life4-tool-name">Название инструмента</label>
+                      <input class="field" type="text" maxlength="60" id="life4-tool-name" placeholder="Например, найти воспоминания">
+                      <button class="mini-btn" type="submit">Предложить инструмент</button>
+                    </form>
+                    <ul class="journal" id="life4-tools"></ul>
+                    <p class="soul-small">Предложения не выполняются до одобрения хозяином. Инструменты не запускают программы и не изменяют файлы.</p>
                   </div>
                   <div class="card-foot"><span>Планы выполняются только после подтверждения хозяином. Романтический стиль и инициативу можно отключить.</span></div>
                 </section>
@@ -779,6 +826,7 @@
             <button class="primary-btn" type="submit" id="key-save">Сохранить и подключить</button>
             <button class="ghost" type="button" id="key-models">Загрузить модели</button>
             <button class="ghost" type="button" id="key-test" hidden>Проверить связь</button>
+          <button class="ghost" type="button" id="life4-enable-offline">Запустить без Cloud.ru (память)</button>
             <button class="ghost danger" type="button" id="key-remove" hidden>Удалить ключ</button>
           </div>
           <p class="form-status" id="key-status" role="status"></p>
