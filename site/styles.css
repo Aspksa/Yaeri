@@ -345,25 +345,52 @@
       overflow: hidden;
     }
     .dclock::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, hsl(0 0% 100% / .05), transparent 45%, hsl(0 0% 0% / .25)); pointer-events: none; }
+    .dclock { --tint: 42 70% 14%; }
+    .dclock[data-part="night"] { --tint: 225 60% 16%; }
+    .dclock[data-part="morning"] { --tint: 24 80% 16%; }
+    .dclock[data-part="evening"] { --tint: 12 75% 15%; }
+    .dclock { background: radial-gradient(120% 120% at 50% 0%, hsl(var(--tint) / .6), transparent 65%), hsl(36 12% 4%); transition: background 2s; }
+    .dclock::before {
+      content: ""; position: absolute; top: -20%; bottom: -20%; left: -40%; width: 30%; z-index: 3; pointer-events: none; opacity: 0;
+      background: linear-gradient(100deg, transparent, hsl(48 100% 85% / .35), transparent); transform: skewX(-18deg);
+    }
+    .dclock.shine::before { animation: shine 1.3s ease-out; }
+    @keyframes shine { 0% { left: -40%; opacity: 1; } 100% { left: 120%; opacity: 0; } }
+    .dclock.shine .dg { animation: dg-glow 1.3s ease-out; }
+    @keyframes dg-glow { 30% { box-shadow: inset 0 0 0 1px hsl(45 90% 55%), 0 0 18px hsl(43 95% 55% / .55); } }
     .dg {
-      position: relative; display: inline-block; width: .74em; height: 1em; overflow: hidden;
+      position: relative; display: inline-block; width: .74em; height: 1em; perspective: 4em;
       font: 700 4.6rem/1 var(--mono); letter-spacing: 0;
-      border-radius: 10px; background: linear-gradient(180deg, hsl(40 18% 9%), hsl(36 14% 5%)); box-shadow: inset 0 0 0 1px hsl(40 40% 20%), inset 0 -10px 18px hsl(0 0% 0% / .45);
+      border-radius: 10px; background: hsl(36 14% 6%); box-shadow: inset 0 0 0 1px hsl(40 40% 20%);
     }
-    .dg::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: hsl(0 0% 0% / .55); z-index: 2; }
-    .dg .reel { display: flex; flex-direction: column; transition: transform .5s cubic-bezier(.3, 1.4, .5, 1); will-change: transform; }
-    .dg .reel span {
-      display: block; height: 1em; line-height: 1; text-align: center;
+    .dg .fl { position: absolute; left: 0; right: 0; height: 50%; overflow: hidden; backface-visibility: hidden; }
+    .dg .fl b {
+      display: block; height: 1em; line-height: 1; text-align: center; font-weight: 700;
       color: transparent; background: linear-gradient(180deg, hsl(50 100% 86%), hsl(36 96% 56%)); -webkit-background-clip: text; background-clip: text;
-      filter: drop-shadow(0 0 10px hsl(42 95% 55% / .45));
     }
-    .dg.sm { font-size: 1.7rem; width: .78em; border-radius: 6px; }
+    .dg .top, .dg .ftop { top: 0; border-radius: 10px 10px 0 0; background: linear-gradient(180deg, hsl(40 18% 11%), hsl(38 14% 7%)); }
+    .dg .bot, .dg .fbot { bottom: 0; border-radius: 0 0 10px 10px; background: linear-gradient(180deg, hsl(36 14% 5%), hsl(36 14% 7%)); }
+    .dg .bot b, .dg .fbot b { margin-top: -.5em; }
+    .dg .top::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: hsl(0 0% 0% / .7); }
+    .dg .ftop { z-index: 2; transform-origin: 50% 100%; animation: flap-down .3s cubic-bezier(.55, 0, .9, .5) both; }
+    .dg .fbot { z-index: 2; transform-origin: 50% 0; animation: flap-up .32s cubic-bezier(.2, .9, .3, 1.25) .28s both; }
+    @keyframes flap-down { from { transform: rotateX(0); } to { transform: rotateX(-90deg); filter: brightness(.55); } }
+    @keyframes flap-up { from { transform: rotateX(90deg); filter: brightness(1.6); } to { transform: rotateX(0); } }
+    .dg .top b, .dg .bot b { filter: drop-shadow(0 0 8px hsl(42 95% 55% / .3)); }
+    .dg.sm { font-size: 1.8rem; width: .78em; border-radius: 6px; }
+    .dg.sm .top, .dg.sm .ftop { border-radius: 6px 6px 0 0; }
+    .dg.sm .bot, .dg.sm .fbot { border-radius: 0 0 6px 6px; }
+    .dsecbar { display: grid; grid-template-columns: repeat(60, 1fr); gap: 2px; align-items: end; height: 12px; }
+    .dsecbar i { height: 5px; border-radius: 1px; background: hsl(40 20% 16%); transition: background-color .3s, height .3s; }
+    .dsecbar i.q { height: 8px; background: hsl(40 25% 22%); }
+    .dsecbar i.on { background: hsl(40 80% 45%); }
+    .dsecbar i.q.on { background: hsl(44 95% 60%); }
+    .dsecbar i.cur { height: 12px; background: hsl(50 100% 82%); box-shadow: 0 0 8px hsl(45 100% 60%); }
     .dsec { display: flex; gap: 3px; margin-left: 4px; padding-bottom: 6px; opacity: .85; }
     .dcolon { display: flex; flex-direction: column; justify-content: center; gap: .9rem; height: 4.6rem; padding: 0 2px; }
     .dcolon i { width: 9px; height: 9px; border-radius: 50%; background: hsl(44 100% 70%); box-shadow: 0 0 10px hsl(42 100% 60%); }
     html[data-motion="on"] .dcolon i { animation: colon 1s steps(1) infinite; }
     @keyframes colon { 50% { opacity: .2; box-shadow: none; } }
-    html[data-motion="off"] .dg .reel { transition: none; }
     .dday { position: relative; height: 6px; border-radius: 4px; background: hsl(40 25% 12%); overflow: hidden; }
     .dday i { position: absolute; inset: 0 auto 0 0; width: 0; border-radius: inherit; background: linear-gradient(90deg, hsl(28 90% 45%), hsl(43 96% 60%), hsl(50 100% 82%)); box-shadow: 0 0 10px hsl(43 95% 55% / .7); transition: width 1s linear; }
     html[data-motion="on"] .dday i::after { content: ""; position: absolute; right: 0; top: -3px; width: 12px; height: 12px; border-radius: 50%; background: hsl(50 100% 85%); box-shadow: 0 0 12px 3px hsl(45 100% 60%); animation: pulse-dot 2s ease-in-out infinite; }

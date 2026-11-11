@@ -917,6 +917,7 @@
         var sec = now.getSeconds();
         var digits = pad(now.getHours()) + pad(now.getMinutes()) + pad(sec);
         ['h1', 'h2', 'm1', 'm2', 's1', 's2'].forEach(function (k, i) { clockDigit(k, +digits.charAt(i)); });
+        clockFx(now);
         var dayPart = (now.getHours() * 3600 + now.getMinutes() * 60 + sec) / 86400;
         $('dday-fill').style.width = (dayPart * 100).toFixed(2) + '%';
         if (sec === 0 || !$('now-meta').firstChild) {
@@ -935,29 +936,58 @@
         if (now.getSeconds() === 0) renderCalendar();
       }
       try { $('now-zone').textContent = (Intl.DateTimeFormat().resolvedOptions().timeZone || '').split('/').pop().replace(/_/g, ' '); } catch (error) { /* Без часового пояса. */ }
-      // Цифровые часы: каждая цифра — барабан 0…9 и ещё один 0, чтобы 9→0 крутилось вперёд.
+      // Перекидные часы: верхняя половина старой цифры падает, снизу раскрывается новая.
       var clockCells = {};
+      function flapHalf(cls, d) { var h = el('span', 'fl ' + cls); h.appendChild(el('b', '', String(d))); return h; }
       each(document.querySelectorAll('.dclock .dg'), function (cell) {
-        var reel = el('span', 'reel');
-        for (var n = 0; n <= 10; n++) reel.appendChild(el('span', '', String(n % 10)));
-        cell.appendChild(reel);
-        clockCells[cell.getAttribute('data-d')] = { reel: reel, v: -1 };
+        clockCells[cell.getAttribute('data-d')] = { cell: cell, v: -1, timer: 0 };
       });
       function clockDigit(key, v) {
         var c = clockCells[key];
         if (!c || c.v === v) return;
-        var wrap = c.v === 9 && v === 0 || (c.v > v && c.v !== -1);
-        var reel = c.reel;
-        if (wrap && settings.motion && c.v !== -1) {
-          // Докручиваем до «10» (второй ноль), затем без анимации возвращаемся к настоящему нулю.
-          reel.style.transform = 'translateY(-10em)';
-          var r = reel;
-          setTimeout(function () { r.style.transition = 'none'; r.style.transform = 'translateY(-' + v + 'em)'; void r.offsetHeight; r.style.transition = ''; }, 520);
+        var old = c.v < 0 ? v : c.v, cell = c.cell;
+        clearTimeout(c.timer);
+        cell.textContent = '';
+        cell.appendChild(flapHalf('top', v));
+        cell.appendChild(flapHalf('bot', old));
+        if (settings.motion && c.v >= 0) {
+          cell.appendChild(flapHalf('ftop', old));
+          cell.appendChild(flapHalf('fbot', v));
+          c.timer = setTimeout(function () {
+            cell.textContent = '';
+            cell.appendChild(flapHalf('top', v));
+            cell.appendChild(flapHalf('bot', v));
+          }, 620);
         } else {
-          if (c.v === -1) { reel.style.transition = 'none'; reel.style.transform = 'translateY(-' + v + 'em)'; void reel.offsetHeight; reel.style.transition = ''; }
-          else reel.style.transform = 'translateY(-' + v + 'em)';
+          cell.replaceChild(flapHalf('bot', v), cell.children[1]);
         }
         c.v = v;
+      }
+      // Шкала секунд: 60 делений, текущее светится.
+      var secTicks = [];
+      (function () {
+        var bar = $('dsecbar');
+        for (var i = 0; i < 60; i++) { var t = el('i', i % 5 === 0 ? 'q' : ''); bar.appendChild(t); secTicks.push(t); }
+      }());
+      var clockLast = { sec: -1, min: -1 };
+      function clockFx(now) {
+        var s = now.getSeconds(), m = now.getMinutes();
+        if (s !== clockLast.sec) {
+          secTicks.forEach(function (t, i) { t.className = (i % 5 === 0 ? 'q' : '') + (i < s ? ' on' : '') + (i === s ? ' cur' : ''); });
+          clockLast.sec = s;
+        }
+        if (m !== clockLast.min) {
+          var box = $('dclock');
+          if (clockLast.min >= 0 && settings.motion) {
+            box.classList.remove('shine');
+            void box.offsetWidth;
+            box.classList.add('shine');
+          }
+          // Оттенок свечения по времени суток: ночь, утро, день, вечер.
+          var h = now.getHours();
+          box.setAttribute('data-part', h < 5 ? 'night' : h < 10 ? 'morning' : h < 18 ? 'day' : h < 22 ? 'evening' : 'night');
+          clockLast.min = m;
+        }
       }
       tick();
       setInterval(tick, 1000);
