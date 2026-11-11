@@ -26,7 +26,7 @@ function Invoke-YLocalLlama([string]$Endpoint, $Payload = $null) {
     catch { throw (New-YError 503 ('Локальный GGUF-сервер недоступен: ' + $_.Exception.Message)) }
     try {
         if ([int]$response.StatusCode -ne 200) { throw (New-YError 502 'Локальный сервер вернул ошибку.') }
-        $reader = New-Object System.IO.StreamReader($response.GetResponseStream(), $script:Utf8)
+        $reader = [System.IO.StreamReader]::new($response.GetResponseStream(), $script:Utf8)
         try { $text = $reader.ReadToEnd() } finally { $reader.Dispose() }
         return ,(ConvertFrom-YJson $text)
     } finally { $response.Dispose() }
