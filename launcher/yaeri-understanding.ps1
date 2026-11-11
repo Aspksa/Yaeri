@@ -302,6 +302,11 @@ function Add-YRating($Req) {
         }
     }
     Save-YUnderstanding
+    # Explicit owner ratings adjust bounded source rankings; negative feedback
+    # is not evidence that an individual memory is false.
+    try {
+        Add-YVectorFeedback $id $score (Get-YValue $script:History[$at] 'sources' @())
+    } catch { Write-Warning ('Ошибка сохранения оценки Vector 2.0: ' + $_.Exception.Message) }
     return Get-YUnderstandingView
 }
 function Get-YPendingRatings { return @($script:Und.ratings | Where-Object { [int]$_.score -lt 0 -and [string]$_.status -eq 'new' }) }
