@@ -299,19 +299,6 @@
         }
         return out;
       }
-      function pcLeft(y, fromMonth) {
-        // Рабочие дни, оставшиеся с завтрашнего дня до конца месяца и года.
-        var now = new Date(), month = 0, year = 0;
-        for (var m = fromMonth; m < 12; m++) {
-          var n = new Date(y, m + 1, 0).getDate();
-          for (var d = 1; d <= n; d++) {
-            var t = new Date(y, m, d);
-            if (t <= now) continue;
-            if (pcIsWork(pcDay(y, m, d))) { year++; if (m === now.getMonth()) month++; }
-          }
-        }
-        return { month: month, year: year };
-      }
       function renderNowStatus() {
         var n = new Date();
         var box = $('now-status');
@@ -337,57 +324,15 @@
         mb.appendChild(el('small', '', ms.work + ' ' + plural(ms.work, 'рабочий день', 'рабочих дня', 'рабочих дней') + ' · ' + pcFmtH(ms.h40) + ' ч'));
         $('pc-prev').disabled = y === PC_FIRST && m === 0;
         $('pc-next').disabled = y === PC_LAST && m === 11;
-        var now = new Date();
-        var sel = pcState.sel || (now.getFullYear() === y && now.getMonth() === m ? now.getDate() : 0);
         pcFillGrid($('pc-grid'), y, m, { buttons: true, sel: pcState.sel, onPick: function (x) {
           pcState.sel = pcState.sel === x.d ? 0 : x.d;
           tasksPickDay(x);
           renderProdCalendar(true);
           // Дела выбранного дня показывает карточка «Дела» справа.
         } });
-        // Подпись под сеткой: выбранный день, иначе ближайший праздник месяца.
-        var detail = $('pc-detail');
-        if (sel) detail.innerHTML = pcDayText(pcDay(y, m, sel));
-        else {
-          var hols = [];
-          var n = new Date(y, m + 1, 0).getDate();
-          for (var d = 1; d <= n; d++) { var x = pcDay(y, m, d); if (x.type === 'hol' || x.type === 'move') hols.push(x); }
-          detail.innerHTML = hols.length ? pcDayText(hols[0]) + (hols.length > 1 ? ' И ещё ' + (hols.length - 1) + ' нерабоч. ' + plural(hols.length - 1, 'день', 'дня', 'дней') + ' в месяце.' : '') : 'В этом месяце нет праздников и переносов. Нажмите на день, чтобы узнать подробности.';
-        }
-        var nb = $('pc-next-box');
-        nb.textContent = '';
-        var ev = pcNextEvents();
-        if (ev.hol) nb.appendChild(pcCountdown('hol', ev.holDays, ev.hol.name, ev.hol.d + ' ' + MONTHS_GEN[ev.hol.m] + ' ' + ev.hol.y + ', ' + WEEK_FULL[ev.hol.wd]));
-        if (ev.rest && ev.restDays > 0 && (!ev.hol || ev.rest.key !== ev.hol.key)) nb.appendChild(pcCountdown('rest', ev.restDays, 'До выходного', ev.rest.d + ' ' + MONTHS_GEN[ev.rest.m] + ', ' + WEEK_FULL[ev.rest.wd]));
-        if (now.getFullYear() >= PC_FIRST && now.getFullYear() <= PC_LAST) {
-          var left = pcLeft(now.getFullYear(), now.getMonth());
-          var ys = pcStats(now.getFullYear(), 0, 11);
-          var done = ys.work - left.year;
-          var c = el('div', 'pc-cd');
-          var num = el('div', 'num', String(left.year));
-          num.appendChild(el('small', '', 'раб. дн.'));
-          c.appendChild(num);
-          c.appendChild(el('b', '', 'Осталось в ' + now.getFullYear() + ' году'));
-          c.appendChild(el('span', '', 'в этом месяце ещё ' + left.month + ' · пройдено ' + Math.round(done * 100 / ys.work) + '%'));
-          var bar = el('div', 'pc-progress');
-          var fill = el('i');
-          fill.style.width = Math.round(done * 100 / ys.work) + '%';
-          bar.appendChild(fill);
-          c.appendChild(bar);
-          nb.appendChild(c);
-        }
         $('pc-foot').textContent = (PC_YEARS[y] ? PC_YEARS[y].act.replace('Постановление Правительства РФ', 'Пост.') : '');
         renderNowStatus();
         if (!$('pc-overlay').hidden) renderProdYear();
-      }
-      function pcCountdown(kind, days, title, sub) {
-        var c = el('div', 'pc-cd ' + kind);
-        var num = el('div', 'num', String(days));
-        num.appendChild(el('small', '', plural(days, 'день', 'дня', 'дней')));
-        c.appendChild(num);
-        c.appendChild(el('b', '', title));
-        c.appendChild(el('span', '', sub));
-        return c;
       }
       function renderProdYear() {
         var y = pcState.y;
@@ -558,6 +503,14 @@
           var week = Math.floor((thu - new Date(thu.getFullYear(), 0, 4)) / 6048e5 + 0.5) + 1;
           var meta = $('now-meta');
           meta.textContent = '';
+          // До ближайшего выходного: перенесено из календаря к часам.
+          var ev = pcNextEvents();
+          if (ev.rest && ev.restDays > 0) {
+            var rs = el('span', 'rest', 'до выходного ');
+            rs.appendChild(el('b', '', ev.restDays + ' ' + plural(ev.restDays, 'день', 'дня', 'дней')));
+            rs.title = ev.rest.d + ' ' + MONTHS_GEN[ev.rest.m] + ', ' + WEEK_FULL[ev.rest.wd];
+            meta.appendChild(rs);
+          }
           [['неделя', week], ['день года', doy], ['суток прошло', Math.round(dayPart * 100) + '%']].forEach(function (x) {
             var sp = el('span', '', x[0] + ' ');
             sp.appendChild(el('b', '', String(x[1])));
