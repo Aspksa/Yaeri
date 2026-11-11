@@ -339,25 +339,21 @@
         $('pc-next').disabled = y === PC_LAST && m === 11;
         var now = new Date();
         var sel = pcState.sel || (now.getFullYear() === y && now.getMonth() === m ? now.getDate() : 0);
-        pcFillGrid($('pc-grid'), y, m, { buttons: true, sel: pcState.sel, onPick: function (x) { pcState.sel = pcState.sel === x.d ? 0 : x.d; tasksPickDay(x); renderProdCalendar(true); } });
+        pcFillGrid($('pc-grid'), y, m, { buttons: true, sel: pcState.sel, onPick: function (x) {
+          pcState.sel = pcState.sel === x.d ? 0 : x.d;
+          tasksPickDay(x);
+          renderProdCalendar(true);
+          // Дела выбранного дня показывает карточка «Дела» справа.
+        } });
         // Подпись под сеткой: выбранный день, иначе ближайший праздник месяца.
         var detail = $('pc-detail');
-        if (sel) { detail.innerHTML = pcDayText(pcDay(y, m, sel)); tasksDayDetail(detail, y, m, sel); }
+        if (sel) detail.innerHTML = pcDayText(pcDay(y, m, sel));
         else {
           var hols = [];
           var n = new Date(y, m + 1, 0).getDate();
           for (var d = 1; d <= n; d++) { var x = pcDay(y, m, d); if (x.type === 'hol' || x.type === 'move') hols.push(x); }
           detail.innerHTML = hols.length ? pcDayText(hols[0]) + (hols.length > 1 ? ' И ещё ' + (hols.length - 1) + ' нерабоч. ' + plural(hols.length - 1, 'день', 'дня', 'дней') + ' в месяце.' : '') : 'В этом месяце нет праздников и переносов. Нажмите на день, чтобы узнать подробности.';
         }
-        var stats = $('pc-stats');
-        stats.textContent = '';
-        [[ms.work, 'рабочих', ms.short ? 'из них −1 ч: ' + ms.short : ''], [ms.off, 'выходных', '', 'hol'], [pcFmtH(ms.h40), 'часов · 40ч', '36ч: ' + pcFmtH(ms.h36) + ' · 24ч: ' + pcFmtH(ms.h24)]].forEach(function (s) {
-          var c = el('div', 'pc-stat' + (s[3] ? ' ' + s[3] : ''));
-          c.appendChild(el('b', '', String(s[0])));
-          c.appendChild(el('span', '', s[1]));
-          if (s[2]) c.appendChild(el('small', '', s[2]));
-          stats.appendChild(c);
-        });
         var nb = $('pc-next-box');
         nb.textContent = '';
         var ev = pcNextEvents();
