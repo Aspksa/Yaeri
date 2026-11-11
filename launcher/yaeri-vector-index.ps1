@@ -323,10 +323,11 @@ function Sync-YLocalSemanticIndex($Candidates) {
         $id = [string]$candidate.space + ':' + [string]$candidate.id
         $content = [string]$candidate.text
         if (-not $content) { continue }
+        if ($content.Length -gt 3000) { $content = $content.Substring(0, 3000) }
         $fingerprint = Get-YVectorFingerprint $content
         if ($script:YIndexSynced.ContainsKey($id) -and $script:YIndexSynced[$id] -eq $fingerprint) { continue }
         $batch.Add(@{ id = $id; text = $content })
-        if ($batch.Count -ge 32) {
+        if ($batch.Count -ge 8) {
             $response = Invoke-YLocalEmbeddingService @{ action = 'index'; items = $batch.ToArray() }
             if ([int]$response.accepted -lt $batch.Count) { break }
             foreach ($item in $batch) { $script:YIndexSynced[$item.id] = Get-YVectorFingerprint $item.text }
