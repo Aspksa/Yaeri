@@ -42,6 +42,10 @@
           (q.duplicates || []).slice(0, 5).forEach(function (x) {
             errors.push('Похожие записи: ' + x.first + ' / ' + x.second + ' (источники сохраняются)');
           });
+          (q.nearDuplicates || []).slice(0, 4).forEach(function (x) {
+            errors.push('Смысловой дубль: ' + x.first + ' / ' + x.second +
+              ' · похожесть ' + Math.round(x.similarity * 100) + '% · требуется проверка');
+          });
           if (q.old) errors.push('Старше года: ' + q.old + ' (не удаляются автоматически)');
           soul3List('vec2-quality', errors, function (x) { return x; },
             'Пока нет обнаруженных дубликатов и противоречий.');
@@ -68,7 +72,8 @@
           soul3List('vec2-results', data.results || [], function (x) {
             return '[' + x.space + '] ' + x.text + ' · ' + x.source +
               ' · релевантность ' + Math.round(x.score * 100) + '%' +
-              (x.associated ? ' · связанное воспоминание' : '');
+              (x.associated ? ' · связанное воспоминание' : '') +
+              (x.emotion ? ' · эмоциональный контекст: ' + x.emotion : '');
           }, 'По этому запросу ничего не найдено.');
           return loadVector2();
         }).catch(vector2Error).then(function () { btn.disabled = false; });
