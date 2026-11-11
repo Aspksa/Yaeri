@@ -221,13 +221,13 @@ function Invoke-YCuriosityWonder {
         $answered[$i] = $true
         [void]$script:Cur.insights.Add(@{
             id = (New-YId); t = (Get-YNow); question = $questions[$i]; answer = $answer
-            basis = $basis; confidence = [Math]::Round($conf, 2); status = 'hypothesis'
+            basis = $basis; confidence = [Math]::Round($conf, 2); status = 'hypothesis'; evidence = (New-YEvidence 'assistant_hypothesis' '' '' $conf)
         })
         Add-YFeed 'insight' ('Догадка: ' + $answer)
     }
     for ($i = 0; $i -lt $questions.Count; $i++) {
         if ($answered.ContainsKey($i)) { continue }
-        [void]$script:Cur.questions.Add(@{ id = (New-YId); t = (Get-YNow); q = $questions[$i] })
+        [void]$script:Cur.questions.Add(@{ id = (New-YId); t = (Get-YNow); q = $questions[$i]; evidence = (New-YEvidence 'assistant_generated' '' '' 0) })
         Add-YFeed 'question' ('Хочу узнать: ' + $questions[$i])
     }
     Add-YEvolutionEvent 'wonder' ('Любопытство: вопросов ' + $questions.Count + ', догадок ' + $answered.Count)
@@ -265,7 +265,7 @@ function Invoke-YCuriosityLessons {
         # Разобранная поправка помечается в любом случае, чтобы не разбирать её бесконечно.
         [void]$script:Cur.lessons.Add(@{
             id = (New-YId); t = (Get-YNow); from = [string]$todo[$i].id
-            mistake = (Get-YCleanLine ([string]$todo[$i].wrong) 200); rule = $rule
+            mistake = (Get-YCleanLine ([string]$todo[$i].wrong) 200); rule = $rule; evidence = (New-YEvidence 'assistant_generated' ([string]$todo[$i].id) '' 0)
         })
         if ($rule) { Add-YFeed 'lesson' ('Урок: ' + $rule); $gained++ }
     }
@@ -341,7 +341,7 @@ function Invoke-YCuriosityGoals {
             id = (New-YId); t = (Get-YNow); updated = (Get-YNow); text = $text
             why = (Get-YCleanLine ([string](Get-YValue $x 'why' '')) 200)
             progress = 0; status = 'active'; steps = $steps.ToArray()
-            startEx = [long]$s.exchanges; lastEx = [long]$s.exchanges
+            startEx = [long]$s.exchanges; lastEx = [long]$s.exchanges; evidence = (New-YEvidence 'assistant_generated' '' '' 0)
         })
         Add-YFeed 'goal-new' ('Новая учебная цель: ' + $text)
         $added++
@@ -531,6 +531,7 @@ function Set-YGrowthInsight($Req) {
     if ($null -eq $item) { throw (New-YError 404 'Такой догадки нет.') }
     if ($action -eq 'confirm') {
         $item.status = 'confirmed'
+        $item.evidence = New-YEvidence 'user_manual' 'user' '' 1
         Add-YFeed 'insight' ('Хозяин подтвердил: ' + [string]$item.answer)
         Add-YCurXp 3
     } else {
