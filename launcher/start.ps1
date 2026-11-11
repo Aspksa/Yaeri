@@ -14,6 +14,7 @@ $utf8 = [System.Text.UTF8Encoding]::new($false)
 $maxBody = 8MB
 
 . (Join-Path $PSScriptRoot 'yaeri-api.ps1')
+. (Join-Path $PSScriptRoot 'yaeri-background.ps1')
 
 function Send-HttpResponse {
     param(
@@ -105,6 +106,7 @@ try {
 
     Import-YConfig
     Import-YStore
+    Clear-YBackgroundOrphans
 
     Write-Host ''
     if (-not (Test-YConfigured)) {
@@ -140,23 +142,17 @@ try {
         Write-Host ('Откройте адрес вручную: ' + $address)
     }
 
-    # All writes remain on this one server thread. Background work continues
-    # while the browser is closed (but the Yaeri server must stay running).
+    # A separate process performs slow Cloud.ru background calls against a
+    # disposable snapshot. The HTTP loop remains responsive and is the only
+    # owner of the live JSON files.
     $lastEvolutionPoll = 0L
     while ($true) {
-        # Keep the scheduler independent of browser timers. Only run one task
-        # while no request is waiting; never race against another JSON writer.
+        if ($null -ne $script:YBgJob) { [void](Complete-YBackground) }
         if (-not $listener.Pending()) {
             $clock = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
-            if ($clock - $lastEvolutionPoll -ge 60000) {
+            if ($clock - $lastEvolutionPoll -ge 120000) {
                 $lastEvolutionPoll = $clock
-                # Soul 3.0 proactive reminders share the same server thread and JSON owner.
-                try { Invoke-Y3Tick } catch {
-                    Write-Host ('Ошибка фоновой заботы: ' + $_.Exception.Message) -ForegroundColor Yellow
-                }
-                try { Invoke-YEvolutionTick } catch {
-                    Write-Host ('Ошибка фоновой задачи: ' + $_.Exception.Message) -ForegroundColor Yellow
-                }
+                [void](Start-YBackground)
             }
             Start-Sleep -Milliseconds 100
             continue
@@ -276,5 +272,6 @@ try {
     Write-Host ('Ошибка запуска Яэри: ' + $_.Exception.Message) -ForegroundColor Red
     exit 1
 } finally {
+    Stop-YBackground
     if ($null -ne $listener) { $listener.Stop() }
 }
