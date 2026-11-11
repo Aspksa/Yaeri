@@ -17,7 +17,7 @@ for (const src of imports) {
 const manifest = JSON.parse(fs.readFileSync(path.join(site, 'src/manifest.json'), 'utf8'));
 assert.strictEqual(manifest.output, 'site/js/app.js');
 const joined = manifest.sources.map(s => {
-  if (!/^site\/src\/[a-z-]+\.js$/.test(s)) throw new Error('Unsafe module path: ' + s);
+  if (!/^site\/src\/[a-z0-9-]+\.js$/.test(s)) throw new Error('Unsafe module path: ' + s);
   return fs.readFileSync(path.join(root, s), 'utf8');
 }).join('');
 assert.strictEqual(fs.readFileSync(path.join(root, manifest.output), 'utf8'), joined,
