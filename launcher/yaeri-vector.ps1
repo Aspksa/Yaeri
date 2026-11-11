@@ -51,6 +51,18 @@ function Get-YVectorDate($Item) {
     }
     return 0L
 }
+function Get-YVectorEmotionTag($Evidence) {
+    # Emotional context is derived only from the owner's quoted words.
+    # This label is a conversational cue, never a diagnosis or verified mood.
+    if ([string]$Evidence.origin -ne 'user_quote') { return '' }
+    $quote = [string]$Evidence.quote
+    if ($quote -match '(?i)радос|счастл|весел|довол') { return 'радость' }
+    if ($quote -match '(?i)груст|печал|расстро|плохо') { return 'грусть' }
+    if ($quote -match '(?i)устал|утомил') { return 'усталость' }
+    if ($quote -match '(?i)люблю|дорог|нежн|близк') { return 'нежность' }
+    if ($quote -match '(?i)тревог|волную|пережива') { return 'тревога' }
+    return ''
+}
 function New-YVectorCandidate([string]$Space, $Ref, [string]$Text, [string]$Vec = '', [long]$Stamp = 0, [double]$Importance = 0.5) {
     if (-not $Text) { return $null }
     $id = [string](Get-YValue $Ref 'id' '')
@@ -60,7 +72,7 @@ function New-YVectorCandidate([string]$Space, $Ref, [string]$Text, [string]$Vec 
     return @{
         id = $id; space = $Space; text = $Text; ref = $Ref
         vec = $Vec; t = $Stamp; importance = [Math]::Max(0, [Math]::Min(1, $Importance))
-        evidence = $evidence
+        evidence = $evidence; emotion = (Get-YVectorEmotionTag $evidence)
     }
 }
 function Get-YVectorCandidates {
@@ -87,9 +99,9 @@ function Get-YVectorCandidates {
         $c = New-YVectorCandidate 'episode' $x ([string]$x.title + ': ' + [string]$x.text) $vec (Get-YVectorDate $x) ([double](Get-YNum $x.importance 0.7))
         if ($null -ne $c) { $out.Add($c) }
     }
-    if ($script:SoulVecModel -eq [string]$script:Config.embeddingModel) {
+    if ($null -ne $script:SoulVecs) {
         foreach ($m in @(Get-YSoulMemories | Select-Object -Last 250)) {
-            $vec = $(if ($script:SoulVecs.ContainsKey([string]$m.id)) { [string]$script:SoulVecs[[string]$m.id] } else { '' })
+            $vec = $(if ($script:SoulVecModel -eq [string]$script:Config.embeddingModel -and $script:SoulVecs.ContainsKey([string]$m.id)) { [string]$script:SoulVecs[[string]$m.id] } else { '' })
             $importance = $(if ($m.kind -eq 'moment') { 0.85 } else { 0.35 })
             $stamp = $(if ((Get-YVectorDate $m.ref) -gt 0) { Get-YVectorDate $m.ref } else { [long](Get-YNum (Get-YValue $m 't' 0) 0) })
             $c = New-YVectorCandidate 'soul' $m.ref ([string]$m.text) $vec $stamp $importance
@@ -169,7 +181,7 @@ function Find-YVectorMatches([string]$Query, $QueryVec, [int]$Top = 10, [long]$B
     $hits = New-Object System.Collections.Generic.List[object]
     $now = Get-YNow
     foreach ($c in $pool) {
-        if ($Before -ne [long]::MaxValue -and [long]$c.t -ge $Before -and [long]$c.t -gt 0) { continue }
+        if ($c.space -eq 'conversation' -and $Before -ne [long]::MaxValue -and [long]$c.t -ge $Before -and [long]$c.t -gt 0) { continue }
         $score = -2.0
         if ($null -ne $QueryVec -and $c.vec) {
             try { $score = [YaeriVec]::Dot($QueryVec, [YaeriVec]::Decode([string]$c.vec)) } catch { $score = -2.0 }
@@ -191,31 +203,52 @@ function Find-YVectorMatches([string]$Query, $QueryVec, [int]$Top = 10, [long]$B
             $rank += 0.08 * $freshness + 0.06 * [double]$c.importance + 0.08 * $evidence + 0.04 * $personal
             $rank += Get-YVectorFeedbackBoost ([string]$c.space) ([string]$c.id)
         }
+        # Only a quoted emotional term, never a model-inferred feeling, may
+        # influence the tone match. Keep the evidence label visible in results.
+        if ($c.emotion -and $Query -match '(?i)чувств|настроен|люб|радост|груст|устал|тревог|волн|отношен') {
+            $rank += 0.025
+        }
         if ([string]$c.evidence.origin -eq 'creative' -and $Query -notmatch '(?i)сон|мечт|истори|фантаз') { $rank *= 0.65 }
         $hits.Add([pscustomobject]@{
             Item = $c; Score = [Math]::Round($rank, 5); Semantic = [Math]::Round($semantic, 4)
             Lexical = [Math]::Round($lex, 4); Freshness = [Math]::Round($freshness, 4)
-            EvidenceScore = [Math]::Round($evidence, 4); Associated = $false
+            EvidenceScore = [Math]::Round($evidence, 4); Associated = $false; Emotion = [string]$c.emotion
         })
     }
-    # Direct and second-hop links through the existing evidence graph; no
-    # new factual claim is inferred from a semantic association.
-    if ($script:YVector.associations -and $hits.Count -gt 1) {
-        $links = @($script:Evo.links)
-        $selected = @($hits | Sort-Object Score -Descending | Select-Object -First 4)
-        $connected = @{}
-        foreach ($h in $selected) { $connected[[string]$h.Item.id] = 0 }
+    # Expand up to two hops across previously indexed association links.
+    # Linked items are only additional context, never evidence of causation.
+    if ($script:YVector.associations -and $hits.Count -gt 0) {
+        $seeds = @($hits | Sort-Object Score -Descending | Select-Object -First 4)
+        $reachable = @{}
+        foreach ($h in $seeds) { $reachable[[string]$h.Item.id] = @{ depth = 0; score = [double]$h.Score } }
         for ($depth = 1; $depth -le 2; $depth++) {
-            foreach ($edge in $links) {
+            foreach ($edge in @($script:Evo.links)) {
                 $a = [string]$edge.from; $b = [string]$edge.to
-                if ($connected.ContainsKey($a) -and [int]$connected[$a] -lt $depth -and -not $connected.ContainsKey($b)) { $connected[$b] = $depth }
-                if ($connected.ContainsKey($b) -and [int]$connected[$b] -lt $depth -and -not $connected.ContainsKey($a)) { $connected[$a] = $depth }
+                if ($reachable.ContainsKey($a) -and [int]$reachable[$a].depth -eq ($depth - 1) -and -not $reachable.ContainsKey($b)) {
+                    $reachable[$b] = @{ depth = $depth; score = [double]$reachable[$a].score * 0.48 }
+                }
+                if ($reachable.ContainsKey($b) -and [int]$reachable[$b].depth -eq ($depth - 1) -and -not $reachable.ContainsKey($a)) {
+                    $reachable[$a] = @{ depth = $depth; score = [double]$reachable[$b].score * 0.48 }
+                }
             }
         }
-        foreach ($h in $hits) {
-            if ($connected.ContainsKey([string]$h.Item.id) -and [int]$connected[[string]$h.Item.id] -gt 0) {
-                $h.Score = [Math]::Round($h.Score + 0.035 / [double]$connected[[string]$h.Item.id], 5)
-                $h.Associated = $true
+        $indexed = @{}
+        foreach ($h in $hits) { $indexed[[string]$h.Item.id] = $h }
+        foreach ($c in $pool) {
+            $id = [string]$c.id
+            if (-not $reachable.ContainsKey($id) -or [int]$reachable[$id].depth -le 0) { continue }
+            if ($indexed.ContainsKey($id)) {
+                $indexed[$id].Score = [Math]::Round([double]$indexed[$id].Score + 0.025 / [double]$reachable[$id].depth, 5)
+                $indexed[$id].Associated = $true
+            } elseif ($hits.Count -lt 300 -and $c.space -in @('fact','episode')) {
+                # Keep the weak second-hop weighting below direct evidence.
+                $hits.Add([pscustomobject]@{
+                    Item = $c; Score = [Math]::Round([double]$reachable[$id].score, 5)
+                    Semantic = 0.0; Lexical = 0.0; Freshness = 0.0
+                    EvidenceScore = (Get-YVectorEvidenceScore $c.evidence)
+                    Associated = $true; Emotion = [string]$c.emotion
+                })
+                $indexed[$id] = $true
             }
         }
     }
@@ -224,11 +257,17 @@ function Find-YVectorMatches([string]$Query, $QueryVec, [int]$Top = 10, [long]$B
     # user's lived experience; keeps the best-ranked item per space first.
     $chosen = New-Object System.Collections.Generic.List[object]
     $spaces = @{}
+    $seenContent = @{}
     foreach ($hit in $sorted) {
         $space = [string]$hit.Item.space
+        # Non-destructive semantic consolidation during retrieval: suppress
+        # identical texts (even across different sources) in the short context.
+        $norm = (Get-YVectorFingerprint ([string]$hit.Item.text))
+        if ($seenContent.ContainsKey($norm)) { continue }
         $cap = switch ($space) { 'document' { [Math]::Max(2, [int]($Top / 2)) } 'conversation' { 3 } default { 3 } }
         if ([int]$spaces[$space] -ge $cap) { continue }
         $chosen.Add($hit)
+        $seenContent[$norm] = $true
         $spaces[$space] = [int]$spaces[$space] + 1
         if ($chosen.Count -ge $Top) { break }
     }
