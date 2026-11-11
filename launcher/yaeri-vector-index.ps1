@@ -284,6 +284,87 @@ function Get-YVectorView {
         quality = Get-YVectorQuality
     }
 }
+# Optional on-device Ollama embedding backend. Only loopback is contacted.
+$script:YLocalEmbeddingCache = @{}
+function Get-YLocalEmbedding([string]$Text, [string]$Model = 'nomic-embed-text') {
+    if ($Model -notmatch '^[a-zA-Z0-9_.:/-]{1,100}
+    $text = Get-YCleanLine ([string](Get-YValue $Req 'query' '')) 500
+    if (-not $text) { throw (New-YError 400 'Напишите запрос для поиска в памяти.') }
+    if (-not $script:YVector.enabled) { throw (New-YError 409 'Vector 2.0 отключён.') }
+    # localOnly is an explicit privacy guarantee: never call the cloud embedding API.
+    # Without a local embedding model, use the existing BM25 lexical retrieval.
+    $localOnly = [bool](Get-YValue $Req 'localOnly' $true)
+    $localSemantic = [bool](Get-YValue $Req 'localSemantic' $false)
+    if ($localSemantic -and -not $localOnly) { throw (New-YError 400 'Local semantic search requires localOnly=true.') }
+    $vec = $null
+    if (-not $localOnly -and (Test-YConfigured)) {
+        try { $vec = [YaeriVec]::Decode((Get-YEmbeddings @($text))[0]) } catch { }
+    }
+    $mode = 'local-lexical-bm25'
+    if ($localSemantic) {
+        if (-not $localOnly) { throw (New-YError 400 'Local semantic search requires localOnly=true.') }
+        try {
+            $model = [string](Get-YValue $Req 'localModel' 'nomic-embed-text')
+            $hits = @(Find-YLocalSemanticMatches $text $model 12)
+            $mode = 'local-semantic-rerank'
+        } catch {
+            throw (New-YError 503 ('Локальная модель эмбеддингов недоступна: ' + $_.Exception.Message))
+        }
+    } else {
+        $hits = @(Find-YVectorMatches $text $vec 12)
+        if ($null -ne $vec) { $mode = 'hybrid-local-rerank' }
+    }
+    $response = New-Object System.Collections.Generic.List[object]
+    foreach ($h in $hits) {
+        $c = $h.Item
+        $body = [string]$c.text
+        if ($body.Length -gt 380) { $body = $body.Substring(0, 380) + '…' }
+        $response.Add(@{
+            id = [string]$c.id; space = [string]$c.space; text = $body
+            score = [Math]::Round([double]$h.Score, 3)
+            semantic = [double]$h.Semantic; lexical = [double]$h.Lexical
+            source = Get-YEvidenceLabel $c.ref
+            associated = [bool]$h.Associated; emotion = [string]$c.emotion; t = [long]$c.t
+        })
+    }
+    $script:YVector.searches = [long]$script:YVector.searches + 1
+    $script:YVector.lastSearch = Get-YNow
+    Save-YVector
+    return @{ results = $response.ToArray(); total = $response.Count; mode = $mode; localOnly = $localOnly }
+}
+) { throw 'Invalid local embedding model name.' }
+    $key = $Model + ':' + (Get-YVectorFingerprint $Text)
+    if ($script:YLocalEmbeddingCache.ContainsKey($key)) { return $script:YLocalEmbeddingCache[$key] }
+    $payload = @{ model = $Model; input = $Text } | ConvertTo-Json -Compress -Depth 4
+    $reply = Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:11434/api/embed' -Body ([System.Text.Encoding]::UTF8.GetBytes($payload)) -ContentType 'application/json' -TimeoutSec 12
+    $values = @($reply.embeddings[0])
+    if ($values.Count -lt 8) { throw 'Local embedding model returned no usable vector.' }
+    $vector = [YaeriVec]::Decode([YaeriVec]::Encode([object[]]$values))
+    # Bound RAM use. Cached vectors are never written to memory records.
+    if ($script:YLocalEmbeddingCache.Count -ge 512) { $script:YLocalEmbeddingCache.Clear() }
+    $script:YLocalEmbeddingCache[$key] = $vector
+    return ,$vector
+}
+function Find-YLocalSemanticMatches([string]$Text, [string]$Model, [int]$Top = 12) {
+    # Lexical shortlist keeps the local model workload bounded.
+    $shortlist = @(Find-YVectorMatches $Text $null 32)
+    if ($shortlist.Count -eq 0) { return @() }
+    $queryVec = Get-YLocalEmbedding $Text $Model
+    $reranked = New-Object System.Collections.Generic.List[object]
+    foreach ($hit in $shortlist) {
+        $similarity = -2.0
+        try {
+            $itemVec = Get-YLocalEmbedding ([string]$hit.Item.text) $Model
+            $similarity = [YaeriVec]::Dot($queryVec, $itemVec)
+        } catch { }
+        $hit.Semantic = [Math]::Max(0.0, $similarity)
+        if ($similarity -ge 0) {
+            $hit.Score = [Math]::Round(0.55 * [double]$hit.Score + 0.45 * [Math]::Max(0.0, $similarity), 5)
+        }
+        $reranked.Add($hit)
+    }
+    return @($reranked | Sort-Object Score -Descending | Select-Object -First $Top)
+}
 function Search-YVector($Req) {
     $text = Get-YCleanLine ([string](Get-YValue $Req 'query' '')) 500
     if (-not $text) { throw (New-YError 400 'Напишите запрос для поиска в памяти.') }

@@ -38,3 +38,13 @@ To explicitly opt into the previous remote-query-embedding hybrid search, send `
 The response includes `localOnly` and `mode` (`local-lexical-bm25` or `hybrid-local-rerank`).
 
 **Scope:** This guarantee covers the memory-search endpoint only. It does not turn chat generation, embedding/index updates, or other Cloud.ru-dependent features into fully offline operations. Local search is lexical rather than semantic when no on-device embedding model is installed.
+
+## Optional local semantic reranking and search cache
+
+Install [Ollama](https://ollama.com/) on Windows and pull a local embedding model once (for example, `ollama pull nomic-embed-text`). Run Ollama locally on its default loopback endpoint, `127.0.0.1:11434`. No cloud API key is needed for the search request.
+
+`POST /api/vector/search` with `{"query":"что я люблю","localOnly":true,"localSemantic":true,"localModel":"nomic-embed-text"}` uses a local embedding model to rerank the existing BM25 shortlist. The response mode is `local-semantic-rerank`. Local semantic mode is **opt-in**; default remains fast local lexical search.
+
+**Performance:** query and candidate embeddings are cached in process by model and text fingerprint (up to 512 entries, then cleared). The candidate shortlist is bounded to 32 and the output to 12. Cache is not persisted, and a server restart warms it again.
+
+**Limitations:** This is local semantic **reranking**, not a full vector ANN index; candidates absent from the lexical shortlist cannot be recovered. Ollama is an optional separately installed runtime, not bundled with Yaeri. If Ollama/model is unavailable the endpoint returns a 503 rather than silently calling a cloud provider. Chat generation and indexing are unchanged. No agents are introduced.

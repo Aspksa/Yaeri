@@ -67,4 +67,8 @@ Assert-Y ($result.localOnly -eq $true) 'Offline flag missing'
 $defaultResult = Search-YVector @{ query='локальный поиск' }
 Assert-Y ($script:cloudCalls -eq 0) 'Default search invoked cloud embeddings'
 Assert-Y ($defaultResult.localOnly -eq $true) 'Default search must be offline'
+$rejected = $false
+try { $null = Search-YVector @{ query='test'; localOnly=$false; localSemantic=$true } } catch { $rejected = $true }
+Assert-Y $rejected 'Local semantic mode must reject cloud-enabled requests'
+Assert-Y ($script:cloudCalls -eq 0) 'Rejected local semantic mode invoked cloud embeddings'
 Write-Host 'Memory 3 smoke tests passed.' -ForegroundColor Green
