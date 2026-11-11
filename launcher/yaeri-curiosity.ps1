@@ -88,7 +88,9 @@ function Test-YCurBudget {
 }
 
 # ---------- Ряд по дням для графиков ----------
-function Update-YCurSeries {
+function Update-YCurSeries([switch]$NoSave) {
+    # -NoSave: только в памяти. GET-запросы не пишут файлы, иначе фоновая AI-задача
+    # видит «память изменилась» и выбрасывает свой результат.
     $s = $script:Soul
     $day = Get-YDayKey
     $level = Get-YSoulLevel $s.xp
@@ -127,7 +129,7 @@ function Update-YCurSeries {
         if ($when -eq 0L -and $l -eq $level) { $when = Get-YNow }
         if ($when -gt 0) { $script:Cur.stageDates[$key] = $when; $changed = $true }
     }
-    if ($changed) { Save-YCuriosity }
+    if ($changed -and -not $NoSave) { Save-YCuriosity }
 }
 
 # ---------- Общие помощники ----------
@@ -479,7 +481,7 @@ function Get-YCuriosityPrompt {
 
 # ---------- API ----------
 function Get-YGrowthView {
-    Update-YCurSeries
+    Update-YCurSeries -NoSave
     $s = $script:Soul
     $level = Get-YSoulLevel $s.xp
     $p = Get-YCurProfile

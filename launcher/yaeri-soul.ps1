@@ -688,7 +688,8 @@ function Invoke-YSoulReflect($Req) {
         $p = Get-YCleanLine ([string](Get-YValue $owner 'portrait' '')) 700
         if ($p) { $s.owner.portrait = $p }
         foreach ($k in @('goals', 'likes', 'worries')) {
-            if (Test-YKey $owner $k) { $s.owner[$k] = Get-YStrList $owner[$k] 8 200 }
+            # Пустой список от модели не стирает то, что Яэри уже знала о хозяине.
+            if (Test-YKey $owner $k) { $l = Get-YStrList $owner[$k] 8 200; if ($l.Count -gt 0 -or @($s.owner[$k]).Count -eq 0) { $s.owner[$k] = $l } }
         }
     }
     $lesson = Get-YCleanLine ([string](Get-YValue $r 'lesson' '')) 300
@@ -791,6 +792,7 @@ function Update-YSoulGrowth($r, [string]$Kind) {
     }
     if (Test-YKey $r 'aims') {
         $aims = New-Object System.Collections.Generic.List[object]
+        $reached = 0
         foreach ($x in (Get-YDictList $r['aims'])) {
             $tx = Get-YCleanLine ([string](Get-YValue $x 'text' '')) 200
             if (-not $tx -or $aims.Count -ge 3) { continue }
@@ -812,11 +814,13 @@ function Update-YSoulGrowth($r, [string]$Kind) {
                 $s.aimsDone = $done.ToArray()
                 [void]$s.journal.Add((New-YSoulEntry 'milestone' ('Я достигла своей цели: «' + $tx + '».') ([string]$s.mood.name)))
                 $bonus += 10
+                $reached++
             } else {
                 $aims.Add($item)
             }
         }
-        $s.aims = $aims.ToArray()
+        # Пустой ответ модели не стирает цели; список пустеет, только если цели достигнуты.
+        if ($aims.Count -gt 0 -or $reached -gt 0) { $s.aims = $aims.ToArray() }
     }
     $om = Get-YValue $r 'ownerMood' $null
     if ($Kind -eq 'reflection' -and $om -is [System.Collections.IDictionary] -and (Test-YKey $om 'score') -and $null -ne $om['score']) {
@@ -931,7 +935,7 @@ function Invoke-YSoulCare($Req) {
     $hour = [DateTime]::Now.Hour
     $ok = $(if ($slot -eq 'morning') { $hour -ge 5 -and $hour -lt 12 } else { $hour -ge 18 -and $hour -lt 24 })
     $day = Get-YDayKey
-    if (-not $ok -or [string]$s.care[$slot] -eq $day -or [long]$s.exchanges -eq 0) { return @{ message = $null } }
+    if (-not $ok -or [string]$s.care[$slot] -eq $day -or [long]$s.exchanges -eq 0 -or -not (Test-YConfigured)) { return @{ message = $null } }
     $name = Get-YSoulReqName $Req
     $dreamText = $(if ($slot -eq 'morning') { [string]$s.dreamPending } else { '' })
     $task = $(if ($dreamText) {
