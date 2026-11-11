@@ -49,7 +49,7 @@ function Save-Y3 {
 function Add-Y3Growth([string]$Kind, [string]$Detail, [string]$Source) {
     $detail = Get-YCleanLine $Detail 300
     if (-not $detail) { return }
-    [void]$script:Y3.growth.Add(@{ id = (New-YId); t = (Get-YNow); kind = $Kind; text = $detail; source = $Source })
+    [void]$script:Y3.growth.Add(@{ id = (New-YId); t = (Get-YNow); kind = $Kind; text = $detail; source = $Source; evidence = (New-YEvidence 'assistant_generated' $Source '' 0) })
 }
 function Add-Y3Memory($List, [string]$Kind, [string]$Value, [string]$Quote, [string]$Original, [string]$Source) {
     $value = Get-YCleanLine $Value 260
@@ -58,7 +58,7 @@ function Add-Y3Memory($List, [string]$Kind, [string]$Value, [string]$Quote, [str
     foreach ($old in $List) {
         if ((Get-YEvoNormalized ([string]$old.text)) -eq (Get-YEvoNormalized $value)) { return $false }
     }
-    [void]$List.Add(@{ id = (New-YId); t = (Get-YNow); kind = $Kind; text = $value; quote = $quote; source = $Source })
+    [void]$List.Add(@{ id = (New-YId); t = (Get-YNow); kind = $Kind; text = $value; quote = $quote; source = $Source; evidence = (New-YEvidence 'user_quote' $Source $quote 0) })
     Add-Y3Growth $Kind $value $Source
     return $true
 }
