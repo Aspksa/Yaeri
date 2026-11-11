@@ -286,12 +286,10 @@ function Get-YVectorView {
 }
 # Python-backed local embeddings; no Ollama or cloud network endpoint.
 $script:YLocalEmbeddingCache = @{}
-function Get-YLocalEmbedding([string]$Text, [string]$Model = 'intfloat/multilingual-e5-small') {
-    if ($Model -notmatch '^[a-zA-Z0-9_./-]{1,100}$' -or $Model.Contains('..')) { throw 'Invalid local embedding model.' }
-    $key = $Model + ':' + (Get-YVectorFingerprint $Text)
-    if ($script:YLocalEmbeddingCache.ContainsKey($key)) { return ,$script:YLocalEmbeddingCache[$key] }
+$script:YIndexSynced = @{}
+function Invoke-YLocalEmbeddingService($Request) {
     if (-not $script:YEmbeddingPort) { throw 'Python embedding service is not running.' }
-    $payload = (@{ model = $Model; text = $Text } | ConvertTo-Json -Compress) + "`n"
+    $payload = ($Request | ConvertTo-Json -Compress -Depth 6) + "`n"
     $client = [System.Net.Sockets.TcpClient]::new()
     try {
         $client.Connect('127.0.0.1', [int]$script:YEmbeddingPort)
@@ -305,28 +303,84 @@ function Get-YLocalEmbedding([string]$Text, [string]$Model = 'intfloat/multiling
         if (-not $line) { throw 'Empty Python embedding service response.' }
         $reply = ConvertFrom-Json $line
         if ($reply.error) { throw ([string]$reply.error) }
+        return $reply
     } finally { $client.Dispose() }
+}
+function Get-YLocalEmbedding([string]$Text, [string]$Model = 'intfloat/multilingual-e5-small') {
+    if ($Model -ne 'intfloat/multilingual-e5-small') { throw 'Unsupported local embedding model.' }
+    $key = $Model + ':' + (Get-YVectorFingerprint $Text)
+    if ($script:YLocalEmbeddingCache.ContainsKey($key)) { return ,$script:YLocalEmbeddingCache[$key] }
+    $reply = Invoke-YLocalEmbeddingService @{ action = 'embed'; model = $Model; text = $Text }
     $vector = [YaeriVec]::Decode([string]$reply.vector)
     if ($vector.Length -lt 8) { throw 'Invalid local embedding.' }
     if ($script:YLocalEmbeddingCache.Count -ge 512) { $script:YLocalEmbeddingCache.Clear() }
     $script:YLocalEmbeddingCache[$key] = $vector
     return ,$vector
 }
+function Sync-YLocalSemanticIndex($Candidates) {
+    $batch = New-Object System.Collections.Generic.List[object]
+    foreach ($candidate in @($Candidates)) {
+        $id = [string]$candidate.space + ':' + [string]$candidate.id
+        $content = [string]$candidate.text
+        if (-not $content) { continue }
+        $fingerprint = Get-YVectorFingerprint $content
+        if ($script:YIndexSynced.ContainsKey($id) -and $script:YIndexSynced[$id] -eq $fingerprint) { continue }
+        $batch.Add(@{ id = $id; text = $content })
+        if ($batch.Count -ge 32) {
+            $response = Invoke-YLocalEmbeddingService @{ action = 'index'; items = $batch.ToArray() }
+            if ([int]$response.accepted -lt $batch.Count) { break }
+            foreach ($item in $batch) { $script:YIndexSynced[$item.id] = Get-YVectorFingerprint $item.text }
+            $batch.Clear()
+        }
+    }
+    if ($batch.Count -gt 0) {
+        $response = Invoke-YLocalEmbeddingService @{ action = 'index'; items = $batch.ToArray() }
+        if ([int]$response.accepted -eq $batch.Count) {
+            foreach ($item in $batch) { $script:YIndexSynced[$item.id] = Get-YVectorFingerprint $item.text }
+        }
+    }
+}
 function Find-YLocalSemanticMatches([string]$Text, [string]$Model, [int]$Top = 12) {
+    if ($Model -ne 'intfloat/multilingual-e5-small') { throw 'Unsupported local embedding model.' }
+    $candidates = @(Get-YVectorCandidates)
+    if ($candidates.Count -eq 0) { return @() }
+    Sync-YLocalSemanticIndex $candidates
     $shortlist = @(Find-YVectorMatches $Text $null 32)
-    if ($shortlist.Count -eq 0) { return @() }
+    $ranked = @{}
+    foreach ($hit in $shortlist) {
+        $key = [string]$hit.Item.space + ':' + [string]$hit.Item.id
+        $ranked[$key] = $hit
+    }
+    $byId = @{}
+    foreach ($candidate in $candidates) {
+        $key = [string]$candidate.space + ':' + [string]$candidate.id
+        $byId[$key] = $candidate
+    }
     $queryVec = Get-YLocalEmbedding ('query: ' + $Text) $Model
-    $reranked = New-Object System.Collections.Generic.List[object]
     foreach ($hit in $shortlist) {
         $itemVec = Get-YLocalEmbedding ('passage: ' + [string]$hit.Item.text) $Model
-        $similarity = [YaeriVec]::Dot($queryVec, $itemVec)
-        $hit.Semantic = [Math]::Max(0.0, $similarity)
-        if ($similarity -ge 0) {
-            $hit.Score = [Math]::Round(0.55 * [double]$hit.Score + 0.45 * [Math]::Max(0.0, $similarity), 5)
-        }
-        $reranked.Add($hit)
+        $similarity = [Math]::Max(0.0, [YaeriVec]::Dot($queryVec, $itemVec))
+        $hit.Semantic = $similarity
+        $hit.Score = [Math]::Round(0.55 * [double]$hit.Score + 0.45 * $similarity, 5)
     }
-    return @($reranked | Sort-Object Score -Descending | Select-Object -First $Top)
+    $response = Invoke-YLocalEmbeddingService @{ action = 'search'; model = $Model; text = $Text }
+    foreach ($match in @($response.results)) {
+        $key = [string]$match.id
+        if (-not $byId.ContainsKey($key)) { continue }
+        $score = [Math]::Max(0.0, [double]$match.score)
+        if ($score -lt 0.28) { continue }
+        if ($ranked.ContainsKey($key)) {
+            $hit = $ranked[$key]
+            $hit.Semantic = [Math]::Max([double]$hit.Semantic, $score)
+            $hit.Score = [Math]::Max([double]$hit.Score, [Math]::Round(0.45 * $score + 0.20 * [double]$hit.Lexical, 5))
+        } else {
+            $ranked[$key] = [pscustomobject]@{
+                Item = $byId[$key]; Score = [Math]::Round(0.45 * $score, 5)
+                Semantic = $score; Lexical = 0.0; Associated = $false
+            }
+        }
+    }
+    return @($ranked.Values | Sort-Object Score -Descending | Select-Object -First $Top)
 }
 function Search-YVector($Req) {
     $text = Get-YCleanLine ([string](Get-YValue $Req 'query' '')) 500
