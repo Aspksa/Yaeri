@@ -190,8 +190,13 @@
         body.classList.toggle('is-online', online);
         $('connect-banner').hidden = online || location.protocol === 'file:';
         if (online) {
-          setStatus('online', 'Cloud.ru · онлайн', 'AI подключён: Cloud.ru Foundation Models. Нажмите, чтобы открыть подключение');
-          $('ai-note').textContent = 'Яэри подключена к Cloud.ru. Здесь можно решить, что ей запоминать и где искать ответы.';
+          if (serverStatus && serverStatus.offline) {
+            setStatus('online', 'Офлайн · память', 'Автономный режим: облачные запросы запрещены. Генерация возможна только с локальной GGUF-моделью.');
+            $('ai-note').textContent = 'Яэри использует локальную память. Для свободной генерации можно отдельно подключить llama.cpp с GGUF-моделью.';
+          } else {
+            setStatus('online', 'Cloud.ru · онлайн', 'AI подключён: Cloud.ru Foundation Models. Нажмите, чтобы открыть подключение');
+            $('ai-note').textContent = 'Яэри подключена к Cloud.ru. Здесь можно решить, что ей запоминать и где искать ответы.';
+          }
           $('about-model').textContent = modelSelect.value || serverStatus.chatModel;
           $('about-embed').textContent = serverStatus.embeddingModel;
           $('about-storage').textContent = 'папка data на этом компьютере';
