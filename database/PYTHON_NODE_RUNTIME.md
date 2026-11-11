@@ -1,0 +1,7 @@
+# Required Python and Node.js runtimes
+
+Yaeri now checks for **Python 3.9+** and **Node.js 18+** at startup, before starting its local HTTP server. Install both runtimes and ensure `python` and `node` are on `PATH`. Run `python --version` and `node --version` to verify.
+
+The Windows PowerShell 5.1 launcher and existing API remain in place during the migration. These checks are the **first migration step**, not a claim that the API has already been rewritten in Node.js or that local embeddings are already computed in Python. Existing SQLite snapshots and memory formats remain unchanged. No Ollama or agents are required.
+
+Next implementation steps: connect Python local embedding inference (model and tokenizer with a reproducible install), persist model-specific vectors, and move the HTTP boundary to Node.js with backward-compatible endpoints. Avoid downloading models without user consent.
