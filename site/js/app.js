@@ -195,7 +195,17 @@
       var modelSelect = $('model');
       var sendBtn = $('send');
 
-      function api(path, payload) {
+      function pollJob(id, attempt) {
+        if (attempt >= 900) return Promise.reject(new Error('AI-задача слишком долго выполняется. Проверьте сервер Яэри.'));
+        return new Promise(function (resolve) { setTimeout(resolve, 750); }).then(function () {
+          return api('jobs/' + id, undefined, true);
+        }).then(function (state) {
+          if (state.pending) return pollJob(id, attempt + 1);
+          if (state.ready) return state.result;
+          throw new Error('AI-задача завершилась без результата.');
+        });
+      }
+      function api(path, payload, rawJobStatus) {
         var opts = { method: 'GET', cache: 'no-store' };
         if (payload !== undefined) {
           opts.method = 'POST';
@@ -207,6 +217,9 @@
             if (!r.ok) throw new Error(data.error || ('Ошибка сервера: ' + r.status));
             return data;
           });
+        }).then(function (data) {
+          if (!rawJobStatus && data.pending && data.jobId) return pollJob(data.jobId, 0);
+          return data;
         });
       }
       function shortModel(id) {
