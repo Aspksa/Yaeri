@@ -126,6 +126,7 @@
           v.tab.setAttribute('aria-selected', k === name ? 'true' : 'false');
           v.panel.hidden = k !== name;
         });
+        if (name === 'soul') { fitSoulText($('soul-self')); fitSoulText($('soul-portrait')); }
         $('view-name').textContent = views[name].name;
         document.title = 'Яэри — ' + views[name].name.toLowerCase();
         if (!fromHash) {
@@ -164,7 +165,17 @@
           throw new Error('AI-задача завершилась без результата.');
         });
       }
-      function api(path, payload, rawJobStatus) {
+      function api(path, payload, rawJobStatus, busyTry) {
+        // Сервер выполняет одну AI-задачу за раз. Если занят раздумьем или сном души,
+        // сообщение не теряется с ошибкой, а ждёт своей очереди (до ~4 минут).
+        busyTry = busyTry || 0;
+        return apiOnce(path, payload, rawJobStatus).catch(function (e) {
+          if (!e.busy || busyTry >= 160) throw e;
+          return new Promise(function (resolve) { setTimeout(resolve, 1500); })
+            .then(function () { return api(path, payload, rawJobStatus, busyTry + 1); });
+        });
+      }
+      function apiOnce(path, payload, rawJobStatus) {
         var opts = { method: 'GET', cache: 'no-store' };
         if (payload !== undefined) {
           opts.method = 'POST';
@@ -173,7 +184,11 @@
         }
         return fetch('/api/' + path, opts).then(function (r) {
           return r.json().catch(function () { return {}; }).then(function (data) {
-            if (!r.ok) throw new Error(data.error || ('Ошибка сервера: ' + r.status));
+            if (!r.ok) {
+              var err = new Error(data.error || ('Ошибка сервера: ' + r.status));
+              err.busy = r.status === 409 && payload !== undefined && /длительная AI-задача/.test(data.error || '');
+              throw err;
+            }
             return data;
           });
         }).then(function (data) {

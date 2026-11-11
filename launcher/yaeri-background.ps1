@@ -7,6 +7,17 @@ $script:YBgLastError = ''
 $script:YBgLastRun = 0L
 $script:YBgConflictCount = 0
 $script:YApiJobs = @{}
+$script:YLastChatAt = 0L
+$script:YBgChatQuietMs = 180000   # фоновые размышления не начинаются, пока хозяин пишет в чат
+$script:YApiJobKeepMs = 900000    # готовые результаты AI-задач хранятся 15 минут
+
+function Clear-YApiJobs {
+    $now = Get-YNow
+    foreach ($id in @($script:YApiJobs.Keys)) {
+        $job = $script:YApiJobs[$id]
+        if ([string]$job.status -ne 'pending' -and $now - [long]$job.t -gt $script:YApiJobKeepMs) { $script:YApiJobs.Remove($id) }
+    }
+}
 
 function Get-YBgHash([string]$Path) {
     if (-not [System.IO.File]::Exists($Path)) { return '<missing>' }
@@ -38,6 +49,9 @@ function Start-YBackground([string]$Method = '', [string]$Path = '', [string]$Bo
     $isApi = [bool]$Method
     $localCycle=[bool]($script:YE5.enabled -and $script:YE5.periodic)
     if (-not $isApi -and [bool]$script:YLife.offline -and -not $localCycle) { return $false }
+    # Хозяин сейчас пишет: тик всё равно был бы прерван его следующим сообщением,
+    # а оплаченные запросы к модели пропали бы вместе со снимком (и мимо дневного лимита).
+    if (-not $isApi -and (Get-YNow) - [long]$script:YLastChatAt -lt $script:YBgChatQuietMs) { return $false }
     if (-not $isApi -and -not (Test-YConfigured) -and -not [bool]$script:Y3.initiative -and -not $localCycle) { return $false }
     $base = Join-Path $script:DataDir ('.bg-work-' + [guid]::NewGuid().ToString('N'))
     $snapshot = Join-Path $base 'snapshot'
@@ -81,6 +95,8 @@ function Start-YBackground([string]$Method = '', [string]$Path = '', [string]$Bo
 }
 function Start-YApiTask([string]$Method, [string]$Path, [string]$Body) {
     if (-not (Test-YAsyncApiRoute $Method $Path)) { throw (New-YError 404 'Неизвестная AI-задача.') }
+    Clear-YApiJobs
+    if ($Method -eq 'POST' -and $Path -eq '/api/chat') { $script:YLastChatAt = Get-YNow }
     if ($null -ne $script:YBgJob) {
         # User requests take precedence; an uncommitted background snapshot is
         # safe to discard because it has never touched live files.

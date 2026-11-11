@@ -136,6 +136,8 @@
           $('soul-portrait').value = (s.owner && s.owner.portrait) || '';
         }
         $('soul-self').readOnly = !online;
+        fitSoulText($('soul-self'));
+        fitSoulText($('soul-portrait'));
         $('soul-portrait').readOnly = !online;
 
         var th = $('soul-thought');
@@ -219,8 +221,15 @@
         return api('soul/update', patch).then(function (data) { setSoul(data); soulMsg('Сохранено.'); })
           .catch(function (e) { soulMsg(e.message, true); });
       }
+      function fitSoulText(field) {
+        // Высота по тексту: общий стиль textarea (чат) иначе обрезает портрет и «кем она себя чувствует».
+        if (!field || !field.offsetParent) return;
+        field.style.height = 'auto';
+        field.style.height = Math.min(field.scrollHeight + 4, 420) + 'px';
+      }
       function bindSoulText(id, key) {
         var field = $(id);
+        field.addEventListener('input', function () { fitSoulText(field); });
         field.addEventListener('focus', function () { soulEditing = true; });
         field.addEventListener('blur', function () {
           soulEditing = false;

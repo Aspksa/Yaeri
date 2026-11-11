@@ -789,7 +789,7 @@
     .soul-mood b { color: var(--a); font-weight: 600; }
     .soul-mood span, .soul-small { color: var(--muted); }
     .soul-small { margin: 6px 0 0; font-size: .8rem; line-height: 1.4; }
-    .soul-edit { resize: vertical; line-height: 1.45; font-size: .84rem; }
+    .soul-edit { height: auto; max-height: none; resize: vertical; line-height: 1.45; font-size: .84rem; }
     .soul-edit[readonly] { resize: none; border-color: transparent; background: none; padding-left: 0; }
     .soul-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 14px; }
     .soul-actions { flex-wrap: wrap; justify-content: flex-start; text-transform: none; letter-spacing: 0; }

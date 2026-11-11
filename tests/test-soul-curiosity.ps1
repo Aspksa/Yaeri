@@ -103,6 +103,11 @@ try {
     if ($view.series.Count -lt 1 -or $view.stages.Count -ne 9 -or $view.goals.Count -lt 2) { throw 'Growth view incomplete.' }
     if ($view.series[$view.series.Count - 1].lessons -ne 1) { throw 'Series lessons incorrect.' }
     if ($null -eq $view.stages[0].t -or [long]$view.stages[0].t -le 0) { throw 'First stage date missing.' }
+    # Просмотр роста (GET) не пишет файл: иначе фоновая AI-задача видит конфликт и теряет результат.
+    $script:Soul.xp = [long]$script:Soul.xp + 1
+    $curHash = (Get-FileHash -LiteralPath $script:CurFile).Hash
+    [void](Get-YGrowthView)
+    if ((Get-FileHash -LiteralPath $script:CurFile).Hash -ne $curHash) { throw 'Growth view must not write soul-curiosity.json.' }
 
     # Планировщик: лимит не даёт запускать задачи, «Учиться сейчас» его обходит
     $script:Evo.lastAction = 0L

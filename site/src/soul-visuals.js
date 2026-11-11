@@ -40,6 +40,8 @@
           if (k === name && focus) t.focus();
         });
         try { localStorage.setItem('yaeri-soul-tab', name); } catch (e) { /* без запоминания вкладки */ }
+        fitSoulText($('soul-self'));
+        fitSoulText($('soul-portrait'));
         if (name === 'growth') renderGrowth();
         if (name === 'depth' && typeof renderDepth === 'function') renderDepth();
       }

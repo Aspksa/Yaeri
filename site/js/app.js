@@ -177,6 +177,7 @@
           v.tab.setAttribute('aria-selected', k === name ? 'true' : 'false');
           v.panel.hidden = k !== name;
         });
+        if (name === 'soul') { fitSoulText($('soul-self')); fitSoulText($('soul-portrait')); }
         $('view-name').textContent = views[name].name;
         document.title = 'Яэри — ' + views[name].name.toLowerCase();
         if (!fromHash) {
@@ -215,7 +216,17 @@
           throw new Error('AI-задача завершилась без результата.');
         });
       }
-      function api(path, payload, rawJobStatus) {
+      function api(path, payload, rawJobStatus, busyTry) {
+        // Сервер выполняет одну AI-задачу за раз. Если занят раздумьем или сном души,
+        // сообщение не теряется с ошибкой, а ждёт своей очереди (до ~4 минут).
+        busyTry = busyTry || 0;
+        return apiOnce(path, payload, rawJobStatus).catch(function (e) {
+          if (!e.busy || busyTry >= 160) throw e;
+          return new Promise(function (resolve) { setTimeout(resolve, 1500); })
+            .then(function () { return api(path, payload, rawJobStatus, busyTry + 1); });
+        });
+      }
+      function apiOnce(path, payload, rawJobStatus) {
         var opts = { method: 'GET', cache: 'no-store' };
         if (payload !== undefined) {
           opts.method = 'POST';
@@ -224,7 +235,11 @@
         }
         return fetch('/api/' + path, opts).then(function (r) {
           return r.json().catch(function () { return {}; }).then(function (data) {
-            if (!r.ok) throw new Error(data.error || ('Ошибка сервера: ' + r.status));
+            if (!r.ok) {
+              var err = new Error(data.error || ('Ошибка сервера: ' + r.status));
+              err.busy = r.status === 409 && payload !== undefined && /длительная AI-задача/.test(data.error || '');
+              throw err;
+            }
             return data;
           });
         }).then(function (data) {
@@ -1629,6 +1644,8 @@
           $('soul-portrait').value = (s.owner && s.owner.portrait) || '';
         }
         $('soul-self').readOnly = !online;
+        fitSoulText($('soul-self'));
+        fitSoulText($('soul-portrait'));
         $('soul-portrait').readOnly = !online;
 
         var th = $('soul-thought');
@@ -1712,8 +1729,15 @@
         return api('soul/update', patch).then(function (data) { setSoul(data); soulMsg('Сохранено.'); })
           .catch(function (e) { soulMsg(e.message, true); });
       }
+      function fitSoulText(field) {
+        // Высота по тексту: общий стиль textarea (чат) иначе обрезает портрет и «кем она себя чувствует».
+        if (!field || !field.offsetParent) return;
+        field.style.height = 'auto';
+        field.style.height = Math.min(field.scrollHeight + 4, 420) + 'px';
+      }
       function bindSoulText(id, key) {
         var field = $(id);
+        field.addEventListener('input', function () { fitSoulText(field); });
         field.addEventListener('focus', function () { soulEditing = true; });
         field.addEventListener('blur', function () {
           soulEditing = false;
@@ -2138,6 +2162,8 @@
           if (k === name && focus) t.focus();
         });
         try { localStorage.setItem('yaeri-soul-tab', name); } catch (e) { /* без запоминания вкладки */ }
+        fitSoulText($('soul-self'));
+        fitSoulText($('soul-portrait'));
         if (name === 'growth') renderGrowth();
         if (name === 'depth' && typeof renderDepth === 'function') renderDepth();
       }
