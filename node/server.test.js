@@ -62,3 +62,29 @@ test("Node serves static UI directly and does not proxy it", async () => {
     await close(backend);
   }
 });
+
+test("native Node runtime API responds without PowerShell and preserves proxy routes", async () => {
+  let backendRequests = 0;
+  const backend = http.createServer((req, res) => {
+    backendRequests++;
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ legacy: true }));
+  });
+  const backendPort = await listen(backend);
+  const frontend = createServer(backendPort);
+  const port = await listen(frontend);
+  try {
+    const runtime = await request(port, "/api/runtime");
+    assert.equal(runtime.status, 200);
+    assert.deepEqual(JSON.parse(runtime.body).frontend, "node");
+    assert.equal(backendRequests, 0);
+    assert.equal((await request(port, "/api/runtime", "HEAD")).status, 200);
+    assert.equal((await request(port, "/api/runtime", "POST", "{}")).status, 405);
+    assert.equal(backendRequests, 0);
+    assert.deepEqual(JSON.parse((await request(port, "/api/status")).body), { legacy: true });
+    assert.equal(backendRequests, 1);
+  } finally {
+    await close(frontend);
+    await close(backend);
+  }
+});
