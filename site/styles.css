@@ -255,12 +255,6 @@
     .pc-d.sel { box-shadow: 0 0 0 2px var(--a-glow); }
     .pc-detail { min-height: 2.6em; margin: 0; padding: 7px 10px; border-left: 2px solid var(--a); border-radius: 0 8px 8px 0; background: var(--surface-2); font-size: .78rem; line-height: 1.35; color: var(--muted); }
     .pc-detail b { color: var(--ink); }
-    .pc-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-    .pc-stat { padding: 8px 6px 7px; border: 1px solid var(--line); border-radius: 10px; text-align: center; background: linear-gradient(180deg, hsl(var(--h) 30% 12% / .5), transparent); }
-    .pc-stat b { display: block; color: var(--a); font: 700 1.2rem/1 var(--mono); }
-    .pc-stat.hol b { color: var(--pc-hol); }
-    .pc-stat span { display: block; margin-top: 4px; color: var(--faint); font: 600 .54rem/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
-    .pc-stat small { display: block; margin-top: 3px; color: var(--muted); font: 500 .58rem/1.2 var(--mono); }
     .pc-next { display: grid; gap: 6px; }
     .pc-cd { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; }
     .pc-cd .num { grid-row: span 2; min-width: 44px; text-align: center; color: var(--a); font: 700 1.35rem/1 var(--mono); }
@@ -422,11 +416,6 @@
     .pc-d.short::after { width: 7px; height: 7px; right: 4px; top: 4px; }
     .pc-d.today { color: var(--on-a); background: linear-gradient(160deg, hsl(48 100% 74%), hsl(34 96% 56%)); border-color: hsl(50 100% 86%); box-shadow: 0 0 0 2px hsl(42 96% 62% / .5), 0 0 22px hsl(42 96% 58% / .6); font-weight: 800; }
     .pc-detail { padding: 10px 12px; font-size: .9rem; line-height: 1.4; }
-    .pc-stats { gap: 8px; }
-    .pc-stat { padding: 12px 6px 10px; border-color: hsl(40 25% 20%); }
-    .pc-stat b { font-size: 1.75rem; }
-    .pc-stat span { margin-top: 6px; font-size: .64rem; }
-    .pc-stat small { font-size: .66rem; }
     .pc-next { gap: 8px; }
     .pc-cd { padding: 11px 13px; gap: 3px 14px; border-color: hsl(40 25% 20%); }
     .pc-cd .num { min-width: 58px; font-size: 1.9rem; }
@@ -1258,15 +1247,6 @@
     .pc-m .pc-d .pc-dots { bottom: 1px; gap: 1px; }
     .pc-m .pc-d .pc-dots b { width: 3px; height: 3px; }
     .pc-legend .lg-task { border-radius: 50%; width: 8px; height: 8px; background: hsl(186 90% 62%); border-color: transparent; }
-    .pc-day-tasks { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
-    .pc-day-tasks ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
-    .pc-day-tasks li { display: flex; gap: 6px; color: var(--ink); font-size: .84rem; line-height: 1.35; }
-    .pc-day-tasks li .mk { width: 12px; flex: none; color: hsl(186 90% 62%); text-align: center; }
-    .pc-day-tasks li.p-high .mk { color: hsl(350 95% 68%); }
-    .pc-day-tasks li.note .mk { color: hsl(268 90% 78%); }
-    .pc-day-tasks li.done { color: var(--faint); text-decoration: line-through; }
-    .pc-day-tasks li.more { color: var(--faint); }
-    .pc-day-tasks .mini-btn { align-self: flex-start; }
 
     /* Неделя, поиск */
     .tasks-week { flex: none; padding: 8px 12px 0; }

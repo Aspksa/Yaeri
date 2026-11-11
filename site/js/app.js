@@ -708,27 +708,17 @@
           pcState.sel = pcState.sel === x.d ? 0 : x.d;
           tasksPickDay(x);
           renderProdCalendar(true);
-          // Подробности дня под сеткой: прокручиваем карточку, чтобы их было видно.
-          if (pcState.sel) $('pc-detail').scrollIntoView({ block: 'nearest', behavior: settings.motion ? 'smooth' : 'auto' });
+          // Дела выбранного дня показывает карточка «Дела» справа.
         } });
         // Подпись под сеткой: выбранный день, иначе ближайший праздник месяца.
         var detail = $('pc-detail');
-        if (sel) { detail.innerHTML = pcDayText(pcDay(y, m, sel)); tasksDayDetail(detail, y, m, sel); }
+        if (sel) detail.innerHTML = pcDayText(pcDay(y, m, sel));
         else {
           var hols = [];
           var n = new Date(y, m + 1, 0).getDate();
           for (var d = 1; d <= n; d++) { var x = pcDay(y, m, d); if (x.type === 'hol' || x.type === 'move') hols.push(x); }
           detail.innerHTML = hols.length ? pcDayText(hols[0]) + (hols.length > 1 ? ' И ещё ' + (hols.length - 1) + ' нерабоч. ' + plural(hols.length - 1, 'день', 'дня', 'дней') + ' в месяце.' : '') : 'В этом месяце нет праздников и переносов. Нажмите на день, чтобы узнать подробности.';
         }
-        var stats = $('pc-stats');
-        stats.textContent = '';
-        [[ms.work, 'рабочих', ms.short ? 'из них −1 ч: ' + ms.short : ''], [ms.off, 'выходных', '', 'hol'], [pcFmtH(ms.h40), 'часов · 40ч', '36ч: ' + pcFmtH(ms.h36) + ' · 24ч: ' + pcFmtH(ms.h24)]].forEach(function (s) {
-          var c = el('div', 'pc-stat' + (s[3] ? ' ' + s[3] : ''));
-          c.appendChild(el('b', '', String(s[0])));
-          c.appendChild(el('span', '', s[1]));
-          if (s[2]) c.appendChild(el('small', '', s[2]));
-          stats.appendChild(c);
-        });
         var nb = $('pc-next-box');
         nb.textContent = '';
         var ev = pcNextEvents();
@@ -3745,32 +3735,6 @@
         if (mk.notes) parts.push(mk.notes + ' ' + plural(mk.notes, 'заметка', 'заметки', 'заметок'));
         cell.title += ' · ' + parts.join(', ');
         if (cell.hasAttribute('aria-label')) cell.setAttribute('aria-label', cell.title);
-      }
-      function tasksDayDetail(box, y, m, d) {
-        if (!tasks || !$('tasks-card')) return;
-        var iso = y + '-' + pad(m + 1) + '-' + pad(d);
-        var list = tForDay(iso).sort(function (a, b) { return tSortKey(a) < tSortKey(b) ? -1 : 1; });
-        var wrap = el('div', 'pc-day-tasks');
-        if (list.length) {
-          var ul = el('ul');
-          list.slice(0, 5).forEach(function (t) {
-            var li = el('li', (tIsTask(t) ? 'p-' + (t.prio || 'normal') : 'note') + (t.done ? ' done' : ''));
-            li.appendChild(el('span', 'mk', tIsTask(t) ? (t.done ? '✓' : '•') : '✎'));
-            li.appendChild(el('span', '', (t.time ? t.time + ' ' : '') + cut(t.text, 70)));
-            ul.appendChild(li);
-          });
-          if (list.length > 5) ul.appendChild(el('li', 'more', 'и ещё ' + (list.length - 5)));
-          wrap.appendChild(ul);
-        }
-        var add = el('button', 'mini-btn', list.length ? 'Дела дня →' : '+ Дело на этот день');
-        add.type = 'button';
-        add.addEventListener('click', function () {
-          tasksSetDay(iso);
-          if (!list.length) { setTaskMode('task'); $('tasks-due').value = iso; tasksHintDate(); $('tasks-text').focus(); }
-          $('tasks-card').scrollIntoView({ block: 'nearest', behavior: settings.motion ? 'smooth' : 'auto' });
-        });
-        wrap.appendChild(add);
-        box.appendChild(wrap);
       }
       // Клик по дню в календаре показывает его дела в карточке «Дела».
       function tasksPickDay(x) {
