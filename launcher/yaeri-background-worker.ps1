@@ -25,4 +25,5 @@ if ($RequestFile) {
 } else {
     Invoke-Y3Tick
     Invoke-YEvolutionTick
+    if ($ResultFile) { Write-YJsonFile $ResultFile @{ ok = $true } }
 }
