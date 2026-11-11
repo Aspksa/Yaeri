@@ -9,14 +9,14 @@ function Import-YLife {
     $script:YLife = @{
         version = 1
         offline = [bool](Get-YValue $raw 'offline' $false)
-        localModel = [string](Get-YValue $raw 'localModel' 'qwen2.5:3b')
+        localModel = [string](Get-YValue $raw 'localModel' 'yaeri-local')
         language = [string](Get-YValue $raw 'language' 'gentle')
         nickname = [string](Get-YValue $raw 'nickname' '')
         forecasts = (Get-YEvoArray (Get-YValue $raw 'forecasts' @()))
         tools = (Get-YEvoArray (Get-YValue $raw 'tools' @()))
     }
     if (@('gentle','playful','practical','quiet') -notcontains $script:YLife.language) { $script:YLife.language = 'gentle' }
-    if ($script:YLife.localModel -notmatch '^[a-zA-Z0-9_./:-]{1,80}$') { $script:YLife.localModel = 'qwen2.5:3b' }
+    if ($script:YLife.localModel -notmatch '^[a-zA-Z0-9_./:-]{1,80}$') { $script:YLife.localModel = 'yaeri-local' }
 }
 function Save-YLife {
     while ($script:YLife.forecasts.Count -gt 120) { $script:YLife.forecasts.RemoveAt(0) }
@@ -31,7 +31,7 @@ function Set-YLifeSettings($Req) {
     if (Test-YKey $Req 'offline') { $script:YLife.offline = [bool]$Req.offline }
     if (Test-YKey $Req 'localModel') {
         $model = ([string]$Req.localModel).Trim()
-        if ($model -notmatch '^[a-zA-Z0-9_./:-]{1,80}$') { throw (New-YError 400 'Укажите корректный идентификатор локальной модели Ollama.') }
+        if ($model -notmatch '^[a-zA-Z0-9_./:-]{1,80}$') { throw (New-YError 400 'Укажите имя локальной GGUF-модели, заданное параметром -a в llama.cpp.') }
         $script:YLife.localModel = $model
     }
     if (Test-YKey $Req 'language') {
@@ -240,7 +240,7 @@ function Invoke-YLifeTool($Req) {
 function Get-YLifeView {
     return @{
         offline = $script:YLife.offline; localModel = $script:YLife.localModel
-        localProvider = 'Ollama, 127.0.0.1:11434 (только после установки)'
+        localProvider = 'Встроенный поиск; необязательно llama.cpp GGUF на 127.0.0.1:9931'
         language = $script:YLife.language; nickname = $script:YLife.nickname
         world = Get-YLifeWorld
         review = Get-YLifeReview
