@@ -302,6 +302,7 @@ function Add-YRating($Req) {
         }
     }
     Save-YUnderstanding
+    try { Add-YE5Rating $id $score $note } catch { Write-Warning ('Evolution 5.0: ' + $_.Exception.Message) }
     # Explicit owner ratings adjust bounded source rankings; negative feedback
     # is not evidence that an individual memory is false.
     try {
