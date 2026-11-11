@@ -29,6 +29,8 @@ $script:Utf8 = [System.Text.UTF8Encoding]::new($false)
 . (Join-Path $PSScriptRoot 'yaeri-vector-index.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-life.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-local.ps1')
+. (Join-Path $PSScriptRoot 'yaeri-evolution5.ps1')
+. (Join-Path $PSScriptRoot 'yaeri-evolution5-eval.ps1')
 
 # ---------- Вспомогательный код на C# (компилируется встроенным .NET, установка не нужна) ----------
 if (-not ('YaeriVec' -as [type])) {
@@ -350,6 +352,7 @@ function Import-YStore {
     Import-YDepth
     Import-YVector
     Import-YLife
+    Import-YE5
 }
 
 function Save-YHistory { Write-YJsonFile $script:HistoryFile @{ version = 1; messages = $script:History.ToArray() } }
@@ -895,6 +898,12 @@ function Invoke-YChat($Req) {
         $model = [string]$script:YLife.localModel
         $route = 'local'
     } elseif ($autoModel -and $smartModel -and $smartModel -ne $model -and (Test-YComplex $text)) { $model = $smartModel; $route = 'smart' }
+    $e5Mode = Get-YE5DepthDecision $text
+    if ($useSoul -and $script:YE5.enabled -and -not $script:YLife.offline -and
+        $autoModel -and $smartModel -and $e5Mode.mode -ne 'quick' -and $model -ne $smartModel) {
+        $model = $smartModel
+        $route = 'smart'
+    }
     $name = ([string](Get-YValue $Req 'name' '')).Trim()
     if ($name.Length -gt 30) { $name = $name.Substring(0, 30) }
     if (-not $name) { $name = 'Хозяин' }
@@ -1050,6 +1059,10 @@ function Invoke-YChat($Req) {
             if ($smartModel -and $autoModel -and $model -ne $smartModel) { $model = $smartModel; $route = 'smart' }
         }
     }
+    if ($useSoul -and $script:YE5.enabled) {
+        $e5Prompt=Get-YE5StrategyPrompt $text
+        if ($e5Prompt) { $system += [Environment]::NewLine + [Environment]::NewLine + $e5Prompt }
+    }
     if ($innerVoice) {
         $system += "`n`nПеред ответом коротко подумай про себя в теге <мысли>…</мысли> (2–4 фразы): что хозяин сейчас чувствует и чего хочет, " +
             'что ты о нём помнишь, что подсказывают твоя душа и память, нет ли противоречий. Затем дай сам ответ. Хозяин твои мысли не видит, не упоминай их.'
@@ -1144,6 +1157,11 @@ function Invoke-YChat($Req) {
     }
 
     $answer = @{ id = (New-YId); role = 'assistant'; text = $content; t = (Get-YNow); model = $model; sources = $sources.ToArray(); route = $route }
+    if ($script:YE5.enabled -and $useSoul) {
+        $answer['reasoningMode'] = [string]$e5Mode.mode
+        $answer['evolutionMethods'] = @($script:YE5.strategies | Where-Object { $_.status -eq 'active' } |
+            Select-Object -Last 2 | ForEach-Object { [string]$_.method })
+    }
     if ($inner) { $answer['inner'] = $(if ($inner.Length -gt 1500) { $inner.Substring(0, 1500) + '…' } else { $inner }) }
     if ($checked) { $answer['checked'] = $checked }
     if ($null -ne $futures) { $answer['futures'] = @{ question = $futures.question; options = $futures.options; lean = $futures.lean } }
@@ -1261,6 +1279,24 @@ function Invoke-YApi([string]$Method, [string]$Path, [string]$BodyText) {
         'GET /api/brain'            { return Get-YBrain }
         'GET /api/evidence'         { return Get-YEvidenceView }
         'GET /api/vector'           { return Get-YVectorView }
+        'GET /api/evolution5'       { return Get-YE5View }
+        'POST /api/evolution5/settings'     { return Set-YE5Settings $req }
+        'POST /api/evolution5/cycle'        { return Invoke-YE5Cycle $true }
+        'POST /api/evolution5/gap'          { return Add-YE5Gap ([string](Get-YValue $req 'question' '')) ([string](Get-YValue $req 'domain' 'research')) 'owner' }
+        'POST /api/evolution5/hypothesis'   { return Add-YE5Hypothesis $req }
+        'POST /api/evolution5/experiment'   { return Add-YE5Experiment $req }
+        'POST /api/evolution5/experiment/review' { return Set-YE5Experiment $req }
+        'POST /api/evolution5/concept'      { return Add-YE5Concept $req }
+        'POST /api/evolution5/concept/decide' { return Set-YE5Concept $req }
+        'POST /api/evolution5/goal'         { return Add-YE5Goal $req }
+        'POST /api/evolution5/goal/step'    { return Set-YE5Goal $req }
+        'POST /api/evolution5/strategy'     { return Add-YE5Strategy $req }
+        'POST /api/evolution5/strategy/decide' { return Set-YE5Strategy $req }
+        'POST /api/evolution5/calibration'  { return Add-YE5Calibration $req }
+        'POST /api/evolution5/calibration/review' { return Set-YE5Calibration $req }
+        'POST /api/evolution5/transfer'     { return Add-YE5Transfer $req }
+        'POST /api/evolution5/transfer/decide' { return Set-YE5Transfer $req }
+        'POST /api/evolution5/research'     { return Invoke-YE5Research $req }
         'GET /api/life'             { return Get-YLifeView }
         'POST /api/life/settings'   { return Set-YLifeSettings $req }
         'POST /api/life/local/test' { return Test-YLocalEngine }
