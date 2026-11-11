@@ -24,7 +24,10 @@ if ($RequestFile) {
     }
 } else {
     Invoke-Y3Tick
+    $script:Cur.ran = ''
     if (-not [bool]$script:YLife.offline -and (Test-YConfigured)) { Invoke-YEvolutionTick }
+    # Скука и творчество — только если важных фоновых дел в этот раз не было.
+    if (-not [string]$script:Cur.ran) { [void](Invoke-YFreeTick) }
     if ($script:YE5.enabled -and $script:YE5.periodic) { [void](Invoke-YE5Cycle) }
     if ($ResultFile) { Write-YJsonFile $ResultFile @{ ok = $true } }
 }

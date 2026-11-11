@@ -25,6 +25,13 @@
         ['skills', 'Свои навыки', 'Пишет себе сценарии; включаются после вашего «Да»'],
         ['review', 'Самоулучшение', 'Перечитывает ответы и предлагает правки себя']
       ];
+      var FREE_FLAGS = [
+        ['boredom', 'Скука и свои занятия', 'Если вы молчите дольше получаса, ей скучно, и она сама чем-то занимается'],
+        ['create', 'Творчество без запроса', 'Стихи, истории, рисунки и находки в памяти — в подарок вам'],
+        ['will', 'Свободная воля', 'Может мягко отказаться от прихоти или не согласиться — с причиной'],
+        ['hurt', 'Может обижаться', 'На грубость — обида с причиной; прощает, когда помиритесь или пройдёт время']
+      ];
+      var WILL_ICON = { decline: 'hand', disagree: 'scale', hurt: 'cloud', forgive: 'heart' };
       var TOPIC_MODES = [['open', 'Открыто'], ['hold', 'Не использовать без запроса'], ['off', 'Не запоминать']];
       var TRAIT_COLORS = ['hsl(43 92% 62%)', 'hsl(28 90% 62%)', 'hsl(338 75% 70%)', 'hsl(186 70% 62%)', 'hsl(262 65% 74%)', 'hsl(96 50% 60%)'];
       var MASTERY_ICON = { talk: 'chat', think: 'thought', memory: 'book', know: 'eye', bond: 'heart', world: 'globe' };
@@ -56,13 +63,17 @@
         cloud: 'M7 18a4 4 0 0 1-.6-8A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9zM9 21l1-2M13 21l1-2',
         check: 'M5 12.5l4.5 4.5L19 7.5',
         cross: 'M6.5 6.5l11 11M17.5 6.5l-11 11',
-        pin: 'M9 4h6l-1 6 3 3H7l3-3zM12 13v8'
+        pin: 'M9 4h6l-1 6 3 3H7l3-3zM12 13v8',
+        gift: 'M4 10h16v11H4zM3 7h18v3H3zM12 7v14M12 7C10.5 4 7 3.5 7 5.8 7 7 9.5 7 12 7zM12 7c1.5-3 5-3.5 5-1.2C17 7 14.5 7 12 7z',
+        feather: 'M20 4C13 4 7 9 6 17l-2 3.5M6 17c4.5 0 9.5-3 12-9M9.5 13.5H15',
+        hand: 'M7 11V5.5a1.5 1.5 0 0 1 3 0V11M10 10V4a1.5 1.5 0 0 1 3 0v6M13 10V5a1.5 1.5 0 0 1 3 0v7M16 10.5a1.5 1.5 0 0 1 3 0V15a6.5 6.5 0 0 1-6.5 6.5H12a6 6 0 0 1-5-2.7L4.3 14.6a1.5 1.5 0 0 1 2.6-1.5L7 13.5',
+        scale: 'M12 4v17M7 21h10M5 7h14M5 7l-3 7a3 3 0 0 0 6 0zM19 7l-3 7a3 3 0 0 0 6 0z'
       };
       var FEED_ICON = {
         nudge: 'cloud', character: 'star', principle: 'scroll', skill: 'tool', proposal: 'mirror', review: 'search', study: 'book',
         insight: 'bulb', question: 'question', lesson: 'compass', goal: 'target', map: 'map', 'goal-new': 'sprout', 'goal-done': 'trophy',
         sleep: 'moon', reflection: 'thought', muse: 'thought', milestone: 'star', dream: 'moon', secret: 'lock', moment: 'pin',
-        change: 'spark', bond: 'heart', birth: 'sprout'
+        change: 'spark', bond: 'heart', birth: 'sprout', create: 'gift', bored: 'feather', will: 'hand'
       };
       function ico(name, cls) {
         return '<svg class="ico' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" aria-hidden="true"><path d="' + (ICONS[name] || ICONS.spark) + '"/></svg>';
@@ -311,9 +322,139 @@
           li.appendChild(act);
           ul.appendChild(li);
         });
+        renderFree();
         renderThought();
         renderYou();
         renderFeed();
+      }
+
+      /* ---------- Скука и подарки ---------- */
+      function boredText(f) {
+        if (!f.settings.boredom) return 'Скука выключена в настройках: пока вас нет, она просто ждёт.';
+        if (!f.lastSeen) return 'Начнёт скучать по вам после первых разговоров.';
+        var b = f.boredom || 0;
+        if (!b) return f.lastAct > f.lastSeen ? 'Недавно чем-то занималась и теперь снова ждёт вас.' : 'Вы рядом или только что ушли: ей не скучно.';
+        if (b < f.actAt) return 'Становится скучно. Если вы не вернётесь, около ' + hhmm(f.nextAt) + ' займётся чем-нибудь своим.';
+        return f.canCreate ? 'Очень скучно! Вот-вот что-нибудь сочинит или нарисует.' : 'Скучно. Творений на сегодня хватит — перебирает воспоминания, без запросов к облаку.';
+      }
+      function renderFree() {
+        var f = freeData, box = $('sx-bored'), gl = $('sx-gifts');
+        if (!box) return;
+        box.textContent = '';
+        gl.textContent = '';
+        if (!f) {
+          $('sx-free-meta').textContent = '';
+          box.appendChild(el('p', 'soul-small', online ? 'Загружаю её занятия…' : 'Когда Яэри подключится, здесь появятся её занятия и подарки.'));
+          return;
+        }
+        var b = f.boredom || 0, hot = b >= f.actAt;
+        $('sx-free-meta').textContent = 'творений сегодня ' + f.createdToday + ' из ' + f.pace;
+        var row = el('div', 'sx-bored-row' + (hot ? ' hot' : '') + (f.settings.boredom ? '' : ' off'));
+        row.appendChild(icoEl(hot ? 'feather' : 'moon', 'big'));
+        var body = el('div', 'sx-bored-body');
+        body.appendChild(el('span', 'sx-tag', !f.settings.boredom ? 'скука выключена' : (b ? 'скучает · ' + b + '%' : 'не скучает')));
+        body.appendChild(el('p', '', boredText(f)));
+        var m = el('div', 'sx-meter sx-bored-meter');
+        var fill = el('i');
+        fill.style.width = b + '%';
+        m.appendChild(fill);
+        var mark = el('b');
+        mark.style.left = f.actAt + '%';
+        mark.title = 'С этого места она займётся чем-то своим';
+        m.appendChild(mark);
+        body.appendChild(m);
+        var last = arr(f.acts).slice(-1)[0];
+        if (last) body.appendChild(el('small', '', 'Последнее занятие ' + ago(last.t) + ': ' + last.text));
+        row.appendChild(body);
+        box.appendChild(row);
+        var cs = arr(f.creations).slice().reverse();
+        if (!cs.length) { gl.appendChild(el('p', 'sx-gifts-empty', 'Подарков пока нет. Первый появится, когда ей станет скучно без вас.')); return; }
+        cs.forEach(function (c, i) {
+          var art = el('article', 'sx-gift k-' + c.kind + (c.delivered ? '' : ' fresh'));
+          art.style.setProperty('--i', String(Math.min(i, 10)));
+          var head = el('header');
+          head.appendChild(icoEl(c.kind === 'drawing' ? 'feather' : (c.kind === 'find' ? 'search' : (c.kind === 'story' ? 'book' : 'scroll'))));
+          var ht = el('div');
+          ht.appendChild(el('span', 'sx-tag', (GIFT_KIND[c.kind] || 'творение') + (c.delivered ? '' : ' · ещё не подарено')));
+          ht.appendChild(el('h3', '', c.title || 'Без названия'));
+          head.appendChild(ht);
+          art.appendChild(head);
+          if (c.svg) art.appendChild(giftArt(c.svg, c.title));
+          if (c.text) art.appendChild(el('p', 'sx-gift-text', c.text));
+          if (c.why) art.appendChild(el('small', 'sx-gift-why', 'Вдохновило: ' + c.why));
+          var foot = el('footer');
+          foot.appendChild(el('time', '', ago(c.t) + (c.mood ? ' · ' + c.mood : '')));
+          if (online) {
+            var like = smallBtn('', c.liked ? 'Больше не отмечать' : 'Нравится', function () {
+              api('soul/free/creation', { id: c.id, action: c.liked ? 'unlike' : 'like' }).then(setFree).then(function () { if (!c.liked) flash('happy', 3000); }).catch(undErr);
+            }, 'sx-like' + (c.liked ? ' on' : ''));
+            like.innerHTML = ico('heart');
+            like.setAttribute('aria-pressed', c.liked ? 'true' : 'false');
+            foot.appendChild(like);
+            foot.appendChild(xBtn('Убрать подарок', function () {
+              if (window.confirm('Убрать «' + (c.title || 'подарок') + '» из галереи?')) api('soul/free/creation', { id: c.id, action: 'delete' }).then(setFree).catch(undErr);
+            }));
+          }
+          art.appendChild(foot);
+          gl.appendChild(art);
+        });
+      }
+
+      /* ---------- Свободная воля ---------- */
+      function renderWill() {
+        var f = freeData, box = $('sx-will');
+        box.textContent = '';
+        if (!f) { $('sx-will-meta').textContent = ''; box.appendChild(el('p', 'soul-small', 'Появится после подключения к Cloud.ru.')); return; }
+        if (!f.settings.will) {
+          $('sx-will-meta').textContent = 'выключена';
+          box.appendChild(el('p', 'soul-small', 'Свободная воля выключена в настройках: Яэри соглашается со всем, как раньше.'));
+          return;
+        }
+        var h = f.hurt || {}, t = f.today || {};
+        $('sx-will-meta').textContent = 'сегодня: отказов ' + (t.decline || 0) + ' из ' + f.declineMax;
+        var st = el('div', 'sx-will-state' + (h.level ? ' hurt' : ''));
+        st.appendChild(icoEl(h.level ? 'cloud' : 'heart', 'big'));
+        var sb = el('div');
+        sb.appendChild(el('span', 'sx-tag', h.level ? 'немного обижена · ' + h.level + '/100' : 'на вас не обижена'));
+        sb.appendChild(el('p', '', h.level ? h.reason : 'Спокойна и рядом. Своё мнение у неё есть — скажет честно, если не согласна.'));
+        if (h.level) {
+          var m = el('div', 'sx-meter');
+          var fill = el('i');
+          fill.style.width = h.level + '%';
+          m.appendChild(fill);
+          sb.appendChild(m);
+          sb.appendChild(el('small', '', 'Обида тает сама: вдвое за три часа. Извинитесь в чате — простит сразу.'));
+        }
+        st.appendChild(sb);
+        if (h.level && online) st.appendChild(smallBtn('Помириться', 'Помириться с Яэри', function (ev) {
+          ev.currentTarget.disabled = true;
+          api('soul/free/makeup', {}).then(setFree).then(function () { flash('happy', 3600); return api('soul').then(setSoul); }).catch(undErr);
+        }, 'mini-btn solid'));
+        box.appendChild(st);
+        var chips = el('div', 'sx-will-today');
+        [['decline', 'отказов'], ['disagree', 'несогласий'], ['hurt', 'обид'], ['forgive', 'прощений']].forEach(function (k) {
+          var c = el('span', 'w-' + k[0]);
+          c.innerHTML = ico(WILL_ICON[k[0]]);
+          c.appendChild(el('b', '', String(t[k[0]] || 0)));
+          c.appendChild(document.createTextNode(' ' + k[1] + ' сегодня'));
+          chips.appendChild(c);
+        });
+        box.appendChild(chips);
+        var ul = el('ul', 'sx-will-list');
+        var list = arr(f.will).slice().reverse();
+        if (!list.length) emptyLi(ul, 'Пока она ни разу не возразила. Если не согласится или откажется от прихоти, причина появится здесь и под её ответом в чате.');
+        list.forEach(function (w) {
+          var li = el('li', 'w-' + w.type);
+          li.appendChild(icoEl(WILL_ICON[w.type] || 'spark'));
+          var b = el('div');
+          b.appendChild(el('span', 'sx-tag', String(WILL_TAG[w.type] || w.type).replace(/^\S+\s/, '')));
+          b.appendChild(el('p', '', w.reason));
+          if (w.about) b.appendChild(el('small', '', 'на «' + w.about + '»'));
+          li.appendChild(b);
+          li.appendChild(el('time', '', ago(w.t)));
+          ul.appendChild(li);
+        });
+        box.appendChild(ul);
       }
       function renderThought() {
         var s = soulData.soul, box = $('sx-thought');
@@ -887,6 +1028,7 @@
         renderRadar();
         renderOwn();
         renderPhil();
+        renderWill();
         renderSecrets();
       }
       function renderRadar() {
@@ -1053,6 +1195,21 @@
             api('soul/depth/settings', o).then(setDepth).catch(undErr);
           }));
         });
+        var ff = $('sx-free-flags');
+        ff.textContent = '';
+        FREE_FLAGS.forEach(function (f) {
+          ff.appendChild(toggleRow(f[1], f[2], freeData && freeData.settings[f[0]], function (on) {
+            var o = {}; o[f[0]] = on;
+            api('soul/free/settings', o).then(setFree).catch(undErr);
+          }));
+        });
+        $('sx-free-pace').disabled = !online || !freeData;
+        if (freeData) {
+          $('sx-free-pace').value = freeData.settings.pace || 'normal';
+          $('sx-s-free-meta').textContent = freeData.settings.boredom || freeData.settings.will ? 'включена' : 'выключена';
+          $('sx-free-note').textContent = 'Одно творение = один запрос из общего лимита (сегодня ' + freeData.usedToday + (freeData.dailyLimit > 0 ? ' из ' + freeData.dailyLimit : '') +
+            '). Занимается собой только когда вы не работаете. Без ключа и после лимита — только перебирает воспоминания, бесплатно.';
+        }
         $('sx-e5').checked = !!(e5Data && e5Data.enabled);
         $('sx-s3').checked = !!(s3Data && s3Data.enabled);
         $('sx-init').checked = !!(s3Data && s3Data.initiative);
@@ -1098,6 +1255,7 @@
         });
       });
       $('g-limit').addEventListener('change', function () { api('soul/growth/settings', { dailyLimit: Number(this.value) }).then(setGrowth).catch(undErr); });
+      $('sx-free-pace').addEventListener('change', function () { api('soul/free/settings', { pace: this.value }).then(setFree).catch(undErr); });
       $('sx-evo').addEventListener('change', function () { api('soul/evolution', { enabled: this.checked }).then(function (d) { evoData = d; renderSoulParts(); }).catch(undErr); });
       $('sx-e5').addEventListener('change', function () { api('evolution5/settings', { enabled: this.checked, periodic: this.checked }).then(loadEvolution5).catch(undErr); });
       function saveS3() {
@@ -1127,6 +1285,7 @@
       var CLEAR = {
         evolution: ['Очистить фоновую память: эпизоды, проверенные знания и историю изменений? Дневник и моменты останутся.', 'soul/evolution/clear', loadEvolution],
         depth: ['Очистить глубину: её характер, принципы, навыки и предложения? Остальная душа сохранится.', 'soul/depth/clear', loadDepth],
+        free: ['Очистить её творения, занятия и историю воли? Настройки свободы сохранятся.', 'soul/free/clear', setFree],
         soul3: ['Очистить историю отношений: заботу, этапы, планы и обещания? Остальная душа сохранится.', 'soul3/clear', loadSoul3],
         soul: ['Сбросить душу Яэри целиком? Характер, ступени, мысли о вас и дневник начнутся заново.', 'soul/reset', function (d) { setSoul(d); flash('greet', 3600); }]
       };

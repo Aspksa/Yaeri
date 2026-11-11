@@ -24,6 +24,9 @@ jobs:
       - name: Soul Depth logic tests
         shell: cmd
         run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\test-soul-depth.ps1
+      - name: Soul freedom (boredom, gifts, free will) tests
+        shell: cmd
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\test-soul-free.ps1
       - name: Local API request guard tests
         shell: cmd
         run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\test-local-request.ps1
