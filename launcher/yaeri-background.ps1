@@ -48,13 +48,13 @@ function Start-YBackground([string]$Method = '', [string]$Path = '', [string]$Bo
         $stderr = Join-Path $base 'stderr.log'
         $args = '-NoLogo -NoProfile -ExecutionPolicy Bypass -File "' + $worker + '" -SnapshotDir "' + $snapshot + '"'
         $id = ''
-        $resultFile = ''
+        $resultFile = Join-Path $base 'result.json'
+        $args += ' -ResultFile "' + $resultFile + '"'
         if ($isApi) {
             $id = [guid]::NewGuid().ToString('N')
             $requestFile = Join-Path $base 'request.json'
-            $resultFile = Join-Path $base 'result.json'
             [System.IO.File]::WriteAllText($requestFile, (ConvertTo-YJson @{ method = $Method; path = $Path; body = $Body }), $script:Utf8)
-            $args += ' -RequestFile "' + $requestFile + '" -ResultFile "' + $resultFile + '"'
+            $args += ' -RequestFile "' + $requestFile + '"'
         }
         $process = Start-Process -FilePath (Join-Path $PSHOME 'powershell.exe') -ArgumentList $args -PassThru -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr
         $script:YBgJob = @{
@@ -104,14 +104,15 @@ function Complete-YBackground {
     $kind = [string](Get-YValue $job 'kind' 'tick')
     try {
         $packet = $null
-        if ($kind -eq 'api') {
-            $packet = Read-YJsonFile ([string]$job.resultFile)
+        $resultPath = [string](Get-YValue $job 'resultFile' '')
+        if ($resultPath) {
+            $packet = Read-YJsonFile $resultPath
             if ($null -eq $packet -or -not [bool](Get-YValue $packet 'ok' $false)) {
-                $message = [string](Get-YValue $packet 'error' 'Длительная AI-задача завершилась без результата.')
+                $message = [string](Get-YValue $packet 'error' 'AI-задача завершилась без отметки об успехе.')
                 throw $message
             }
         }
-        if ($proc.ExitCode -ne 0) {
+        if ($null -ne $proc.ExitCode -and [int]$proc.ExitCode -ne 0) {
             $errPath = Join-Path $job.base 'stderr.log'
             $detail = if (Test-Path -LiteralPath $errPath) { [System.IO.File]::ReadAllText($errPath) } else { '' }
             throw ('Background worker failed (' + $proc.ExitCode + '): ' + $detail.Substring(0, [Math]::Min(300, $detail.Length)))
