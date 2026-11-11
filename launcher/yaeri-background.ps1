@@ -26,6 +26,7 @@ function Test-YAsyncApiRoute([string]$Method, [string]$Path) {
         'POST /api/chat', 'GET /api/models', 'POST /api/models/refresh',
         'POST /api/config/test', 'POST /api/docs', 'POST /api/reindex',
         'POST /api/vector/search', 'POST /api/life/local/test',
+        'POST /api/evolution5/research',
         'POST /api/soul/reflect', 'POST /api/soul/sleep',
         'POST /api/soul/care', 'POST /api/soul/share',
         'POST /api/soul3/plans', 'POST /api/soul/growth/run',
@@ -35,8 +36,9 @@ function Test-YAsyncApiRoute([string]$Method, [string]$Path) {
 function Start-YBackground([string]$Method = '', [string]$Path = '', [string]$Body = '') {
     if ($null -ne $script:YBgJob) { return $false }
     $isApi = [bool]$Method
-    if (-not $isApi -and [bool]$script:YLife.offline) { return $false }
-    if (-not $isApi -and -not (Test-YConfigured) -and -not [bool]$script:Y3.initiative) { return $false }
+    $localCycle=[bool]($script:YE5.enabled -and $script:YE5.periodic)
+    if (-not $isApi -and [bool]$script:YLife.offline -and -not $localCycle) { return $false }
+    if (-not $isApi -and -not (Test-YConfigured) -and -not [bool]$script:Y3.initiative -and -not $localCycle) { return $false }
     $base = Join-Path $script:DataDir ('.bg-work-' + [guid]::NewGuid().ToString('N'))
     $snapshot = Join-Path $base 'snapshot'
     [void][System.IO.Directory]::CreateDirectory($snapshot)

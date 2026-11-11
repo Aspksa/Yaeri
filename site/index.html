@@ -746,6 +746,100 @@
           </div>
           <div class="card-foot"><span>Фоновые размышления идут, только когда вас нет рядом, «умной» моделью и в общем дневном лимите запросов</span></div>
         </section>
+        <section class="card wide" aria-labelledby="e5-title">
+          <div class="card-head"><h2 id="e5-title">Evolution 5.0 · развитие интеллекта</h2><span class="card-meta" id="e5-meta">Обучение через проверки</span></div>
+          <div class="card-body">
+            <label class="toggle server-only"><span class="t-text"><span class="t-name">Развитие методов мышления</span><span class="t-desc">Учебные цели, гипотезы, проверяемые стратегии и защита от ухудшений</span></span>
+              <input class="vh" type="checkbox" role="switch" id="e5-enabled"><span class="track" aria-hidden="true"></span></label>
+            <label class="toggle server-only"><span class="t-text"><span class="t-name">Автоматический дневной обзор</span><span class="t-desc">Локальная проверка прогресса без дополнительного платного запроса; только пока работает Yaeri.bat</span></span>
+              <input class="vh" type="checkbox" role="switch" id="e5-periodic"><span class="track" aria-hidden="true"></span></label>
+            <p id="e5-status" class="soul-small" role="status">Загружаю эволюцию…</p>
+            <p id="e5-summary" class="soul-small"></p>
+            <div class="d-acts server-only">
+              <button class="mini-btn" type="button" id="e5-cycle">Проверить развитие сейчас (бесплатно)</button>
+              <button class="mini-btn" type="button" id="e5-refresh">Обновить результаты</button>
+            </div>
+            <span class="soul-lbl soul-gap">25–26 · Долгосрочные цели и приоритеты</span>
+            <form id="e5-goal-form">
+              <label class="lbl" for="e5-goal-title">Новая цель Яэри</label>
+              <input class="field" id="e5-goal-title" maxlength="170" placeholder="Например: научиться проверять причинные утверждения" required>
+              <label class="lbl" for="e5-goal-domain">Область обучения</label>
+              <select class="field" id="e5-goal-domain"><option value="learning">Обучение</option><option value="research">Исследование</option><option value="reasoning">Мышление</option><option value="communication">Общение</option><option value="planning">Планы</option><option value="creativity">Творчество</option></select>
+              <button class="mini-btn" type="submit">Поставить учебную цель</button>
+            </form>
+            <ul class="insights" id="e5-goals"></ul>
+            <span class="soul-lbl soul-gap">9, 13, 14 · Обучение, пробелы и исследования</span>
+            <form id="e5-gap-form">
+              <label class="lbl" for="e5-gap">Что Яэри пока не знает?</label>
+              <input class="field" id="e5-gap" maxlength="220" placeholder="Как проверить надёжность таких выводов?" required>
+              <button class="mini-btn" type="submit">Добавить исследовательский вопрос</button>
+            </form>
+            <ul class="soul-simple" id="e5-gaps"></ul>
+            <span class="soul-lbl soul-gap">10–11 · Причинные гипотезы и мысленные эксперименты</span>
+            <form id="e5-hypothesis-form">
+              <label class="lbl" for="e5-cause">Возможная причина</label>
+              <input class="field" id="e5-cause" maxlength="180" required placeholder="Например: частые уточнения">
+              <label class="lbl" for="e5-effect">Предполагаемое следствие</label>
+              <input class="field" id="e5-effect" maxlength="180" required placeholder="Ответы становятся точнее">
+              <button type="submit" class="mini-btn">Создать непроверенную гипотезу</button>
+            </form>
+            <ul class="insights" id="e5-hypotheses"></ul>
+            <form id="e5-experiment-form">
+              <label class="lbl" for="e5-experiment-hypothesis">Гипотеза для проверки</label>
+              <select class="field" id="e5-experiment-hypothesis"></select>
+              <label class="lbl" for="e5-alternative">Альтернативное объяснение</label>
+              <input class="field" id="e5-alternative" maxlength="230" required>
+              <label class="lbl" for="e5-prediction">Что ожидается?</label>
+              <input class="field" id="e5-prediction" maxlength="230" required>
+              <label class="lbl" for="e5-measure">Как проверить результат?</label>
+              <input class="field" id="e5-measure" maxlength="170" required>
+              <button type="submit" class="mini-btn">Запланировать мысленный эксперимент</button>
+            </form>
+            <ul class="insights" id="e5-experiments"></ul>
+            <span class="soul-lbl soul-gap">12 · Новые концепции из нескольких источников</span>
+            <ul class="insights" id="e5-concepts"></ul>
+            <span class="soul-lbl soul-gap">33–36, 38 · Стратегии, тесты и защита от деградации</span>
+            <form id="e5-strategy-form">
+              <label class="lbl" for="e5-method">Новый метод мышления</label>
+              <select class="field" id="e5-method">
+                <option value="evidence-first">Проверять источники</option><option value="alternatives">Сравнивать альтернативы</option>
+                <option value="clarify">Уточнять неопределённое</option><option value="concise">Кратко отвечать на простое</option>
+                <option value="cross-domain">Переносить подходы</option><option value="deep-analysis">Глубокий анализ</option>
+                <option value="uncertainty">Калибровать уверенность</option><option value="causal-check">Проверять причинность</option>
+              </select>
+              <label class="lbl" for="e5-strategy-domain">Область применения</label>
+              <select class="field" id="e5-strategy-domain"><option value="reasoning">Мышление</option><option value="research">Исследование</option><option value="communication">Общение</option><option value="learning">Обучение</option><option value="planning">Планы</option><option value="creativity">Творчество</option></select>
+              <button class="mini-btn" type="submit">Предложить и протестировать метод</button>
+            </form>
+            <ul class="insights" id="e5-strategies"></ul>
+            <span class="soul-lbl soul-gap">16 · Перенос полезного метода в новую область</span>
+            <form id="e5-transfer-form">
+              <label class="lbl" for="e5-transfer-strategy">Одобренный метод</label>
+              <select class="field" id="e5-transfer-strategy"></select>
+              <label class="lbl" for="e5-transfer-domain">Новая область</label>
+              <select class="field" id="e5-transfer-domain"><option value="research">Исследование</option><option value="reasoning">Мышление</option><option value="communication">Общение</option><option value="learning">Обучение</option><option value="planning">Планы</option><option value="creativity">Творчество</option></select>
+              <label class="lbl" for="e5-transfer-example">Как проверить перенос?</label>
+              <input class="field" id="e5-transfer-example" maxlength="190" required>
+              <button type="submit" class="mini-btn">Предложить перенос</button>
+            </form>
+            <ul class="insights" id="e5-transfers"></ul>
+            <span class="soul-lbl soul-gap">37 · Калибровка уверенности по реальным исходам</span>
+            <p class="soul-small" id="e5-calibration-meta">Для оценки качества вероятностей нужны проверенные исходы.</p>
+            <form id="e5-calibration-form">
+              <label class="lbl" for="e5-calibration-claim">Проверяемый прогноз</label>
+              <input class="field" id="e5-calibration-claim" maxlength="210" required>
+              <label class="lbl" for="e5-percent">Предполагаемая вероятность (%)</label>
+              <input class="field" id="e5-percent" type="number" min="5" max="95" value="70" required>
+              <button type="submit" class="mini-btn">Записать вероятность</button>
+            </form>
+            <ul class="insights" id="e5-calibrations"></ul>
+            <span class="soul-lbl soul-gap">35 · Память об ошибках мышления</span>
+            <ul class="soul-simple" id="e5-errors"></ul>
+            <span class="soul-lbl soul-gap">40 · Журнал непрерывной эволюции</span>
+            <ul class="soul-simple" id="e5-logs"></ul>
+          </div>
+          <div class="card-foot"><span>Методы не меняют веса языковой модели. Прогнозы и гипотезы остаются непроверенными до подтверждения; новые правила применяются только после одобрения.</span></div>
+        </section>
       </div>
     </main>
 
