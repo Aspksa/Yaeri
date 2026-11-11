@@ -134,7 +134,7 @@
             promises.appendChild(li);
           });
           if (!promises.children.length) promises.appendChild(el('li', 'soul-small', 'Пока нет обещаний.'));
-        }).then(loadEvidence).then(loadVector2).catch(soul3Error);
+        }).then(loadEvidence).then(loadVector2).then(loadLife4).catch(soul3Error);
       }
       function saveSoul3Settings() {
         return api('soul3/settings', {
