@@ -27,6 +27,8 @@ $script:Utf8 = [System.Text.UTF8Encoding]::new($false)
 . (Join-Path $PSScriptRoot 'yaeri-relationship.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-vector.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-vector-index.ps1')
+. (Join-Path $PSScriptRoot 'yaeri-life.ps1')
+. (Join-Path $PSScriptRoot 'yaeri-local.ps1')
 
 # ---------- Вспомогательный код на C# (компилируется встроенным .NET, установка не нужна) ----------
 if (-not ('YaeriVec' -as [type])) {
@@ -347,6 +349,7 @@ function Import-YStore {
     Import-YUnderstanding
     Import-YDepth
     Import-YVector
+    Import-YLife
 }
 
 function Save-YHistory { Write-YJsonFile $script:HistoryFile @{ version = 1; messages = $script:History.ToArray() } }
@@ -422,6 +425,10 @@ try {
 } catch { }
 
 function Invoke-CloudRu([string]$Method, [string]$Path, $Body) {
+    # Offline is an explicit privacy boundary, not merely a different chat model.
+    if ($null -ne $script:YLife -and [bool]$script:YLife.offline) {
+        throw (New-YError 503 'Автономный режим включён: обращения к Cloud.ru запрещены.')
+    }
     if (-not (Test-YConfigured)) { throw (New-YError 503 'Ключ Cloud.ru не задан. Введите его в настройках Яэри (⚙ → Подключение).') }
     $request = [System.Net.HttpWebRequest]::Create($script:Config.baseUrl + $Path)
     $request.Method = $Method
@@ -481,6 +488,9 @@ function Invoke-CloudRu([string]$Method, [string]$Path, $Body) {
 }
 
 function Get-YEmbeddings([string[]]$Texts) {
+    if ($null -ne $script:YLife -and [bool]$script:YLife.offline) {
+        throw (New-YError 503 'В автономном режиме используется локальный поиск по словам.')
+    }
     $out = New-Object System.Collections.Generic.List[string]
     $batchSize = 16
     for ($i = 0; $i -lt $Texts.Count; $i += $batchSize) {
@@ -565,11 +575,11 @@ function Get-YStatus {
     $reindex = $false
     try { $reindex = -not (Test-YIndexReady) } catch { $reindex = $false }
     return @{
-        configured     = (Test-YConfigured)
+        configured     = ((Test-YConfigured) -or [bool]$script:YLife.offline)
         keySource      = (Get-YKeySource)
-        provider       = 'Cloud.ru Foundation Models'
-        chatModel      = [string]$script:Config.chatModel
-        smartModel     = [string]$script:Config.smartModel
+        provider       = $(if ($script:YLife.offline) { 'Ollama (localhost, автономно)' } else { 'Cloud.ru Foundation Models' })
+        chatModel      = $(if ($script:YLife.offline) { [string]$script:YLife.localModel } else { [string]$script:Config.chatModel })
+        smartModel     = $(if ($script:YLife.offline) { '' } else { [string]$script:Config.smartModel })
         embeddingModel = [string]$script:Config.embeddingModel
         docs           = $script:Docs.Count
         chunks         = $script:Chunks.Count
@@ -583,6 +593,10 @@ function Get-YStatus {
 }
 
 function Get-YModelList {
+    if ($script:YLife.offline) {
+        $m = [string]$script:YLife.localModel
+        return @{ models = @($m); default = $m; error = '' }
+    }
     $default = [string]$script:Config.chatModel
     $fallback = New-Object System.Collections.Generic.List[string]
     $fallback.Add($default)
@@ -876,7 +890,10 @@ function Invoke-YChat($Req) {
     $autoModel = [bool](Get-YValue $Req 'autoModel' $true)
     $route = 'fast'
     $smartModel = [string]$script:Config.smartModel
-    if ($autoModel -and $smartModel -and $smartModel -ne $model -and (Test-YComplex $text)) { $model = $smartModel; $route = 'smart' }
+    if ($script:YLife.offline) {
+        $model = [string]$script:YLife.localModel
+        $route = 'local'
+    } elseif ($autoModel -and $smartModel -and $smartModel -ne $model -and (Test-YComplex $text)) { $model = $smartModel; $route = 'smart' }
     $name = ([string](Get-YValue $Req 'name' '')).Trim()
     if ($name.Length -gt 30) { $name = $name.Substring(0, 30) }
     if (-not $name) { $name = 'Хозяин' }
@@ -1002,6 +1019,9 @@ function Invoke-YChat($Req) {
         if ($soulRecall.Count -gt 0) { $system += "`n`nСейчас тебе вспомнилось (твои воспоминания, близкие к вопросу):`n" + ($soulRecall -join "`n") }
     }
     if ($useSoul -and $script:Y3.enabled) {
+        $system += [Environment]::NewLine + (Get-YLifeLanguagePrompt)
+        $worldContext = Get-YLifeWorldPrompt
+        if ($worldContext) { $system += [Environment]::NewLine + $worldContext }
         $system += [Environment]::NewLine + [Environment]::NewLine + 'Твоя эволюция Soul 3.0:' + [Environment]::NewLine + (Get-Y3Prompt) +
             [Environment]::NewLine + (Get-Y3ReasonPrompt)
         $curiosity = Get-YCuriosityPrompt
@@ -1023,7 +1043,7 @@ function Invoke-YChat($Req) {
             $depthSkills = @($depth.skills)
         }
         # Симуляция будущего: перед советом прогоняем варианты развития «умной» моделью.
-        try { $futures = Invoke-YDepthForesight $text } catch { $futures = $null }
+        if (-not $script:YLife.offline) { try { $futures = Invoke-YDepthForesight $text } catch { $futures = $null } }
         if ($null -ne $futures) {
             $system += [Environment]::NewLine + [Environment]::NewLine + (Get-YForesightPrompt $futures)
             if ($smartModel -and $autoModel -and $model -ne $smartModel) { $model = $smartModel; $route = 'smart' }
@@ -1042,6 +1062,10 @@ function Invoke-YChat($Req) {
             'в самом конце ответа добавь тег <память раздел="Раздел">короткий факт одной фразой</память>, по одному тегу на факт. ' +
             'Разделы: Профиль, Планы, Задачи, Люди, Проекты, Предпочтения или свой. ' +
             'Не повторяй то, что уже есть в рабочей памяти, и не упоминай теги в тексте: пользователь их не видит.'
+    }
+    if ($useSoul) {
+        $system += [Environment]::NewLine + 'Если по повторяющейся просьбе хозяина нужен новый безопасный инструмент, можешь предложить один из видов: world-map, memory-search, memory-quality, notes-list, plans-overview.' +
+            ' Только предложение, никогда не исполняй инструмент сама. Запиши в конце ответа ОДИН тег <tool-proposal kind="memory-search" name="Название">Причина предложения</tool-proposal> (kind из списка выше), если это действительно нужно; иначе не добавляй.'
     }
     if ($contextLines.Count -gt 0) {
         $system += "`n`nКонтекст (документы пользователя и память о прошлых разговорах):`n`n" + ($contextLines -join "`n`n")
@@ -1062,7 +1086,7 @@ function Invoke-YChat($Req) {
         temperature = [double]$script:Config.temperature
         max_tokens  = [int]$script:Config.maxTokens
     }
-    $resp = Invoke-CloudRu 'POST' '/chat/completions' $body
+    $resp = $(if ($script:YLife.offline) { Invoke-YLocalChat $messages.ToArray() } else { Invoke-CloudRu 'POST' '/chat/completions' $body })
     $choice = @(Get-YValue $resp 'choices' @())
     $content = ''
     if ($choice.Count -gt 0) { $content = [string](Get-YValue (Get-YValue $choice[0] 'message' @{}) 'content' '') }
@@ -1074,6 +1098,22 @@ function Invoke-YChat($Req) {
     $content = ([regex]::Replace($content, $innerRx, '')).Trim()
     # Модель забыла закрыть тег или ответила только мыслями: тогда показываем текст как ответ.
     if (-not $content -and $inner) { $content = $inner; $inner = '' }
+
+    # The model may SUGGEST a declarative read-only tool, never execute it.
+    # Every tool remains proposed until the owner explicitly approves it.
+    $proposedTools = New-Object System.Collections.Generic.List[object]
+    $toolRx = '(?is)<tool-proposal\s+kind="([a-z-]{3,30})"\s+name="([^"<>]{1,60})"\s*>(.*?)</tool-proposal>'
+    if ($useSoul) {
+        foreach ($tag in @([regex]::Matches($content, $toolRx) | Select-Object -First 1)) {
+            try {
+                $t = Add-YLifeToolProposal $tag.Groups[1].Value $tag.Groups[2].Value $tag.Groups[3].Value 'yaeri'
+                if ($null -ne $t) { $proposedTools.Add($t) }
+            } catch { }
+        }
+    }
+    $content = ([regex]::Replace($content, $toolRx, '')).Trim()
+    # Strip malformed proposals instead of displaying control markup as prose.
+    $content = ([regex]::Replace($content, '(?is)<tool-proposal\b[^>]*>.*?(?:</tool-proposal>|$)', '')).Trim()
 
     # Теги <память> модель ставит в конце ответа: забираем факты в рабочую память и убираем теги из текста.
     $newNotes = New-Object System.Collections.Generic.List[object]
@@ -1090,7 +1130,7 @@ function Invoke-YChat($Req) {
 
     # Самопроверка: не противоречит ли ответ тому, что Яэри знает о хозяине.
     $checked = ''
-    if ($selfCheck -and $content.Length -ge 40) {
+    if ($selfCheck -and -not $script:YLife.offline -and $content.Length -ge 40) {
         try {
             $reviewContext = $(if ($useSoul) { (Get-YSoulPrompt $name) + [Environment]::NewLine + (Get-Y3Prompt) + [Environment]::NewLine + (Get-Y3ReasonPrompt) } else { '' })
             $fix = Invoke-YSelfCheck $text $content $notesText $reviewContext
@@ -1103,9 +1143,11 @@ function Invoke-YChat($Req) {
     if ($checked) { $answer['checked'] = $checked }
     if ($null -ne $futures) { $answer['futures'] = @{ question = $futures.question; options = $futures.options; lean = $futures.lean } }
     if ($depthSkills.Count -gt 0) { $answer['skills'] = $depthSkills }
+    if ($proposedTools.Count -gt 0) { $answer['proposedTools'] = $proposedTools.ToArray() }
     if ($newNotes.Count -gt 0) { $answer['remembered'] = @($newNotes | ForEach-Object { [string]$_['text'] }) }
     [void]$script:History.Add($answer)
     Save-YHistory
+    if ($null -ne $futures) { try { Add-YLifeForecast $answer $futures } catch { } }
     $soulInfo = $null
     if ($useSoul) {
         try { $soulInfo = Add-YSoulExchange } catch { $soulInfo = $null }
@@ -1116,12 +1158,19 @@ function Invoke-YChat($Req) {
         try {
             $memText = 'Пользователь: ' + $text + "`nЯэри: " + $content
             if ($memText.Length -gt 3000) { $memText = $memText.Substring(0, 3000) }
-            $vec = (Get-YEmbeddings @($memText))[0]
-            if ($script:MemoryModel -ne [string]$script:Config.embeddingModel) {
-                if ($script:Memory.Count -eq 0) { $script:MemoryModel = [string]$script:Config.embeddingModel }
+            $vec = ''
+            if (-not $script:YLife.offline) {
+                $vec = (Get-YEmbeddings @($memText))[0]
             }
-            if ($script:MemoryModel -eq [string]$script:Config.embeddingModel) {
-                [void]$script:Memory.Add(@{ id = (New-YId); t = [long]$userMsg.t; text = $memText; vec = $vec; vecHash = (Get-YVectorFingerprint $memText); evidence = (New-YEvidence 'conversation' ([string]$userMsg.id) '' 0) })
+            if ($script:MemoryModel -ne [string]$script:Config.embeddingModel -and $script:Memory.Count -eq 0) {
+                $script:MemoryModel = [string]$script:Config.embeddingModel
+            }
+            if ($script:YLife.offline -or $script:MemoryModel -eq [string]$script:Config.embeddingModel) {
+                [void]$script:Memory.Add(@{
+                    id = (New-YId); t = [long]$userMsg.t; text = $memText; vec = $vec
+                    vecHash = $(if ($vec) { Get-YVectorFingerprint $memText } else { '' })
+                    evidence = (New-YEvidence 'conversation' ([string]$userMsg.id) '' 0)
+                })
                 Save-YMemory
             }
         } catch {
@@ -1131,7 +1180,7 @@ function Invoke-YChat($Req) {
 
     # Structured autobiographical learning is queued for the server-owned scheduler.
     # The queue never changes the result of a successful chat request.
-    try { Add-YEvolutionTurn $userMsg $answer ($useSoul -and $remember) } catch {
+    try { Add-YEvolutionTurn $userMsg $answer ($useSoul -and $remember -and -not $script:YLife.offline) } catch {
         Write-Warning ('Не удалось поставить обучение Яэри в очередь: ' + $_.Exception.Message)
     }
     return @{ user = $userMsg; reply = $answer; note = $ragNote; notes = $newNotes.ToArray(); soul = $soulInfo }
@@ -1207,6 +1256,13 @@ function Invoke-YApi([string]$Method, [string]$Path, [string]$BodyText) {
         'GET /api/brain'            { return Get-YBrain }
         'GET /api/evidence'         { return Get-YEvidenceView }
         'GET /api/vector'           { return Get-YVectorView }
+        'GET /api/life'             { return Get-YLifeView }
+        'POST /api/life/settings'   { return Set-YLifeSettings $req }
+        'POST /api/life/local/test' { return Test-YLocalOllama }
+        'POST /api/life/forecast'   { return Set-YLifeForecast $req }
+        'POST /api/life/tools/propose' { return (Add-YLifeToolProposal ([string](Get-YValue $req 'kind' '')) ([string](Get-YValue $req 'name' '')) ([string](Get-YValue $req 'why' '')) 'owner') }
+        'POST /api/life/tools/decide'  { return Set-YLifeTool $req }
+        'POST /api/life/tools/run'     { return Invoke-YLifeTool $req }
         'POST /api/vector/settings' { return Set-YVector $req }
         'POST /api/vector/search'   { return Search-YVector $req }
         'POST /api/config'         { return Set-YConfig $req }
