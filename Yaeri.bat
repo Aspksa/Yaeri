@@ -17,6 +17,12 @@ if errorlevel 1 (
     exit /b 1
 )
 
+rem Fast-forward updates before launch; safe to skip when offline, in a ZIP, or with local edits.
+set "YAERI_UPDATER=%~dp0launcher\yaeri-update.ps1"
+if exist "%YAERI_UPDATER%" (
+    powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%YAERI_UPDATER%"
+)
+
 powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%YAERI_SCRIPT%"
 set "YAERI_EXIT=%ERRORLEVEL%"
 
