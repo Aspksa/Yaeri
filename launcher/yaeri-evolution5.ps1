@@ -40,6 +40,18 @@ function Save-YE5 {
     }
     Write-YJsonFile $script:YE5File (ConvertTo-YPlain $plain)
 }
+function Test-YE5RecordVisible($Item) {
+    # Re-evaluate current privacy settings on read, not only on save.
+    foreach ($key in @('title','question','cause','effect','idea','note','claim','text','example','next','prediction','alternative','basis')) {
+        $value=[string](Get-YValue $Item $key '')
+        if ($value -and -not (Test-YTopicVisible $value)) { return $false }
+    }
+    return $true
+}
+function Get-YE5Visible([string]$Collection,[int]$Top = 30) {
+    if ($script:YE5Collections -notcontains $Collection) { return @() }
+    return @($script:YE5[$Collection] | Where-Object { Test-YE5RecordVisible $_ } | Select-Object -Last $Top)
+}
 function Get-YE5Item([string]$Collection,[string]$Id) {
     if ($script:YE5Collections -notcontains $Collection) { return $null }
     foreach ($x in $script:YE5[$Collection]) { if ([string]$x.id -eq $Id) { return $x } }
@@ -195,7 +207,7 @@ function Set-YE5Goal($Req) {
     return Get-YE5View
 }
 function Get-YE5RankedGoals {
-    return @($script:YE5.goals | Where-Object { @('proposed','active','paused') -contains [string]$_.status } |
+    return @(Get-YE5Visible 'goals' 50 | Where-Object { @('proposed','active','paused') -contains [string]$_.status } |
         ForEach-Object { @{ id=$_.id; title=$_.title; status=$_.status; priority=(Get-YE5Priority $_); impact=$_.impact; urgency=$_.urgency; effort=$_.effort; next=$_.next; progress=$_.progress; domain=$_.domain } } |
         Sort-Object priority -Descending)
 }
