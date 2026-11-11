@@ -224,7 +224,7 @@ function Search-YVector($Req) {
             score = [Math]::Round([double]$h.Score, 3)
             semantic = [double]$h.Semantic; lexical = [double]$h.Lexical
             source = Get-YEvidenceLabel $c.ref
-            associated = [bool]$h.Associated; t = [long]$c.t
+            associated = [bool]$h.Associated; emotion = [string]$c.emotion; t = [long]$c.t
         })
     }
     $script:YVector.searches = [long]$script:YVector.searches + 1
