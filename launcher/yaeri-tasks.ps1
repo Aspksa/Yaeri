@@ -141,7 +141,32 @@ function Get-YTaskDays($Days) {
     return $out.ToArray()
 }
 
-function Get-YTasksPrompt($Days, [string]$Today = '') {
+function Get-YTaskStems([string]$Text) {
+    # Грубая основа слова: первые 5 букв, чтобы «отчёт», «отчёта», «отчётом» совпадали.
+    $out = New-Object System.Collections.Generic.HashSet[string]
+    foreach ($m in [regex]::Matches(([string]$Text).ToLowerInvariant().Replace('ё', 'е'), '[\p{L}\d]{4,}')) {
+        $w = $m.Value
+        [void]$out.Add($(if ($w.Length -gt 5) { $w.Substring(0, 5) } else { $w }))
+    }
+    return , $out
+}
+
+function Find-YTaskMatches([string]$Query, $Skip, [int]$Top = 5) {
+    # Записи из «Дел», похожие на вопрос: заметки и дела, которых нет в основном списке подсказки.
+    $q = Get-YTaskStems $Query
+    if ($q.Count -eq 0) { return @() }
+    $hits = New-Object System.Collections.Generic.List[object]
+    foreach ($t in $script:Tasks) {
+        if ($Skip.Contains([string]$t['id'])) { continue }
+        $words = Get-YTaskStems ([string]$t['text'])
+        $score = 0
+        foreach ($w in $words) { if ($q.Contains($w)) { $score++ } }
+        if ($score -gt 0) { $hits.Add([pscustomobject]@{ Item = $t; Score = $score }) }
+    }
+    return @($hits | Sort-Object -Property Score -Descending | Select-Object -First $Top | ForEach-Object { $_.Item })
+}
+
+function Get-YTasksPrompt($Days, [string]$Today = '', [string]$Query = '') {
     $days = @(Get-YTaskDays $Days)
     if (-not $Today) { $Today = $(if ($days.Count -gt 0) { [string]$days[0].d } else { [datetime]::Now.ToString('yyyy-MM-dd') }) }
     $label = @{ work = 'рабочий'; short = 'рабочий, сокращённый на час'; off = 'выходной'; hol = 'праздник'; move = 'выходной (перенос)' }
@@ -185,6 +210,20 @@ function Get-YTasksPrompt($Days, [string]$Today = '') {
             $txt = [string]$n['text']
             if ($txt.Length -gt 300) { $txt = $txt.Substring(0, 300) + '…' }
             $lines.Add('- [id ' + [string]$n['id'] + '] ' + ([regex]::Replace($txt, '\s+', ' ')) + $(if ($n['due']) { ' (к ' + (Format-YTaskDate ([string]$n['due'])) + ')' } else { '' }))
+        }
+    }
+    if ($Query) {
+        $shown = New-Object System.Collections.Generic.HashSet[string]
+        foreach ($x in @($open) + @($closed) + @($notes)) { if ($null -ne $x) { [void]$shown.Add([string]$x['id']) } }
+        $related = @(Find-YTaskMatches $Query $shown 5)
+        if ($related.Count -gt 0) {
+            $lines.Add('Похожие на вопрос записи из «Дел» (старые заметки и дела):')
+            foreach ($r in $related) {
+                $txt = [regex]::Replace([string]$r['text'], '\s+', ' ')
+                if ($txt.Length -gt 300) { $txt = $txt.Substring(0, 300) + '…' }
+                $kind = $(if ([string]$r['kind'] -eq 'note') { 'заметка' } elseif ([bool]$r['done']) { 'выполнено' } else { 'дело' })
+                $lines.Add('- [id ' + [string]$r['id'] + '] ' + $kind + ': ' + $txt + $(if ($r['due']) { ' (' + (Format-YTaskDate ([string]$r['due'])) + ')' } else { '' }))
+            }
         }
     }
     return ($lines -join "`n")

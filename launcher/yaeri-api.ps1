@@ -1078,7 +1078,7 @@ function Invoke-YChat($Req) {
     $useTasks = [bool](Get-YValue $Req 'tasks' $true)
     if ($useTasks) {
         $tasksText = ''
-        try { $tasksText = Get-YTasksPrompt (Get-YValue $Req 'days' @()) } catch { $tasksText = '' }
+        try { $tasksText = Get-YTasksPrompt (Get-YValue $Req 'days' @()) '' $text } catch { $tasksText = '' }
         if ($tasksText) { $system += "`n`nДела хозяина (модуль «Дела» в командном центре):`n" + $tasksText + "`n" + (Get-YTasksRules) }
     }
     if ($autoNotes) {

@@ -69,7 +69,7 @@
         renderSoul();
       }
       function renderSoulMini() {
-        if (!soulData) return;
+        if (!soulData || !$('soul-mini-stage')) return;
         var s = soulData.soul;
         $('soul-mini-tails').innerHTML = tailsSvg(soulData.level);
         $('soul-mini-stage').textContent = soulData.stage;

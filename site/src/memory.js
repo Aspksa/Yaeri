@@ -174,6 +174,7 @@
 
       /* ---------- Сводка, журнал, часы ---------- */
       function renderStats() {
+        if (!$('st-notes')) return;
         $('st-notes').textContent = brainData.notes.length;
         $('st-mem').textContent = brainData.memoryTotal || brainData.memory.length;
         $('st-docs').textContent = brainData.docs.length;
@@ -547,13 +548,13 @@
         var wd = (now.getDay() + 6) % 7;
         $('now-weekday').textContent = WEEK_FULL[wd];
         $('now-date').textContent = now.getDate() + ' ' + MONTHS_GEN[now.getMonth()] + ' ' + now.getFullYear();
-        // Стрелки и дуга прошедшей части суток.
-        var sec = now.getSeconds(), min = now.getMinutes() + sec / 60, hr = (now.getHours() % 12) + min / 60;
-        $('hand-s').style.transform = 'rotate(' + sec * 6 + 'deg)';
-        $('hand-m').style.transform = 'rotate(' + min * 6 + 'deg)';
-        $('hand-h').style.transform = 'rotate(' + hr * 30 + 'deg)';
+        // Цифры-барабаны и полоса прошедшей части суток.
+        var sec = now.getSeconds();
+        var digits = pad(now.getHours()) + pad(now.getMinutes()) + pad(sec);
+        ['h1', 'h2', 'm1', 'm2', 's1', 's2'].forEach(function (k, i) { clockDigit(k, +digits.charAt(i)); });
+        clockFx(now);
         var dayPart = (now.getHours() * 3600 + now.getMinutes() * 60 + sec) / 86400;
-        $('dial-day').style.strokeDashoffset = String(578.05 * (1 - dayPart));
+        $('dday-fill').style.width = (dayPart * 100).toFixed(2) + '%';
         if (sec === 0 || !$('now-meta').firstChild) {
           var start = new Date(now.getFullYear(), 0, 1);
           var doy = Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - start) / 864e5) + 1;
@@ -570,25 +571,59 @@
         if (now.getSeconds() === 0) renderCalendar();
       }
       try { $('now-zone').textContent = (Intl.DateTimeFormat().resolvedOptions().timeZone || '').split('/').pop().replace(/_/g, ' '); } catch (error) { /* Без часового пояса. */ }
-      (function () {
-        // Деления циферблата: 60 штрихов и цифры 12, 3, 6, 9.
-        var g = $('dial-ticks'), NS = 'http://www.w3.org/2000/svg';
-        for (var i = 0; i < 60; i++) {
-          var big = i % 5 === 0;
-          var ln = document.createElementNS(NS, 'line');
-          ln.setAttribute('x1', '100'); ln.setAttribute('x2', '100');
-          ln.setAttribute('y1', big ? '16' : '17'); ln.setAttribute('y2', big ? '25' : '21');
-          ln.setAttribute('class', 'tick' + (big ? ' big' : ''));
-          ln.setAttribute('transform', 'rotate(' + i * 6 + ' 100 100)');
-          g.appendChild(ln);
+      // Перекидные часы: верхняя половина старой цифры падает, снизу раскрывается новая.
+      var clockCells = {};
+      function flapHalf(cls, d) { var h = el('span', 'fl ' + cls); h.appendChild(el('b', '', String(d))); return h; }
+      each(document.querySelectorAll('.dclock .dg'), function (cell) {
+        clockCells[cell.getAttribute('data-d')] = { cell: cell, v: -1, timer: 0 };
+      });
+      function clockDigit(key, v) {
+        var c = clockCells[key];
+        if (!c || c.v === v) return;
+        var old = c.v < 0 ? v : c.v, cell = c.cell;
+        clearTimeout(c.timer);
+        cell.textContent = '';
+        cell.appendChild(flapHalf('top', v));
+        cell.appendChild(flapHalf('bot', old));
+        if (settings.motion && c.v >= 0) {
+          cell.appendChild(flapHalf('ftop', old));
+          cell.appendChild(flapHalf('fbot', v));
+          c.timer = setTimeout(function () {
+            cell.textContent = '';
+            cell.appendChild(flapHalf('top', v));
+            cell.appendChild(flapHalf('bot', v));
+          }, 620);
+        } else {
+          cell.replaceChild(flapHalf('bot', v), cell.children[1]);
         }
-        [[12, 100, 38], [3, 163, 100], [6, 100, 163], [9, 37, 100]].forEach(function (n) {
-          var t = document.createElementNS(NS, 'text');
-          t.setAttribute('x', String(n[1])); t.setAttribute('y', String(n[2]));
-          t.textContent = String(n[0]);
-          g.appendChild(t);
-        });
+        c.v = v;
+      }
+      // Шкала секунд: 60 делений, текущее светится.
+      var secTicks = [];
+      (function () {
+        var bar = $('dsecbar');
+        for (var i = 0; i < 60; i++) { var t = el('i', i % 5 === 0 ? 'q' : ''); bar.appendChild(t); secTicks.push(t); }
       }());
+      var clockLast = { sec: -1, min: -1 };
+      function clockFx(now) {
+        var s = now.getSeconds(), m = now.getMinutes();
+        if (s !== clockLast.sec) {
+          secTicks.forEach(function (t, i) { t.className = (i % 5 === 0 ? 'q' : '') + (i < s ? ' on' : '') + (i === s ? ' cur' : ''); });
+          clockLast.sec = s;
+        }
+        if (m !== clockLast.min) {
+          var box = $('dclock');
+          if (clockLast.min >= 0 && settings.motion) {
+            box.classList.remove('shine');
+            void box.offsetWidth;
+            box.classList.add('shine');
+          }
+          // Оттенок свечения по времени суток: ночь, утро, день, вечер.
+          var h = now.getHours();
+          box.setAttribute('data-part', h < 5 ? 'night' : h < 10 ? 'morning' : h < 18 ? 'day' : h < 22 ? 'evening' : 'night');
+          clockLast.min = m;
+        }
+      }
       tick();
       setInterval(tick, 1000);
 

@@ -55,6 +55,15 @@ try {
     if (-not $b.done) { throw 'Close by text failed.' }
     if (@($script:Tasks | Where-Object { $_.kind -eq 'note' }).Count -ne 2) { throw 'Note tag failed.' }
 
+    # Поиск старых записей по смыслу вопроса (основа слова).
+    for ($i = 0; $i -lt 20; $i++) { [void](Save-YTask @{ kind = 'note'; text = ('Заметка номер ' + $i) }) }
+    [void](Save-YTask @{ kind = 'note'; text = 'Пароль от вайфая на даче: лисица2026' })
+    for ($i = 0; $i -lt 16; $i++) { [void](Save-YTask @{ kind = 'note'; text = ('Свежая запись ' + $i) }) }
+    $pq = Get-YTasksPrompt $days '' 'какой там пароль от вайфая?'
+    if (-not $pq.Contains('Похожие на вопрос') -or -not $pq.Contains('лисица2026')) { throw ('Related note not found: ' + $pq) }
+    if ((Get-YTasksPrompt $days '' 'погода').Contains('Похожие на вопрос')) { throw 'Unrelated query matched.' }
+    foreach ($x in @($script:Tasks | Where-Object { $_.text -like 'Заметка номер*' -or $_.text -like 'Свежая запись*' -or $_.text -like 'Пароль*' })) { $script:Tasks.Remove($x) }
+
     # Удаление и сохранение на диск.
     $r2 = Invoke-YTaskTags ('<дело действие="удалить" id="' + $c.id + '"></дело>Удалила.')
     if ($r2.content -ne 'Удалила.' -or $null -ne (Find-YTask $c.id)) { throw 'Delete by tag failed.' }

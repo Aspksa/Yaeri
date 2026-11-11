@@ -3,10 +3,14 @@
         s = s && typeof s === 'object' ? s : {};
         var name = typeof s.name === 'string' ? s.name.trim().slice(0, 30) : '';
         function bool(k) { return typeof s[k] === 'boolean' ? s[k] : DEFAULTS[k]; }
+        // Оформление 2: по умолчанию чёрный с золотом и крупный текст (старые настройки переводятся один раз).
+        if (!s.look2) { s.accent = 'gold'; if (s.size === 'sm' || s.size === 'md') s.size = 'lg'; }
         return {
           name: name || DEFAULTS.name,
           accent: ACCENTS.indexOf(s.accent) > -1 ? s.accent : DEFAULTS.accent,
           size: SIZES.indexOf(s.size) > -1 ? s.size : DEFAULTS.size,
+          density: DENSITIES.indexOf(s.density) > -1 ? s.density : DEFAULTS.density,
+          look2: true,
           motion: bool('motion'), enter: bool('enter'), time: bool('time'),
           rag: bool('rag'), remember: bool('remember'), autoNotes: bool('autoNotes'), soul: bool('soul'), care: bool('care'), inner: bool('inner'), selfCheck: bool('selfCheck'), autoModel: bool('autoModel'),
           model: typeof s.model === 'string' ? s.model.slice(0, 120) : DEFAULTS.model
@@ -20,6 +24,7 @@
       function applySettings() {
         html.dataset.accent = settings.accent;
         html.dataset.size = settings.size;
+        html.dataset.density = settings.density;
         html.dataset.motion = settings.motion ? 'on' : 'off';
         html.dataset.time = settings.time ? 'on' : 'off';
         input.placeholder = 'Напишите Яэри';
@@ -33,6 +38,7 @@
         Object.keys(boxes).forEach(function (k) { boxes[k].checked = settings[k]; });
         each(document.querySelectorAll('input[name="accent"]'), function (r) { r.checked = r.value === settings.accent; });
         each(document.querySelectorAll('input[name="size"]'), function (r) { r.checked = r.value === settings.size; });
+        each(document.querySelectorAll('input[name="density"]'), function (r) { r.checked = r.value === settings.density; });
       }
       function changed() { store(SET_KEY, settings); applySettings(); }
 
@@ -42,6 +48,9 @@
       });
       each(document.querySelectorAll('input[name="accent"]'), function (r) {
         r.addEventListener('change', function () { if (r.checked) { settings.accent = r.value; changed(); } });
+      });
+      each(document.querySelectorAll('input[name="density"]'), function (r) {
+        r.addEventListener('change', function () { if (r.checked) { settings.density = r.value; changed(); } });
       });
       each(document.querySelectorAll('input[name="size"]'), function (r) {
         r.addEventListener('change', function () { if (r.checked) { settings.size = r.value; changed(); } });

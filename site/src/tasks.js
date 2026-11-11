@@ -3,7 +3,7 @@
       var TASKS_KEY = 'yaeri_tasks_v1';
       var TASKS_REMIND_KEY = 'yaeri_tasks_remind_v1';
       var PRIO_TEXT = { high: 'высокий', normal: 'обычный', low: 'низкий' };
-      var tasks = { items: [], loaded: false, filter: 'all', day: '', editId: '', mode: 'task' };
+      var tasks = { items: [], loaded: false, filter: 'all', day: '', editId: '', mode: 'task', query: '', week: '', fresh: {} };
 
       function tIso(dt) { return dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate()); }
       function tParse(v) { var p = String(v || '').split('-'); return p.length === 3 ? new Date(+p[0], +p[1] - 1, +p[2]) : null; }
@@ -116,6 +116,7 @@
         if (!mk) return;
         cell.classList.add('has-tasks');
         if (mk.late) cell.classList.add('has-late');
+        if (mk.high) cell.classList.add('has-high');
         var dots = el('i', 'pc-dots');
         for (var i = 0; i < Math.min(3, mk.open); i++) dots.appendChild(el('b', i === 0 && mk.high ? 'hi' : (mk.late ? 'late' : '')));
         if (!mk.open && mk.done) dots.appendChild(el('b', 'ok'));
@@ -161,6 +162,7 @@
       }
       function tasksSetDay(iso, fromCalendar) {
         tasks.day = iso || '';
+        if (iso) tasks.week = tWeekStart(iso);
         if (!fromCalendar) {
           var d = tParse(iso);
           if (d && d.getFullYear() >= PC_FIRST && d.getFullYear() <= PC_LAST) { pcState.y = d.getFullYear(); pcState.m = d.getMonth(); pcState.sel = d.getDate(); }
@@ -179,6 +181,16 @@
       function tasksFilterList() {
         var today = tToday(), week = tAddDays(today, 7);
         var list;
+        var q = tasks.query.toLowerCase().split(/\s+/).filter(Boolean);
+        if (q.length) {
+          return tasks.items.filter(function (t) {
+            var hay = (t.text + ' ' + (t.due ? tDateWords(t.due, true) : '')).toLowerCase();
+            return q.every(function (w) { return hay.indexOf(w) > -1; });
+          }).sort(function (a, b) {
+            if (!!a.done !== !!b.done) return a.done ? 1 : -1;
+            return tSortKey(a) < tSortKey(b) ? -1 : 1;
+          });
+        }
         if (tasks.day) list = tForDay(tasks.day);
         else if (tasks.filter === 'notes') list = tasks.items.filter(function (t) { return !tIsTask(t); });
         else if (tasks.filter === 'done') list = tasks.items.filter(function (t) { return tIsTask(t) && t.done; });
@@ -219,9 +231,11 @@
         }
         listBox.textContent = '';
         var list = tasksFilterList();
+        $('tasks-found').textContent = tasks.query ? 'найдено: ' + list.length : '';
+        renderTasksWeek();
         if (!list.length) {
           var empty = el('li', 'tasks-empty');
-          empty.textContent = tasks.day ? 'На этот день ничего нет. Добавьте дело формой выше.'
+          empty.textContent = tasks.query ? 'Ничего не нашлось.' : tasks.day ? 'На этот день ничего нет. Добавьте дело формой выше.'
             : ({ notes: 'Заметок пока нет.', done: 'Выполненных дел пока нет.', today: 'На сегодня дел нет. Можно выдохнуть.', week: 'На неделю ничего не запланировано.' }[tasks.filter]
               || 'Дел нет. Добавьте первое или попросите Яэри в чате: «запиши дело на завтра…»');
           listBox.appendChild(empty);
@@ -231,7 +245,8 @@
       }
       function taskRow(t, today) {
         var isTask = tIsTask(t);
-        var li = el('li', 'task ' + (isTask ? 'p-' + (t.prio || 'normal') : 'note') + (t.done ? ' done' : '') + (tLate(t) ? ' late' : '') + (t.id === tasks.editId ? ' editing' : ''));
+        var li = el('li', 'task ' + (isTask ? 'p-' + (t.prio || 'normal') : 'note') + (t.done ? ' done' : '') + (tLate(t) ? ' late' : '') + (t.id === tasks.editId ? ' editing' : '') + (tasks.fresh[t.id] ? ' fresh ' + tasks.fresh[t.id] : ''));
+        delete tasks.fresh[t.id];
         if (isTask) {
           var chk = el('button', 't-check');
           chk.type = 'button';
@@ -239,8 +254,13 @@
           chk.setAttribute('aria-checked', String(!!t.done));
           chk.setAttribute('aria-label', (t.done ? 'Вернуть в работу: ' : 'Выполнено: ') + t.text);
           chk.addEventListener('click', function () {
-            tasksSave({ id: t.id, done: !t.done }).catch(function () {});
-            if (!t.done) flash('happy', 1600);
+            var done = !t.done;
+            if (!done || !settings.motion) { tasksSave({ id: t.id, done: done }).catch(function () {}); return; }
+            // Галочка, зачёркивание — и только потом дело уходит в «Готово».
+            chk.setAttribute('aria-checked', 'true');
+            li.classList.add('completing');
+            flash('happy', 1600);
+            setTimeout(function () { tasksSave({ id: t.id, done: true }).catch(function () {}); }, 520);
           });
           li.appendChild(chk);
         } else li.appendChild(el('span', 't-note-mark', '✎'));
@@ -272,6 +292,7 @@
         if (isTask && !t.done) {
           act('→', 'На следующий рабочий день', function () {
             var base = t.due && t.due > tToday() ? t.due : tToday();
+            tasks.fresh[t.id] = 'moved';
             tasksSave({ id: t.id, due: tNextWork(base, false) }).catch(function () {});
           });
         }
@@ -347,6 +368,7 @@
         if (tasks.editId) fields.id = tasks.editId; else fields.kind = tasks.mode;
         var wasEdit = !!tasks.editId;
         tasksSave(fields).then(function (item) {
+          if (!wasEdit) { tasks.fresh[item.id] = 'added'; renderTasks(); }
           tasksFlashHint(wasEdit ? 'Сохранено.' : (item.kind === 'note' ? 'Заметка записана.' : 'Дело добавлено' + (item.due ? ' на ' + tDateWords(item.due) : '') + '.'));
           flash('happy', 1600);
         }).catch(function () {});
@@ -380,6 +402,93 @@
         var q = tasks.day ? 'Что у меня по делам на ' + tDateWords(tasks.day) + '?' : 'Что у меня по делам? Что горит в первую очередь?';
         send(q);
       });
+      $('tasks-search').addEventListener('input', function () { tasks.query = this.value.trim(); renderTasks(); });
+      $('tasks-search').addEventListener('keydown', function (e) { if (e.key === 'Escape') { this.value = ''; tasks.query = ''; renderTasks(); } });
+      $('tasks-plan').addEventListener('click', function () {
+        if (online) {
+          send('Составь план моего дня на сегодня по моим делам: разложи их по времени с учётом сроков, приоритетов и того, рабочий ли сегодня день. ' +
+            'Просроченное и важное — в начало, оставь перерыв на обед. Ответь коротко, списком «время — дело», и в конце одной фразой, что можно перенести.');
+        } else {
+          if (currentView !== 'deck') showView('deck');
+          add('user', 'План дня');
+          add('assistant', tasksLocalPlan());
+          flash('tasks', 3200);
+        }
+      });
+
+      /* План дня без сервера: фиксированное время остаётся, остальное раскладывается по слотам. */
+      function tasksLocalPlan() {
+        var today = tToday(), x = tDayInfo(today);
+        var open = tOpen();
+        var pool = open.filter(function (t) { return (t.due && t.due <= today) || (!t.due && t.prio === 'high'); });
+        if (!pool.length) {
+          var soon = open.filter(function (t) { return t.due && t.due > today; }).sort(function (a, b) { return tSortKey(a) < tSortKey(b) ? -1 : 1; })[0];
+          return 'На сегодня дел нет.' + (soon ? ' Ближайшее: «' + soon.text + '» — ' + tDateWords(soon.due, true) + '.' : '');
+        }
+        var fixed = pool.filter(function (t) { return t.due === today && t.time; }).map(function (t) { var p = t.time.split(':'); return { t: t, at: +p[0] * 60 + +p[1], len: 60 }; });
+        var rest = pool.filter(function (t) { return !(t.due === today && t.time); }).sort(function (a, b) {
+          var pa = tLate(a) ? -1 : ({ high: 0, normal: 1, low: 2 }[a.prio] || 1), pb = tLate(b) ? -1 : ({ high: 0, normal: 1, low: 2 }[b.prio] || 1);
+          return pa - pb || (tSortKey(a) < tSortKey(b) ? -1 : 1);
+        });
+        var now = new Date(), cur = Math.max(9 * 60, Math.ceil((now.getHours() * 60 + now.getMinutes()) / 30) * 30);
+        var busy = fixed.map(function (f) { return [f.at, f.at + f.len]; }).concat([[13 * 60, 14 * 60]]);
+        function free(at, len) { return busy.every(function (b) { return at + len <= b[0] || at >= b[1]; }); }
+        var slots = fixed.slice();
+        rest.forEach(function (t) {
+          var len = t.prio === 'high' || tLate(t) ? 60 : (t.prio === 'low' ? 30 : 45);
+          for (var g = 0; g < 48 && !free(cur, len); g++) cur += 15;
+          slots.push({ t: t, at: cur, len: len });
+          busy.push([cur, cur + len]);
+          cur += len;
+        });
+        slots.push({ lunch: true, at: 13 * 60, len: 60 });
+        slots.sort(function (a, b) { return a.at - b.at; });
+        function hm(m) { return pad(Math.floor(m / 60) % 24) + ':' + pad(m % 60); }
+        var lines = slots.map(function (s) {
+          if (s.lunch) return hm(s.at) + '–' + hm(s.at + s.len) + ' — обед';
+          return hm(s.at) + '–' + hm(s.at + s.len) + ' — ' + s.t.text + (tLate(s.t) ? ' (просрочено)' : (s.t.prio === 'high' ? ' (важно)' : ''));
+        });
+        var head = x && !pcIsWork(x) ? 'Сегодня ' + (x.name ? x.name.toLowerCase() : 'выходной') + ', но вот как можно успеть:' : 'План на сегодня:';
+        var low = rest.filter(function (t) { return t.prio === 'low'; })[0];
+        return head + '\n' + lines.join('\n') + (low ? '\nЕсли не успеете, «' + low.text + '» можно перенести на ' + tDateWords(tNextWork(today, false), true) + '.' : '');
+      }
+
+      /* Неделя: семь дней с делами по часам */
+      function tWeekStart(iso) { var d = tParse(iso) || new Date(); return tAddDays(tIso(d), -((d.getDay() + 6) % 7)); }
+      function renderTasksWeek() {
+        var box = $('tasks-week-days');
+        if (!box) return;
+        if (!tasks.week) tasks.week = tWeekStart(tasks.day || tToday());
+        var start = tasks.week, end = tAddDays(start, 6), today = tToday();
+        var ds = tParse(start), de = tParse(end);
+        $('tasks-week-title').textContent = ds.getMonth() === de.getMonth()
+          ? ds.getDate() + '–' + de.getDate() + ' ' + MONTHS_GEN[de.getMonth()]
+          : ds.getDate() + ' ' + MONTHS_GEN[ds.getMonth()].slice(0, 3) + ' – ' + de.getDate() + ' ' + MONTHS_GEN[de.getMonth()].slice(0, 3);
+        box.textContent = '';
+        for (var i = 0; i < 7; i++) {
+          var iso = tAddDays(start, i), x = tDayInfo(iso), d = tParse(iso);
+          var list = tForDay(iso).filter(tIsTask);
+          var open = list.filter(function (t) { return !t.done; });
+          var b = el('button', 'wk-day ' + (x ? x.type : '') + (iso === today ? ' today' : '') + (iso === tasks.day ? ' sel' : '') + (iso < today ? ' past' : ''));
+          b.type = 'button';
+          b.appendChild(el('span', 'wk-wd', WEEK[i]));
+          b.appendChild(el('b', 'wk-n', String(d.getDate())));
+          var times = open.filter(function (t) { return t.time; }).sort(function (a, c) { return a.time < c.time ? -1 : 1; });
+          var tl = el('span', 'wk-times');
+          times.slice(0, 2).forEach(function (t) { tl.appendChild(el('i', t.prio === 'high' ? 'hi' : '', t.time)); });
+          var untimed = open.length - Math.min(2, times.length);
+          if (untimed > 0) tl.appendChild(el('i', 'more', '+' + untimed));
+          if (!open.length && list.length) tl.appendChild(el('i', 'ok', '✓'));
+          b.appendChild(tl);
+          b.title = cap(tDateWords(iso, true)) + (x ? ', ' + (pcIsWork(x) ? 'рабочий' : (x.name || 'выходной')) : '') + (open.length ? ': ' + open.map(function (t) { return (t.time ? t.time + ' ' : '') + t.text; }).join('; ') : ', дел нет');
+          b.setAttribute('aria-label', b.title);
+          (function (day) { b.addEventListener('click', function () { tasksSetDay(tasks.day === day ? '' : day); }); }(iso));
+          box.appendChild(b);
+        }
+      }
+      $('tasks-week-prev').addEventListener('click', function () { tasks.week = tAddDays(tasks.week || tWeekStart(tToday()), -7); renderTasksWeek(); });
+      $('tasks-week-next').addEventListener('click', function () { tasks.week = tAddDays(tasks.week || tWeekStart(tToday()), 7); renderTasksWeek(); });
+      $('tasks-week-title').addEventListener('click', function () { tasks.week = tWeekStart(tToday()); renderTasksWeek(); });
 
       /* Связь с чатом */
       // Ближайшие дни по производственному календарю: Яэри по ним выбирает рабочие дни для сроков.

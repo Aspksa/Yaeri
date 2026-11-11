@@ -6,10 +6,11 @@
       var NOTES_KEY = 'yaeri_notes_v1';
       var SKILLS_KEY = 'yaeri_skills_v1';
       var BRAIN_KEY = 'yaeri_brain_v1';
-      var ACCENTS = ['moon', 'fire', 'sakura', 'forest', 'sky'];
-      var SIZES = ['sm', 'md', 'lg'];
+      var ACCENTS = ['gold', 'moon', 'fire', 'sakura', 'forest', 'sky'];
+      var SIZES = ['sm', 'md', 'lg', 'xl'];
+      var DENSITIES = ['tight', 'normal', 'roomy'];
       var reduce = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
-      var DEFAULTS = { name: 'Хозяин', accent: 'forest', size: 'md', motion: !reduce, enter: true, time: true, rag: true, remember: true, autoNotes: true, soul: true, care: true, inner: true, selfCheck: true, autoModel: true, model: '' };
+      var DEFAULTS = { name: 'Хозяин', accent: 'gold', size: 'lg', density: 'normal', motion: !reduce, enter: true, time: true, rag: true, remember: true, autoNotes: true, soul: true, care: true, inner: true, selfCheck: true, autoModel: true, model: '' };
 
       function $(id) { return document.getElementById(id); }
       function each(list, fn) { Array.prototype.forEach.call(list, fn); }

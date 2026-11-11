@@ -386,10 +386,12 @@
           .catch(function (e) { soulMsg(e.message, true); });
       });
       function openSoul() { showView('soul'); }
-      $('soul-mini').addEventListener('click', openSoul);
-      $('soul-mini').addEventListener('keydown', function (event) {
-        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openSoul(); }
-      });
+      if ($('soul-mini')) {
+        $('soul-mini').addEventListener('click', openSoul);
+        $('soul-mini').addEventListener('keydown', function (event) {
+          if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openSoul(); }
+        });
+      }
 
       /* Действия, которые нужны графу памяти. */
       window.YaeriApp = {
