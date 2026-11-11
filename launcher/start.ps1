@@ -8,6 +8,9 @@ try {
     # Кодировка консоли не мешает работе сервера.
 }
 
+# Refresh PATH after the batch launcher provisions runtimes through winget.
+$env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
+
 # Python and Node.js are mandatory runtimes.
 function Assert-YRuntime([string]$Name, [string[]]$Arguments, [int]$MinimumMajor) {
     $command = Get-Command $Name -ErrorAction SilentlyContinue
@@ -118,6 +121,9 @@ function Read-HttpRequest([System.Net.Sockets.TcpClient]$Client, [System.IO.Stre
 }
 
 $listener = $null
+$pythonService = $null
+$nodeService = $null
+$nodePortFile = $null
 try {
     if (-not (Test-Path -LiteralPath $indexFile -PathType Leaf)) {
         throw 'Не найден сайт: site\index.html'
