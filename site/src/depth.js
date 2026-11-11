@@ -37,7 +37,7 @@
       }
       function loadDepth() {
         if (!online) return Promise.resolve();
-        return api('soul/depth').then(setDepth).catch(function () { /* Покажем при следующем обновлении. */ });
+        return api('soul/depth').then(setDepth).then(loadEvolution5).catch(function () { /* Покажем при следующем обновлении. */ });
       }
       function depthPost(path, payload) {
         return api('soul/depth/' + path, payload).then(setDepth).catch(depthError);
