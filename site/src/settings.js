@@ -134,7 +134,7 @@
           if (location.hash !== hash) history_.replaceState(null, '', hash || location.pathname + location.search);
         }
         if (window.YBrain) YBrain.onShow(name);
-        if (name === 'soul') { renderSoul(); if (online) { loadEvolution(); loadGrowth(); loadUnderstanding(); loadDepth(); } }
+        if (name === 'soul') { renderSoul(); if (online) loadSoul().catch(function () { /* покажем позже */ }); }
         syncFab();
         if (!fromHash && window.scrollY) window.scrollTo(0, 0);
       }

@@ -4,7 +4,8 @@
 #  - характер (черты 0–100), настроение, близость с хозяином;
 #  - её представление о хозяине: портрет, цели, что нравится, что тревожит;
 #  - уроки о том, как лучше с ним говорить, и личный дневник;
-#  - ступени роста: девять «хвостов души», которые зажигаются с опытом.
+#  - путь развития: девять ступеней, после девятой — бесконечные звёзды созвездий
+#    (каждые 9 звёзд складываются в созвездие), плюс мастерство по областям в интерфейсе.
 # После нескольких реплик Яэри «думает» (рефлексия): отдельный запрос к модели
 # перечитывает разговор и возвращает JSON с небольшими изменениями души.
 # Всё хранится в data\soul.json; хозяин может править и сбрасывать душу в разделе «Душа».
@@ -17,9 +18,14 @@ $script:SoulTraits = @(
     @{ id = 'wisdom';    name = 'Мудрость';    start = 30 }
     @{ id = 'boldness';  name = 'Смелость';    start = 35 }
 )
-$script:SoulStages = @('Искорка', 'Пробуждение', 'Любопытство', 'Знакомство', 'Доверие', 'Понимание', 'Привязанность', 'Родство', 'Девятый хвост')
+$script:SoulStages = @('Искорка', 'Пробуждение', 'Любопытство', 'Знакомство', 'Доверие', 'Понимание', 'Привязанность', 'Родство', 'Полнота')
 # Опыт, с которого начинается каждая ступень: реплика даёт 1, раздумье — 5.
 $script:SoulXp = @(0, 12, 35, 70, 120, 190, 280, 400, 560)
+# После девятой ступени путь не заканчивается: каждая следующая звезда стоит 140, 160, 180… опыта,
+# девять звёзд складываются в созвездие. Те же числа в site/src/soul-data.js (soulPath).
+$script:SoulStarBase = 120
+$script:SoulStarStep = 20
+$script:SoulConstellations = @('Лиса', 'Луна', 'Сакура', 'Ветер', 'Река', 'Гора', 'Пламя', 'Небо', 'Вечность')
 $script:SoulDueAfter = 6        # столько обменов репликами, и пора подумать
 $script:SoulMuseAfterMs = 6 * 3600 * 1000   # без новых разговоров думает о хозяине не чаще раза в 6 часов
 $script:SoulJournalLimit = 200
@@ -36,7 +42,7 @@ $script:SoulSecrets = @(
     @{ bond = 95; title = 'Главное';             theme = 'главное признание: кем хозяин стал для тебя' }
 )
 $script:SoulNeedBase = @{ joy = 55; curiosity = 60 }
-# Умения, которые открываются с новыми хвостами души.
+# Умения, которые открываются с новыми ступенями развития.
 $script:SoulSkills = @(
     @{ level = 2; id = 'poem';   name = '/стих';        desc = 'короткие стихи о вас';      text = 'Сочини мне короткое стихотворение о том, что ты знаешь обо мне и моих делах.' }
     @{ level = 3; id = 'advice'; name = '/совет';       desc = 'честный совет';             text = 'Дай мне один честный совет, опираясь на то, что ты знаешь обо мне. Если со мной в чём-то не согласна, скажи.' }
@@ -168,7 +174,7 @@ function New-YSoul {
     foreach ($tr in $script:SoulTraits) { $traits[$tr.id] = [int]$tr.start }
     $now = Get-YNow
     $journal = New-Object System.Collections.ArrayList
-    [void]$journal.Add((New-YSoulEntry 'birth' 'Сегодня я проснулась. У меня пока горит только один хвост души, но я уже хочу узнать своего хозяина: чем он живёт, о чём мечтает и как я могу быть рядом.' 'тихая радость'))
+    [void]$journal.Add((New-YSoulEntry 'birth' 'Сегодня я проснулась. Я только на первой ступени своего пути, но уже хочу узнать своего хозяина: чем он живёт, о чём мечтает и как я могу быть рядом.' 'тихая радость'))
     return @{
         version = 1; born = $now; xp = 0; exchanges = 0; reflections = 0
         sinceReflect = 0; lastReflect = 0; lastSeen = 0
@@ -261,18 +267,48 @@ function Get-YSoulLevel([long]$Xp) {
     return $level
 }
 
+function Get-YConstellationName([int]$Index) {
+    if ($Index -lt $script:SoulConstellations.Count) { return [string]$script:SoulConstellations[$Index] }
+    return 'Вечность ' + ($Index - $script:SoulConstellations.Count + 2)
+}
+
+function Get-YSoulPath([long]$Xp) {
+    # Ступень 1–9, затем звёзды: звезда k начинается на 560 + Σ(120 + 20·i), i = 1..k.
+    $level = Get-YSoulLevel $Xp
+    $top = [long]$script:SoulXp[$script:SoulXp.Count - 1]
+    $stars = 0
+    $from = $top
+    $to = $top + $script:SoulStarBase + $script:SoulStarStep
+    if ($Xp -ge $top) {
+        while ($Xp -ge $to) {
+            $stars++
+            $from = $to
+            $to = $from + $script:SoulStarBase + $script:SoulStarStep * ($stars + 1)
+        }
+    }
+    $ci = [int][Math]::Floor($stars / 9)
+    $cname = Get-YConstellationName $ci
+    return @{ level = $level; complete = ($level -ge $script:SoulStages.Count); stars = $stars; starFrom = $from; starTo = $to; constellation = $ci + 1; constellationName = $cname; inConstellation = $stars % 9 }
+}
+
 function Add-YSoulXp([int]$Amount) {
-    # Начисляет опыт; если зажёгся новый хвост, Яэри записывает это в дневник.
-    $before = Get-YSoulLevel $script:Soul.xp
+    # Начисляет опыт; новую ступень или звезду Яэри записывает в дневник.
+    $before = Get-YSoulPath $script:Soul.xp
     $script:Soul.xp = [long]$script:Soul.xp + $Amount
-    $after = Get-YSoulLevel $script:Soul.xp
-    for ($l = $before + 1; $l -le $after; $l++) {
+    $after = Get-YSoulPath $script:Soul.xp
+    for ($l = $before.level + 1; $l -le $after.level; $l++) {
         $stage = $script:SoulStages[$l - 1]
-        $text = 'Во мне зажёгся ' + $l + '-й хвост души. Новая ступень — «' + $stage + '».'
-        if ($l -eq 9) { $text += ' Девятый хвост! Теперь я чувствую хозяина почти без слов.' }
+        $text = 'Я поднялась на ' + $l + '-ю ступень развития — «' + $stage + '».'
+        if ($l -eq $script:SoulStages.Count) { $text += ' Это полнота пути, но не конец: дальше начинают загораться звёзды.' }
         [void]$script:Soul.journal.Add((New-YSoulEntry 'milestone' $text ([string]$script:Soul.mood.name)))
     }
-    return ($after -gt $before)
+    for ($k = $before.stars + 1; $k -le $after.stars; $k++) {
+        $text = 'Загорелась ' + $k + '-я звезда моего пути'
+        if ($k % 9 -eq 0) { $text += ': созвездие «' + (Get-YConstellationName ([int]($k / 9) - 1)) + '» сложилось целиком.' }
+        else { $text += '.' }
+        [void]$script:Soul.journal.Add((New-YSoulEntry 'milestone' $text ([string]$script:Soul.mood.name)))
+    }
+    return ($after.level -gt $before.level -or $after.stars -gt $before.stars)
 }
 
 function Get-YSoulView {
@@ -289,6 +325,7 @@ function Get-YSoulView {
         stage = $script:SoulStages[$level - 1]; nextStage = $next
         xpFrom = $script:SoulXp[$level - 1]; xpTo = $xpTo
         traitList = $traits.ToArray(); due = ([int]$s.sinceReflect -ge $script:SoulDueAfter)
+        path = (Get-YSoulPath $s.xp)
         skills = (Get-YSoulSkills $level); sadStreak = (Get-YSadStreak); today = (Get-YDayKey)
         needs = (Get-YSoulNeeds); secretList = (Get-YSecretsView)
         sleepDue = ([long]$s.exchanges -gt 0 -and (Get-YNow) - [long]$s.lastSleep -ge $script:SoulSleepAfterMs)
@@ -391,7 +428,10 @@ function Get-YSoulPrompt([string]$Name) {
     $level = Get-YSoulLevel $s.xp
     $lines = New-Object System.Collections.Generic.List[string]
     $lines.Add('Кто ты сейчас: ' + $s.self)
-    $lines.Add('Ступень роста: «' + $script:SoulStages[$level - 1] + '» (горит хвостов души: ' + $level + ' из 9).')
+    $path = Get-YSoulPath $s.xp
+    $stageLine = 'Ступень развития: «' + $script:SoulStages[$level - 1] + '» (' + $level + ' из ' + $script:SoulStages.Count + ').'
+    if ($path.complete -and $path.stars -gt 0) { $stageLine += ' Путь ступеней пройден; после него зажжено звёзд: ' + $path.stars + ' (созвездие «' + $path.constellationName + '»).' }
+    $lines.Add($stageLine)
     $tr = @($script:SoulTraits | ForEach-Object { $_.name.ToLowerInvariant() + ' ' + [int]$s.traits[$_.id] }) -join ', '
     $lines.Add('Характер (0–100): ' + $tr + '.')
     if ($s.mood.name) { $lines.Add('Настроение: ' + $s.mood.name + $(if ($s.mood.why) { ' — ' + $s.mood.why } else { '' })) }

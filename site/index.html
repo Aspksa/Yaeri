@@ -297,149 +297,164 @@
     <!-- Аватар Яэри: открывает чат поверх любого раздела -->
     <!-- Душа -->
     <main class="view soul-view" id="soul" role="tabpanel" aria-labelledby="tab-soul" hidden>
-      <section class="card soul-hero" id="soul-hero" data-tone="calm" aria-labelledby="soul-core-title">
-        <h2 class="vh" id="soul-core-title">Яэри сейчас</h2>
-        <div class="hero-art">
-          <span class="hero-aura" aria-hidden="true"></span>
-          <div class="tails-box big" id="soul-tails" aria-hidden="true"></div>
-          <img class="hero-face" id="soul-face" src="yaeri/idle-face.webp" alt="" width="96" height="96">
+      <section class="sx-hero" id="soul-hero" data-tone="calm" aria-labelledby="soul-stage">
+        <div class="sx-sigil" id="sx-sigil" aria-hidden="true"></div>
+        <div class="sx-id">
+          <span class="sx-kicker" id="sx-kicker">Ступень 1 из 9</span>
+          <h2 class="sx-stage" id="soul-stage">Искорка</h2>
+          <div class="sx-bar" role="progressbar" aria-label="Путь до следующей ступени" aria-valuemin="0" aria-valuemax="100" id="sx-bar"><i id="sx-fill"></i></div>
+          <p class="sx-sub" id="sx-sub"></p>
+          <p class="sx-mood"><b id="soul-mood">тихая радость</b> <span id="soul-mood-why"></span></p>
         </div>
-        <div class="hero-main">
-          <div class="hero-line"><span class="hero-kicker" id="soul-level">хвост души 1 из 9</span><span class="hero-age" id="soul-age"></span></div>
-          <div class="soul-stage"><b id="soul-stage">Искорка</b></div>
-          <div class="soul-xp" role="progressbar" aria-label="Рост до следующей ступени" aria-valuemin="0" aria-valuemax="100" id="soul-xp-bar"><i id="soul-xp"></i></div>
-          <p class="soul-xp-note" id="soul-xp-note"></p>
-          <div class="hero-pills">
-            <div class="pill pill-mood"><span class="soul-lbl">Настроение</span><p class="soul-mood"><b id="soul-mood">тихая радость</b> <span id="soul-mood-why"></span></p></div>
-            <div class="pill pill-bond"><span class="soul-lbl">Близость с вами <output id="soul-bond-val">10</output></span><div class="soul-bond"><i id="soul-bond"></i></div><p class="soul-small" id="soul-bond-note"></p></div>
-          </div>
-        </div>
-        <div class="hero-stats">
-          <div class="stat"><b id="soul-st-ex">0</b><span>реплик</span></div>
-          <div class="stat"><b id="soul-st-ref">0</b><span>раздумий</span></div>
-          <div class="stat"><b id="soul-st-days">0</b><span>дней</span></div>
-        </div>
+        <div class="sx-gauges" id="sx-gauges"></div>
+        <div class="sx-stats" id="sx-stats"></div>
+        <p class="sx-demo" id="soul-demo" hidden>Демонстрация: душа начнёт расти, когда Яэри подключится к Cloud.ru.</p>
+        <p class="sx-status" id="soul-status" role="status" hidden></p>
       </section>
 
-      <div class="soul-tabs" role="tablist" aria-label="Разделы души">
-        <button type="button" class="stab" role="tab" id="stab-now" aria-controls="sp-now" aria-selected="true" data-sp="now">Сейчас</button>
-        <button type="button" class="stab" role="tab" id="stab-growth" aria-controls="sp-growth" aria-selected="false" data-sp="growth">Рост</button>
-        <button type="button" class="stab" role="tab" id="stab-memory" aria-controls="sp-memory" aria-selected="false" data-sp="memory">Память</button>
-        <button type="button" class="stab" role="tab" id="stab-world" aria-controls="sp-world" aria-selected="false" data-sp="world">Мир</button>
-        <button type="button" class="stab" role="tab" id="stab-char" aria-controls="sp-char" aria-selected="false" data-sp="char">Характер</button>
-        <button type="button" class="stab" role="tab" id="stab-depth" aria-controls="sp-depth" aria-selected="false" data-sp="depth">Глубина</button>
+      <div class="sx-tabs" role="tablist" aria-label="Разделы души">
+        <button type="button" class="stab" role="tab" id="stab-now" aria-controls="sp-now" aria-selected="true" data-sp="now"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>Обзор<span class="stab-badge" id="sx-inbox-badge" hidden></span></button>
+        <button type="button" class="stab" role="tab" id="stab-path" aria-controls="sp-path" aria-selected="false" data-sp="path"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20c4-1 5-5 9-6s5-6 9-10"/><circle cx="3" cy="20" r="1.6"/><circle cx="12" cy="14" r="1.6"/><path d="M21 4l-.9 2.6L17.5 7l2.6.9.9 2.6.9-2.6L24.5 7"/></svg>Путь</button>
+        <button type="button" class="stab" role="tab" id="stab-memory" aria-controls="sp-memory" aria-selected="false" data-sp="memory"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11l3 3v13H5z"/><path d="M8.5 10h7M8.5 13.5h7M8.5 17h4"/></svg>Память</button>
+        <button type="button" class="stab" role="tab" id="stab-char" aria-controls="sp-char" aria-selected="false" data-sp="char"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/></svg>Характер</button>
+        <button type="button" class="stab stab-gear" role="tab" id="stab-set" aria-controls="sp-set" aria-selected="false" data-sp="set"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Настройки</span></button>
       </div>
 
-      <div class="sp-grid" id="sp-now" role="tabpanel" aria-labelledby="stab-now">
-                  <div class="soul-thought" id="soul-thought" hidden>
-                    <span class="soul-lbl">Последняя мысль о вас</span>
-                    <p id="soul-thought-text"></p>
-                  </div>
-        <section class="card" aria-labelledby="soul-inside-title">
-          <div class="card-head"><h2 id="soul-inside-title">Что внутри</h2></div>
-          <div class="card-body">
-            <p class="soul-demo" id="soul-demo" hidden>Душа проснётся и начнёт расти, когда Яэри подключится к Cloud.ru. Пока это демонстрация: правки здесь не сохраняются.</p>
-            <span class="soul-lbl">Что она чувствует</span>
-            <div class="needs" id="soul-needs"></div>
-            <div class="soul-block">
-              <label class="soul-lbl" for="soul-self">Кем она себя чувствует</label>
-              <textarea class="field soul-edit" id="soul-self" rows="3" maxlength="500"></textarea>
-            </div>
-            <p class="soul-small soul-sad" id="soul-sad" hidden></p>
-            <p class="soul-small" id="soul-sleep-note"></p>
-          </div>
-          <div class="card-foot soul-actions">
-            <button class="mini-btn solid server-only" type="button" id="soul-think" hidden>Подумать сейчас</button>
-            <button class="mini-btn server-only" type="button" id="soul-sleep" hidden>Уснуть сейчас</button>
-            <button class="mini-btn server-only" type="button" id="soul-reset" hidden>Сбросить душу</button>
-            <span class="soul-status" id="soul-status" role="status"></span>
-          </div>
+      <!-- Обзор: что сейчас и что требует решения -->
+      <div class="sx-grid" id="sp-now" role="tabpanel" aria-labelledby="stab-now">
+        <section class="card sx-card wide sx-inbox" id="sx-inbox-card" aria-labelledby="sx-inbox-title" hidden>
+          <div class="card-head"><h2 id="sx-inbox-title">Ждёт вашего решения</h2><span class="card-meta" id="sx-inbox-meta"></span></div>
+          <div class="card-body"><ul class="sx-inbox-list" id="sx-inbox"></ul></div>
+          <div class="card-foot"><span>Всё, что Яэри придумала для себя сама, работает только после вашего «Да»</span></div>
         </section>
-        <section class="card" aria-labelledby="u-state-title">
-          <div class="card-head"><h2 id="u-state-title">Как она вас читает</h2><span class="card-meta" id="u-state-meta"></span></div>
-          <div class="card-body">
-            <div id="u-read"></div>
-            <span class="soul-lbl soul-gap">Последние сообщения</span>
-            <div class="tone-strip" id="u-strip" role="img" aria-label="Состояние по последним сообщениям"></div>
-          </div>
-          <div class="card-foot"><span>Грубая оценка по тексту, считается на сервере без запросов к Cloud.ru</span></div>
+        <section class="card sx-card sx-thought-card" aria-labelledby="sx-thought-title">
+          <div class="card-head"><h2 id="sx-thought-title">Её мысль</h2><span class="card-meta" id="sx-thought-meta"></span></div>
+          <div class="card-body" id="sx-thought"></div>
         </section>
-        <section class="card" aria-labelledby="soul-moods-title">
-                  <div class="card-head">
-                    <h2 id="soul-moods-title">Ваше настроение</h2>
-                    <span class="card-meta">30 дней, как его видит Яэри</span>
-                  </div>
-                  <div class="card-body"><div class="mood-strip" id="soul-moods" role="img" aria-label="Настроение по дням"></div><p class="soul-small" id="soul-moods-note"></p></div>
-                </section>
-        <section class="card" aria-labelledby="g-feed-title">
-          <div class="card-head"><h2 id="g-feed-title">Что нового</h2><span class="card-meta" id="g-feed-meta"></span></div>
-          <div class="card-body"><ul class="feed" id="g-feed"></ul></div>
-          <div class="card-foot"><span>То, чему она научилась сама, пока вас не было</span></div>
+        <section class="card sx-card" aria-labelledby="sx-you-title">
+          <div class="card-head"><h2 id="sx-you-title">Вы глазами Яэри</h2><span class="card-meta" id="sx-you-meta"></span></div>
+          <div class="card-body" id="sx-you"></div>
+          <div class="card-foot"><span>Считается на вашем компьютере по тексту и ритму сообщений</span></div>
+        </section>
+        <section class="card sx-card sx-feed-card" aria-labelledby="sx-feed-title">
+          <div class="card-head"><h2 id="sx-feed-title">Хроника</h2><span class="card-meta" id="sx-feed-meta"></span></div>
+          <div class="card-body"><ol class="sx-feed" id="sx-feed"></ol></div>
+          <div class="card-foot"><span>Что она узнала, обдумала и в чём изменилась — сама, в фоне</span></div>
         </section>
       </div>
-      <div class="sp-grid" id="sp-growth" role="tabpanel" aria-labelledby="stab-growth" hidden>
-        <section class="card wide" aria-labelledby="g-ladder-title">
-          <div class="card-head"><h2 id="g-ladder-title">Ступени развития</h2><span class="card-meta" id="g-ladder-meta"></span></div>
-          <div class="card-body"><ol class="ladder" id="g-ladder"></ol></div>
-        </section>
-        <section class="card wide" aria-labelledby="g-xp-title">
-          <div class="card-head"><h2 id="g-xp-title">Рост опыта</h2><span class="card-meta" id="g-xp-meta"></span></div>
-          <div class="card-body"><div class="chart" id="g-xp-chart" role="img" aria-label="График опыта по дням"></div><div class="t-legend" id="g-xp-legend"></div></div>
-        </section>
-        <section class="card" aria-labelledby="g-know-title">
-          <div class="card-head"><h2 id="g-know-title">Знания и память</h2><span class="card-meta" id="g-know-meta"></span></div>
-          <div class="card-body"><div class="chart" id="g-know-chart" role="img" aria-label="График знаний по дням"></div><div class="t-legend" id="g-know-legend"></div></div>
-        </section>
-        <section class="card" aria-labelledby="g-radar-title">
-          <div class="card-head"><h2 id="g-radar-title">Характер сейчас</h2><span class="card-meta">штрих — как было</span></div>
-          <div class="card-body"><div class="chart radar" id="g-radar" role="img" aria-label="Радар черт характера"></div></div>
-        </section>
-        <section class="card" aria-labelledby="g-calls-title">
-          <div class="card-head"><h2 id="g-calls-title">Фоновая работа</h2><span class="card-meta" id="g-calls-meta"></span></div>
-          <div class="card-body"><div class="chart" id="g-calls-chart" role="img" aria-label="Запросы по дням"></div><div class="t-legend" id="g-calls-legend"></div></div>
-        </section>
-        <section class="card" aria-labelledby="soul-chart-title">
-                  <div class="card-head">
-                    <h2 id="soul-chart-title">Как менялся характер</h2>
-                    <span class="card-meta" id="soul-chart-meta"></span>
-                  </div>
-                  <div class="card-body">
-                    <div class="t-chart" id="soul-chart" role="img" aria-label="График черт характера по дням"></div>
-                    <div class="t-legend" id="soul-chart-legend"></div>
-                  </div>
-                </section>
-        <section class="card wide" aria-labelledby="g-goals-title">
-          <div class="card-head"><h2 id="g-goals-title">Чему она учится</h2><span class="card-meta" id="g-goals-meta"></span></div>
-          <div class="card-body"><ul class="goals" id="g-goals"></ul></div>
-          <div class="card-foot"><span>Свои цели роста; прогресс растёт только от практики и двигает ступени</span></div>
-        </section>
-        <section class="card" aria-labelledby="g-ins-title">
-          <div class="card-head"><h2 id="g-ins-title">Догадки о вас</h2><span class="card-meta" id="g-ins-meta"></span></div>
-          <div class="card-body">
-            <ul class="insights" id="g-insights"></ul>
-            <span class="soul-lbl soul-gap">Хочет у вас узнать</span>
-            <ul class="soul-simple" id="g-questions"></ul>
+
+      <!-- Путь: ступени, звёзды после девятой, мастерство, цели, умения -->
+      <div class="sx-grid" id="sp-path" role="tabpanel" aria-labelledby="stab-path" hidden>
+        <section class="card sx-card wide" aria-labelledby="sx-path-title">
+          <div class="card-head"><h2 id="sx-path-title">Путь развития</h2><span class="card-meta" id="sx-path-meta"></span></div>
+          <div class="card-body sx-path-body">
+            <div class="sx-road" id="sx-road" role="img" aria-label="Девять ступеней пути"></div>
+            <div class="sx-sky" id="sx-sky"></div>
           </div>
-          <div class="card-foot"><span>Догадка — не факт, пока вы её не подтвердили</span></div>
+          <div class="card-foot"><span>Реплика — 1 опыт, раздумье — 5. После девятой ступени путь продолжается звёздами без конца</span></div>
         </section>
-        <section class="card" aria-labelledby="g-lessons-title">
-          <div class="card-head"><h2 id="g-lessons-title">Уроки на ошибках</h2><span class="card-meta" id="g-lessons-meta"></span></div>
-          <div class="card-body"><ul class="soul-simple" id="g-lessons"></ul></div>
-          <div class="card-foot"><span>Из ваших поправок Яэри сама выводит правила</span></div>
+        <section class="card sx-card wide" aria-labelledby="sx-mastery-title">
+          <div class="card-head"><h2 id="sx-mastery-title">Мастерство</h2><span class="card-meta">уровни без потолка</span></div>
+          <div class="card-body"><div class="sx-mastery" id="sx-mastery"></div></div>
+          <div class="card-foot"><span>Считается само из того, что у неё уже есть: разговоров, памяти, близости</span></div>
         </section>
-        <section class="card" aria-labelledby="u-rate-title">
-          <div class="card-head"><h2 id="u-rate-title">Качество ответов</h2><span class="card-meta" id="u-rate-meta"></span></div>
+        <section class="card sx-card wide" aria-labelledby="sx-xp-title">
+          <div class="card-head"><h2 id="sx-xp-title">Рост опыта</h2><span class="card-meta" id="sx-xp-meta"></span></div>
+          <div class="card-body"><div class="chart" id="sx-xp-chart" role="img" aria-label="График опыта по дням"></div></div>
+        </section>
+        <section class="card sx-card" aria-labelledby="sx-goals-title">
+          <div class="card-head"><h2 id="sx-goals-title">Её цели</h2><span class="card-meta" id="sx-goals-meta"></span></div>
+          <div class="card-body"><ul class="sx-goals" id="sx-goals"></ul></div>
+          <div class="card-foot"><span>Ставит и двигает сама; прогресс растёт только от практики</span></div>
+        </section>
+        <section class="card sx-card" aria-labelledby="sx-skills-title">
+          <div class="card-head"><h2 id="sx-skills-title">Умения</h2><span class="card-meta" id="sx-skills-meta"></span></div>
+          <div class="card-body"><ul class="sx-skills" id="sx-skills"></ul></div>
+          <div class="card-foot"><span>Открываются со ступенями; свои навыки пишет сама</span></div>
+        </section>
+      </div>
+
+      <!-- Память: что она знает о вас, моменты, дневник, правила -->
+      <div class="sx-grid" id="sp-memory" role="tabpanel" aria-labelledby="stab-memory" hidden>
+        <section class="card sx-card wide" aria-labelledby="sx-know-title">
+          <div class="card-head"><h2 id="sx-know-title">Что она знает о вас</h2><span class="card-meta" id="sx-know-meta"></span></div>
           <div class="card-body">
-            <div class="chart" id="u-rate-chart" role="img" aria-label="Оценки ответов по дням"></div>
-            <div class="t-legend" id="u-rate-legend"></div>
-            <ul class="soul-simple rate-list" id="u-rate-list"></ul>
+            <label class="soul-lbl" for="soul-portrait">Портрет</label>
+            <textarea class="field soul-edit" id="soul-portrait" rows="3" maxlength="700" placeholder="Яэри ещё только знакомится с вами. После нескольких разговоров здесь появится её портрет хозяина."></textarea>
+            <div class="sx-map" id="sx-map"></div>
+            <div id="sx-guesses"></div>
+            <section class="card sx-card" aria-labelledby="sx-moments-title">
+          <div class="card-head"><h2 id="sx-moments-title">Важные моменты</h2><span class="card-meta" id="sx-moments-meta"></span></div>
+          <div class="card-body"><ul class="sx-moments" id="sx-moments"></ul></div>
+          <div class="card-foot"><span>Что вспоминается — крепнет, что нет — бледнеет</span></div>
+        </section>
+        <section class="card sx-card" aria-labelledby="sx-rules-title">
+          <div class="card-head"><h2 id="sx-rules-title">Как с вами говорить</h2><span class="card-meta" id="sx-rules-meta"></span></div>
+          <div class="card-body">
+            <ul class="sx-list" id="sx-rules"></ul>
+            <input class="field sx-add" id="sx-rule-add" type="text" maxlength="300" placeholder="+ подсказать Яэри" aria-label="Добавить правило общения">
+            <section class="card sx-card" aria-labelledby="sx-recall-title">
+          <div class="card-head"><h2 id="sx-recall-title">Вспомнить</h2></div>
+          <div class="card-body">
+            <form class="sx-search" id="sx-recall-form">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+              <input class="field" type="search" maxlength="500" id="sx-recall" placeholder="Что мы обсуждали о…" aria-label="Поиск в воспоминаниях">
+            </form>
+            <ul class="sx-list" id="sx-recall-out"></ul>
           </div>
-          <div class="card-foot"><span>Оценки 👍 и 👎 стоят под ответами в чате</span></div>
         </section>
-<section class="card" aria-labelledby="g-ctl-title">
-          <div class="card-head"><h2 id="g-ctl-title">Фоновое обучение</h2><span class="card-meta" id="g-ctl-meta"></span></div>
+        <section class="card sx-card wide" aria-labelledby="sx-journal-title">
+          <div class="card-head"><h2 id="sx-journal-title">Дневник</h2><span class="card-meta" id="sx-journal-meta"></span></div>
+          <div class="card-body sx-journal-body">
+            <div class="sx-jside">
+              <input class="field" id="soul-jsearch" type="search" placeholder="Поиск по дневнику" aria-label="Поиск по дневнику">
+              <div class="j-cal" id="soul-jcal" aria-label="Календарь дневника"></div>
+              <p class="j-filter" id="soul-jfilter" hidden></p>
+            </div>
+            <ul class="sx-journal" id="sx-journal"></ul>
+          </div>
+        </section>
+      </div>
+          <div class="card-foot"><span>Правила она выводит сама из ваших поправок и оценок 👍 👎</span></div>
+        </section>
+      </div>
+          <div class="card-foot"><span>Только то, что вы сами сказали. × — забыть запись</span></div>
+        </section>
+      </div>
+
+      <!-- Характер: черты, кто она, принципы, секреты -->
+      <div class="sx-grid" id="sp-char" role="tabpanel" aria-labelledby="stab-char" hidden>
+        <section class="card sx-card" aria-labelledby="sx-traits-title">
+          <div class="card-head"><h2 id="sx-traits-title">Черты</h2><span class="card-meta" id="sx-traits-meta">меняются сами</span></div>
+          <div class="card-body"><div class="sx-radar" id="sx-radar" role="img" aria-label="Черты характера"></div><ul class="sx-deltas" id="sx-deltas"></ul></div>
+        </section>
+        <section class="card sx-card" aria-labelledby="sx-who-title">
+          <div class="card-head"><h2 id="sx-who-title">Кто она</h2></div>
           <div class="card-body">
-            <span class="soul-lbl">Активность</span>
+            <label class="soul-lbl" for="soul-self">Кем она себя чувствует</label>
+            <textarea class="field soul-edit" id="soul-self" rows="2" maxlength="500"></textarea>
+            <div id="sx-own"></div>
+          </div>
+        </section>
+        <section class="card sx-card" aria-labelledby="sx-phil-title">
+          <div class="card-head"><h2 id="sx-phil-title">Принципы</h2><span class="card-meta" id="sx-phil-meta"></span></div>
+          <div class="card-body"><ul class="sx-phil" id="sx-phil"></ul></div>
+          <div class="card-foot"><span>Каждый принцип вырастает из её опыта</span></div>
+        </section>
+        <section class="card sx-card wide" aria-labelledby="sx-secrets-title">
+          <div class="card-head"><h2 id="sx-secrets-title">Секреты</h2><span class="card-meta">открываются сами с близостью</span></div>
+          <div class="card-body"><ul class="sx-secrets" id="sx-secrets"></ul></div>
+        </section>
+      </div>
+
+      <!-- Настройки: все переключатели души в одном месте -->
+      <div class="sx-grid sx-settings" id="sp-set" role="tabpanel" aria-labelledby="stab-set" hidden>
+        <section class="card sx-card" aria-labelledby="sx-s-life-title">
+          <div class="card-head"><h2 id="sx-s-life-title">Фоновая жизнь</h2><span class="card-meta" id="sx-s-life-meta"></span></div>
+          <div class="card-body">
+            <label class="toggle server-only"><span class="t-text"><span class="t-name">Жить в фоне</span><span class="t-desc">Пока запущен Yaeri.bat: обдумывает опыт, проверяет знания, спит, когда вы не работаете</span></span>
+              <input class="vh" type="checkbox" role="switch" id="sx-evo"><span class="track" aria-hidden="true"></span></label>
+            <span class="soul-lbl soul-gap">Активность</span>
             <div class="seg" id="g-int" role="radiogroup" aria-label="Активность фонового обучения">
               <button type="button" role="radio" data-int="off">Выкл</button>
               <button type="button" role="radio" data-int="quiet">Тихо</button>
@@ -451,415 +466,66 @@
             <select class="field" id="g-limit">
               <option value="30">30</option><option value="60">60</option><option value="150">150</option><option value="300">300</option><option value="0">Без лимита</option>
             </select>
-            <div class="usage"><div class="soul-bond"><i id="g-usage-bar"></i></div><p class="soul-small" id="g-usage-text"></p></div>
-            <button class="mini-btn solid server-only" type="button" id="g-run" hidden>Учиться сейчас</button>
-            <p class="soul-small" id="g-ctl-status" role="status"></p>
+            <div class="sx-usage"><div class="sx-meter"><i id="g-usage-bar"></i></div><p class="soul-small" id="g-usage-text"></p></div>
           </div>
-          <div class="card-foot"><span>Каждый шаг обучения — запрос к Cloud.ru</span></div>
         </section>
-      </div>
-      <div class="sp-grid" id="sp-memory" role="tabpanel" aria-labelledby="stab-memory" hidden>
-        <section class="card" aria-labelledby="u-topics-title">
-          <div class="card-head"><h2 id="u-topics-title">Память по темам</h2></div>
-          <div class="card-body"><div class="topics" id="u-topics"></div></div>
-          <div class="card-foot"><span>Здоровье и деньги по умолчанию не используются без вашего упоминания. «Не запоминать» — тема не записывается вовсе</span></div>
-        </section>
-        <section class="card" aria-labelledby="soul-moments-title">
-                  <div class="card-head">
-                    <h2 id="soul-moments-title">Важные моменты</h2>
-                    <span class="card-meta" id="soul-moments-count"></span>
-                  </div>
-                  <div class="card-body"><ul class="moments" id="soul-moments"></ul></div>
-                  <div class="card-foot"><span>Что вспоминается — крепнет, что нет — бледнеет. 📌 — не забывать</span></div>
-                </section>
-        <section class="card grow" aria-labelledby="soul-journal-title">
-                  <div class="card-head">
-                    <h2 id="soul-journal-title">Дневник Яэри</h2>
-                    <span class="card-meta" id="soul-journal-count"></span>
-                  </div>
-                  <div class="j-tools">
-                    <input class="field" id="soul-jsearch" type="search" placeholder="Поиск по дневнику" aria-label="Поиск по дневнику">
-                    <div class="j-cal" id="soul-jcal" aria-label="Календарь дневника"></div>
-                    <p class="j-filter" id="soul-jfilter" hidden></p>
-                  </div>
-                  <div class="card-body grow"><ul class="journal" id="soul-journal"></ul></div>
-                  <div class="card-foot"><span>Яэри пишет сюда, когда размышляет о разговорах и о вас</span></div>
-                </section>
-        <section class="card" aria-labelledby="soul-evolution-title">
-                  <div class="card-head">
-                    <h2 id="soul-evolution-title">Автономная жизнь</h2>
-                    <span class="card-meta" id="soul-evo-meta">Ожидание</span>
-                  </div>
-                  <div class="card-body">
-                    <label class="toggle server-only">
-                      <span class="t-text"><span class="t-name">Фоновое обучение и память</span><span class="t-desc">Пока запущен локальный сервер: обдумывает опыт, проверяет знания и записывает перемены</span></span>
-                      <input class="vh" type="checkbox" role="switch" id="soul-evo-enabled"><span class="track" aria-hidden="true"></span>
-                    </label>
-                    <p class="soul-small" id="soul-evo-state" role="status"></p>
-                    <button type="button" class="mini-btn server-only" id="soul-evo-clear">Очистить автономную память</button>
-                    <span class="soul-lbl">Внутренние события</span>
-                    <ul class="journal" id="soul-evo-events"></ul>
-                    <span class="soul-lbl soul-gap">История личности</span>
-                    <ul class="journal" id="soul-evo-timeline"></ul>
-                    <span class="soul-lbl soul-gap">Знания и уверенность</span>
-                    <ul class="journal" id="soul-evo-facts"></ul>
-                  </div>
-                  <div class="card-foot"><span>Непроверенные факты не считаются достоверными. Фоновые задачи работают при запущенном сервере.</span></div>
-                </section>
-        <section class="card grow" aria-labelledby="soul-lessons-title">
-                  <div class="card-head">
-                    <h2 id="soul-lessons-title">Что она поняла</h2>
-                  </div>
-                  <div class="card-body grow"><div class="soul-list" data-key="lessons"><ul></ul><input class="field" type="text" maxlength="300" placeholder="+ подсказать Яэри" aria-label="Добавить урок"></div></div>
-                </section>
-      </div>
-      <div class="sp-grid" id="sp-world" role="tabpanel" aria-labelledby="stab-world" hidden>
-        <section class="card wide" aria-labelledby="u-map-title">
-          <div class="card-head"><h2 id="u-map-title">Карта человека</h2><span class="card-meta" id="u-map-meta"></span></div>
-          <div class="card-body">
-            <div class="map-grid" id="u-map"></div>
-            <span class="soul-lbl soul-gap">Чего она пока не знает</span>
-            <ul class="gaps" id="u-gaps"></ul>
-            <p class="soul-small" id="u-map-status" role="status"></p>
+        <section class="card sx-card" aria-labelledby="sx-s-depth-title">
+          <div class="card-head"><h2 id="sx-s-depth-title">Глубина мышления</h2></div>
+          <div class="card-body"><div id="sx-depth-flags"></div>
+            <label class="toggle server-only"><span class="t-text"><span class="t-name">Развитие методов мышления</span><span class="t-desc">Учебные гипотезы и проверка стратегий с защитой от ухудшений</span></span>
+              <input class="vh" type="checkbox" role="switch" id="sx-e5"><span class="track" aria-hidden="true"></span></label>
           </div>
-          <div class="card-foot"><span>Только то, что вы сами сказали или добавили. 🔒 — тема не используется без запроса</span></div>
         </section>
-        <section class="card" aria-labelledby="soul-owner-title">
-                  <div class="card-head">
-                    <h2 id="soul-owner-title">Как она видит вас</h2>
-                  </div>
-                  <div class="card-body">
-                    <textarea class="field soul-edit" id="soul-portrait" rows="4" maxlength="700" placeholder="Яэри ещё только знакомится с вами. После нескольких разговоров здесь появится её портрет хозяина."></textarea>
-                    <div class="soul-list" data-key="goals"><span class="soul-lbl">Цели и мечты</span><ul></ul><input class="field" type="text" maxlength="200" placeholder="+ добавить" aria-label="Добавить цель"></div>
-                    <div class="soul-list" data-key="likes"><span class="soul-lbl">Что вам нравится</span><ul></ul><input class="field" type="text" maxlength="200" placeholder="+ добавить" aria-label="Добавить, что нравится"></div>
-                    <div class="soul-list" data-key="worries"><span class="soul-lbl">Что вас тревожит</span><ul></ul><input class="field" type="text" maxlength="200" placeholder="+ добавить" aria-label="Добавить тревогу"></div>
-                  </div>
-                </section>
-        <section class="card" aria-labelledby="soul-world-title">
-                  <div class="card-head">
-                    <h2 id="soul-world-title">Её мир</h2>
-                  </div>
-                  <div class="card-body">
-                    <span class="soul-lbl">Её цели</span>
-                    <ul class="aims" id="soul-aims"></ul>
-                    <input class="field" id="soul-aim-add" type="text" maxlength="200" placeholder="+ подарить ей цель" aria-label="Добавить цель Яэри">
-                    <span class="soul-lbl soul-gap">Её увлечения</span>
-                    <div class="soul-list"><ul id="soul-interests"></ul></div>
-                    <span class="soul-lbl soul-gap">Её мнения и вкусы</span>
-                    <ul class="opinions" id="soul-opinions"></ul>
-                  </div>
-                </section>
-        <section class="card" aria-labelledby="soul-secrets-title">
-                  <div class="card-head">
-                    <h2 id="soul-secrets-title">Секреты</h2>
-                    <span class="card-meta">открываются с близостью</span>
-                  </div>
-                  <div class="card-body"><ul class="secrets" id="soul-secrets"></ul></div>
-                </section>
-        <section class="card" aria-labelledby="soul-skills-title">
-                  <div class="card-head">
-                    <h2 id="soul-skills-title">Умения</h2>
-                    <span class="card-meta">открываются с хвостами</span>
-                  </div>
-                  <div class="card-body"><ul class="soul-skills" id="soul-skills"></ul></div>
-                </section>
-      </div>
-      <div class="sp-grid" id="sp-char" role="tabpanel" aria-labelledby="stab-char" hidden>
-        <section class="card" aria-labelledby="soul-traits-title">
-                  <div class="card-head">
-                    <h2 id="soul-traits-title">Характер</h2>
-                    <span class="card-meta">меняется медленно</span>
-                  </div>
-                  <div class="card-body"><div class="traits" id="soul-traits"></div></div>
-                </section>
-        <section class="card" aria-labelledby="soul3-title">
-                  <div class="card-head">
-                    <h2 id="soul3-title">Разум, близость и развитие · Soul 3.0</h2>
-                    <span class="card-meta" id="soul3-trust">Доверие: —</span>
-                  </div>
-                  <div class="card-body">
-                    <label class="toggle server-only">
-                      <span class="t-text"><span class="t-name">Развитие Soul 3.0</span><span class="t-desc">Личная история, исправления, планы и забота — хранится локально</span></span>
-                      <input class="vh" type="checkbox" role="switch" id="soul3-enabled"><span class="track" aria-hidden="true"></span>
-                    </label>
-                    <label class="lbl" for="soul3-affection">Стиль близости</label>
-                    <select class="field server-only" id="soul3-affection">
-                      <option value="0">Тёплый дружеский</option>
-                      <option value="1">Нежный, ненавязчивый</option>
-                      <option value="2">Романтический стиль персонажа</option>
-                    </select>
-                    <label class="toggle server-only">
-                      <span class="t-text"><span class="t-name">Ненавязчивая инициатива</span><span class="t-desc">Не чаще раза в сутки готовит мысль или напоминание, показываемое только в приложении</span></span>
-                      <input class="vh" type="checkbox" role="switch" id="soul3-initiative"><span class="track" aria-hidden="true"></span>
-                    </label>
-                    <p class="soul-small" id="soul3-status" role="status">Загружаю развитие личности…</p>
-                    <span class="soul-lbl soul-gap">Личные ценности</span>
-                    <ul class="journal" id="soul3-values"></ul>
-                    <span class="soul-lbl soul-gap">Интересы и переломные моменты</span>
-                    <ul class="journal" id="soul3-milestones"></ul>
-                    <span class="soul-lbl soul-gap">Забота и уроки общения</span>
-                    <ul class="journal" id="soul3-bond"></ul>
-                    <span class="soul-lbl soul-gap">История роста</span>
-                    <ul class="journal" id="soul3-growth"></ul>
-                    <span class="soul-lbl soul-gap">Совместные планы</span>
-                    <form id="soul3-plan-form">
-                      <label class="lbl" for="soul3-goal">Новая цель хозяина</label>
-                      <input class="field" type="text" maxlength="240" id="soul3-goal" placeholder="Например: выучить пять аккордов">
-                      <button class="mini-btn" type="submit">Составить план</button>
-                    </form>
-                    <ul class="journal" id="soul3-plans"></ul>
-                    <span class="soul-lbl soul-gap">Договорённости и обещания</span>
-                    <form id="soul3-promise-form">
-                      <label class="lbl" for="soul3-promise">Добавить договорённость</label>
-                      <input class="field" type="text" maxlength="300" id="soul3-promise" placeholder="Что нужно не забыть выполнить">
-                      <label class="lbl" for="soul3-due">Срок (необязательно)</label>
-                      <input class="field" type="date" id="soul3-due">
-                      <button class="mini-btn" type="submit">Сохранить обещание</button>
-                    </form>
-                    <ul class="journal" id="soul3-promises"></ul>
-                    <button type="button" class="mini-btn server-only" id="soul3-clear">Очистить данные Soul 3.0</button>
-                    <span class="soul-lbl soul-gap">Vector 2.0 · живая память</span>
-                    <label class="toggle server-only">
-                      <span class="t-text"><span class="t-name">Гибридная память</span><span class="t-desc">Точный поиск + векторы, даты, источники и значимые совместные события</span></span>
-                      <input class="vh" type="checkbox" role="switch" id="vec2-enabled"><span class="track" aria-hidden="true"></span>
-                    </label>
-                    <label class="toggle server-only">
-                      <span class="t-text"><span class="t-name">Ранжирование по контексту</span><span class="t-desc">Учитывать актуальность, достоверность и оценки хозяина</span></span>
-                      <input class="vh" type="checkbox" role="switch" id="vec2-rerank"><span class="track" aria-hidden="true"></span>
-                    </label>
-                    <label class="toggle server-only">
-                      <span class="t-text"><span class="t-name">Ассоциативные цепочки</span><span class="t-desc">Связи между воспоминаниями, без превращения догадок в факты</span></span>
-                      <input class="vh" type="checkbox" role="switch" id="vec2-associations"><span class="track" aria-hidden="true"></span>
-                    </label>
-                    <p class="soul-small" id="vec2-status" role="status">Загружаю качество памяти…</p>
-                    <form id="vec2-search-form">
-                      <label class="lbl" for="vec2-search">Поиск в воспоминаниях</label>
-                      <input class="field" type="search" maxlength="500" id="vec2-search" placeholder="Что мы обсуждали о нашем проекте?">
-                      <button type="submit" class="mini-btn">Найти воспоминания</button>
-                    </form>
-                    <ul class="journal" id="vec2-results"></ul>
-                    <span class="soul-lbl soul-gap">Дубликаты и противоречия</span>
-                    <ul class="journal" id="vec2-quality"></ul>
-                    <span class="soul-lbl soul-gap">Происхождение памяти</span>
-                    <p class="soul-small" id="evidence-summary">Загружаю источники воспоминаний…</p>
-                    <ul class="journal" id="evidence-list"></ul>
-                    <p class="soul-small">Цитата подтверждает, что фраза была сказана, но не доказывает истинность утверждения. Старые записи без источника помечаются как непроверенные.</p>
-
-                    <span class="soul-lbl soul-gap">Yaeri Life 4.0 · модель мира и самооценка</span>
-                    <p id="life4-status" class="soul-small" role="status">Загружаю данные…</p>
-                    <p class="soul-small" id="life4-review"></p>
-                    <ul class="journal" id="life4-world"></ul>
-                    <span class="soul-lbl soul-gap">Проверка предсказаний</span>
-                    <ul class="journal" id="life4-forecasts"></ul>
-                    <span class="soul-lbl soul-gap">Личный язык нежности</span>
-                    <label class="lbl" for="life4-language">Манера общения</label>
-                    <select class="field server-only" id="life4-language">
-                      <option value="gentle">Мягкая нежность</option>
-                      <option value="playful">Ласковый юмор</option>
-                      <option value="practical">Забота поступками</option>
-                      <option value="quiet">Сдержанный стиль</option>
-                    </select>
-                    <label class="lbl" for="life4-nickname">Любимое обращение (необязательно)</label>
-                    <input class="field server-only" id="life4-nickname" type="text" maxlength="24" placeholder="Как Яэри может к тебе обращаться">
-                    <button class="mini-btn server-only" id="life4-save-style" type="button">Сохранить стиль</button>
-                    <span class="soul-lbl soul-gap">Автономность без облака</span>
-                    <label class="toggle server-only">
-                      <span class="t-text">
-                        <span class="t-name">Автономный режим</span>
-                        <span class="t-desc">Запрет Cloud.ru; встроенный поиск по памяти без установок. Для свободной речи — необязательная GGUF-модель через llama.cpp, без Ollama.</span>
-                      </span>
-                      <input class="vh" id="life4-offline" type="checkbox" role="switch">
-                      <span class="track" aria-hidden="true"></span>
-                    </label>
-                    <label class="lbl" for="life4-model">Имя локальной GGUF-модели (алиас llama.cpp)</label>
-                    <input class="field server-only" id="life4-model" type="text" maxlength="80" value="yaeri-local" placeholder="yaeri-local">
-                    <button class="mini-btn server-only" type="button" id="life4-test">Проверить локальную модель</button>
-                    <p class="soul-small" id="life4-local-status">При отсутствии локальной модели работает ограниченный диалог и поиск по сохранённой памяти.</p>
-                    <span class="soul-lbl soul-gap">Собственные инструменты с разрешения</span>
-                    <form id="life4-tool-form">
-                      <label class="lbl" for="life4-kind">Безопасное действие</label>
-                      <select class="field" id="life4-kind">
-                        <option value="world-map">Посмотреть модель мира</option>
-                        <option value="memory-search">Поиск в локальной памяти</option>
-                        <option value="memory-quality">Проверить качество памяти</option>
-                        <option value="notes-list">Показать заметки</option>
-                        <option value="plans-overview">Показать планы</option>
-                      </select>
-                      <label class="lbl" for="life4-tool-name">Название инструмента</label>
-                      <input class="field" type="text" maxlength="60" id="life4-tool-name" placeholder="Например, найти воспоминания">
-                      <button class="mini-btn" type="submit">Предложить инструмент</button>
-                    </form>
-                    <ul class="journal" id="life4-tools"></ul>
-                    <p class="soul-small">Предложения не выполняются до одобрения хозяином. Инструменты не запускают программы и не изменяют файлы.</p>
-                  </div>
-                  <div class="card-foot"><span>Планы выполняются только после подтверждения хозяином. Романтический стиль и инициативу можно отключить.</span></div>
-                </section>
-      </div>
-      <div class="sp-grid" id="sp-depth" role="tabpanel" aria-labelledby="stab-depth" hidden>
-        <section class="card" aria-labelledby="d-rhythm-title">
-          <div class="card-head"><h2 id="d-rhythm-title">Предчувствие</h2><span class="card-meta" id="d-rhythm-meta"></span></div>
+        <section class="card sx-card" aria-labelledby="sx-s-bond-title">
+          <div class="card-head"><h2 id="sx-s-bond-title">Близость и общение</h2></div>
           <div class="card-body">
-            <div id="d-meters"></div>
-            <ul class="soul-simple" id="d-signals"></ul>
-            <div class="nudge" id="d-nudge" hidden>
-              <p id="d-nudge-text"></p>
-              <div class="ia">
-                <button type="button" class="mini-btn solid" data-nudge="ok">Спасибо, учту</button>
-                <button type="button" class="mini-btn" data-nudge="later">Не сейчас</button>
-                <button type="button" class="mini-btn" data-nudge="off">Не замечать такое</button>
-              </div>
+            <label class="toggle server-only"><span class="t-text"><span class="t-name">Личная история отношений</span><span class="t-desc">Помнит заботу, исправления и важные для вас события</span></span>
+              <input class="vh" type="checkbox" role="switch" id="sx-s3"><span class="track" aria-hidden="true"></span></label>
+            <label class="toggle server-only"><span class="t-text"><span class="t-name">Ненавязчивая инициатива</span><span class="t-desc">Не чаще раза в сутки сама вспомнит о чём-то важном</span></span>
+              <input class="vh" type="checkbox" role="switch" id="sx-init"><span class="track" aria-hidden="true"></span></label>
+            <label class="soul-lbl soul-gap" for="sx-affection">Стиль близости</label>
+            <select class="field" id="sx-affection"><option value="0">Тёплый дружеский</option><option value="1">Нежный, ненавязчивый</option><option value="2">Романтический стиль персонажа</option></select>
+            <label class="soul-lbl soul-gap" for="sx-lang">Манера нежности</label>
+            <select class="field" id="sx-lang"><option value="gentle">Мягкая нежность</option><option value="playful">Ласковый юмор</option><option value="practical">Забота поступками</option><option value="quiet">Сдержанный стиль</option></select>
+            <label class="soul-lbl soul-gap" for="sx-nick">Как к вам обращаться</label>
+            <input class="field" id="sx-nick" type="text" maxlength="24" placeholder="Необязательно">
+          </div>
+        </section>
+        <section class="card sx-card" aria-labelledby="sx-s-mem-title">
+          <div class="card-head"><h2 id="sx-s-mem-title">Память</h2><span class="card-meta" id="sx-s-mem-meta"></span></div>
+          <div class="card-body">
+            <label class="toggle server-only"><span class="t-text"><span class="t-name">Гибридный поиск</span><span class="t-desc">Точные слова + смысл, даты и источники</span></span>
+              <input class="vh" type="checkbox" role="switch" id="sx-vec"><span class="track" aria-hidden="true"></span></label>
+            <label class="toggle server-only"><span class="t-text"><span class="t-name">Ранжирование по контексту</span><span class="t-desc">Учитывать свежесть, достоверность и ваши оценки</span></span>
+              <input class="vh" type="checkbox" role="switch" id="sx-rerank"><span class="track" aria-hidden="true"></span></label>
+            <label class="toggle server-only"><span class="t-text"><span class="t-name">Ассоциации</span><span class="t-desc">Связывать воспоминания, не превращая догадки в факты</span></span>
+              <input class="vh" type="checkbox" role="switch" id="sx-assoc"><span class="track" aria-hidden="true"></span></label>
+            <span class="soul-lbl soul-gap">Темы</span>
+            <div class="topics" id="u-topics"></div>
+            <p class="soul-small">«Не использовать без запроса» — помнит, но не поднимает тему сама. «Не запоминать» — не записывает вовсе.</p>
+          </div>
+        </section>
+        <section class="card sx-card" aria-labelledby="sx-s-off-title">
+          <div class="card-head"><h2 id="sx-s-off-title">Без облака</h2></div>
+          <div class="card-body">
+            <label class="toggle server-only"><span class="t-text"><span class="t-name">Автономный режим</span><span class="t-desc">Запрет Cloud.ru; поиск по памяти без установок. Свободная речь — через необязательную GGUF-модель llama.cpp</span></span>
+              <input class="vh" type="checkbox" role="switch" id="sx-offline"><span class="track" aria-hidden="true"></span></label>
+            <label class="soul-lbl soul-gap" for="sx-local">Имя локальной модели</label>
+            <div class="sx-row"><input class="field" id="sx-local" type="text" maxlength="80" placeholder="yaeri-local"><button class="mini-btn server-only" type="button" id="sx-local-test">Проверить</button></div>
+            <p class="soul-small" id="sx-local-status"></p>
+          </div>
+        </section>
+        <section class="card sx-card sx-danger" aria-labelledby="sx-s-clear-title">
+          <div class="card-head"><h2 id="sx-s-clear-title">Очистка</h2></div>
+          <div class="card-body">
+            <p class="soul-small">Переписка, рабочая память, дела и документы не затрагиваются.</p>
+            <div class="sx-clear">
+              <button class="mini-btn server-only" type="button" data-clear="evolution">Фоновая память</button>
+              <button class="mini-btn server-only" type="button" data-clear="depth">Глубина</button>
+              <button class="mini-btn server-only" type="button" data-clear="soul3">История отношений</button>
+              <button class="mini-btn server-only danger" type="button" data-clear="soul">Сбросить всю душу</button>
             </div>
           </div>
-          <div class="card-foot"><span>Считается на вашем компьютере по ритму сообщений, без запросов к модели. Яэри вмешивается мягко и не чаще раза в двое суток</span></div>
-        </section>
-        <section class="card" aria-labelledby="d-sims-title">
-          <div class="card-head"><h2 id="d-sims-title">Варианты будущего</h2><span class="card-meta" id="d-sims-meta"></span></div>
-          <div class="card-body"><ul class="insights" id="d-sims"></ul></div>
-          <div class="card-foot"><span>Когда вы просите совета, Яэри сначала прогоняет 2–3 варианта развития. Это прогноз, а не гарантия</span></div>
-        </section>
-        <section class="card" aria-labelledby="d-own-title">
-          <div class="card-head"><h2 id="d-own-title">Её собственный характер</h2><span class="card-meta" id="d-own-meta"></span></div>
-          <div class="card-body">
-            <div id="d-own"></div>
-            <span class="soul-lbl soul-gap">Как она менялась</span>
-            <ul class="soul-simple" id="d-charlog"></ul>
-          </div>
-          <div class="card-foot"><span>Свои вкусы, привычки и причуды, а не ваши. Растут понемногу в фоне</span></div>
-        </section>
-        <section class="card" aria-labelledby="d-phil-title">
-          <div class="card-head"><h2 id="d-phil-title">Её философия</h2><span class="card-meta" id="d-phil-meta"></span></div>
-          <div class="card-body"><ul class="insights" id="d-phil"></ul></div>
-          <div class="card-foot"><span>Каждый принцип вырастает из её опыта; видно, откуда он взялся</span></div>
-        </section>
-        <section class="card wide" aria-labelledby="d-skills-title">
-          <div class="card-head"><h2 id="d-skills-title">Самописные навыки</h2><span class="card-meta" id="d-skills-meta"></span></div>
-          <div class="card-body"><ul class="insights" id="d-skills"></ul></div>
-          <div class="card-foot"><span>Навык — только текстовый сценарий: без программ, файлов и сети. Работает лишь после вашего одобрения; до этого его можно проверить в песочнице</span></div>
-        </section>
-        <section class="card wide" aria-labelledby="d-review-title">
-          <div class="card-head"><h2 id="d-review-title">Самоулучшение</h2><span class="card-meta" id="d-review-meta"></span></div>
-          <div class="card-body">
-            <div class="chart" id="d-eval-chart" role="img" aria-label="Средняя самооценка ответов по дням"></div>
-            <span class="soul-lbl soul-gap">Предлагает изменить в себе</span>
-            <ul class="insights" id="d-props"></ul>
-            <span class="soul-lbl soul-gap">Одобренные правила стиля</span>
-            <ul class="soul-simple" id="d-rules"></ul>
-            <span class="soul-lbl soul-gap">Последние самооценки</span>
-            <ul class="soul-simple" id="d-evals"></ul>
-          </div>
-          <div class="card-foot"><span>В фоне перечитывает свои ответы и предлагает правки души. Ничего не меняется без вашего «Применить»</span></div>
-        </section>
-        <section class="card" aria-labelledby="d-ctl-title">
-          <div class="card-head"><h2 id="d-ctl-title">Настройки глубины</h2></div>
-          <div class="card-body">
-            <div id="d-flags"></div>
-            <span class="soul-lbl soul-gap">Подумать сейчас</span>
-            <div class="d-acts server-only" hidden>
-              <button type="button" class="mini-btn" data-drun="review">Оценить ответы</button>
-              <button type="button" class="mini-btn" data-drun="character">Характер</button>
-              <button type="button" class="mini-btn" data-drun="principles">Принципы</button>
-              <button type="button" class="mini-btn" data-drun="skills">Навык</button>
-              <button type="button" class="mini-btn" data-drun="rhythm">Ритм</button>
-            </div>
-            <p class="soul-small" id="d-ctl-note"></p>
-            <p class="soul-small" id="d-ctl-status" role="status"></p>
-            <button type="button" class="mini-btn server-only" id="d-clear" hidden>Очистить глубину</button>
-          </div>
-          <div class="card-foot"><span>Фоновые размышления идут, только когда вас нет рядом, «умной» моделью и в общем дневном лимите запросов</span></div>
-        </section>
-        <section class="card wide" aria-labelledby="e5-title">
-          <div class="card-head"><h2 id="e5-title">Evolution 5.0 · развитие интеллекта</h2><span class="card-meta" id="e5-meta">Обучение через проверки</span></div>
-          <div class="card-body">
-            <label class="toggle server-only"><span class="t-text"><span class="t-name">Развитие методов мышления</span><span class="t-desc">Учебные цели, гипотезы, проверяемые стратегии и защита от ухудшений</span></span>
-              <input class="vh" type="checkbox" role="switch" id="e5-enabled"><span class="track" aria-hidden="true"></span></label>
-            <label class="toggle server-only"><span class="t-text"><span class="t-name">Автоматический дневной обзор</span><span class="t-desc">Локальная проверка прогресса без дополнительного платного запроса; только пока работает Yaeri.bat</span></span>
-              <input class="vh" type="checkbox" role="switch" id="e5-periodic"><span class="track" aria-hidden="true"></span></label>
-            <p id="e5-status" class="soul-small" role="status">Загружаю эволюцию…</p>
-            <p id="e5-summary" class="soul-small"></p>
-            <div class="d-acts server-only">
-              <button class="mini-btn" type="button" id="e5-cycle">Проверить развитие сейчас (бесплатно)</button>
-              <button class="mini-btn" type="button" id="e5-refresh">Обновить результаты</button>
-            </div>
-            <span class="soul-lbl soul-gap">25–26 · Долгосрочные цели и приоритеты</span>
-            <form id="e5-goal-form">
-              <label class="lbl" for="e5-goal-title">Новая цель Яэри</label>
-              <input class="field" id="e5-goal-title" maxlength="170" placeholder="Например: научиться проверять причинные утверждения" required>
-              <label class="lbl" for="e5-goal-domain">Область обучения</label>
-              <select class="field" id="e5-goal-domain"><option value="learning">Обучение</option><option value="research">Исследование</option><option value="reasoning">Мышление</option><option value="communication">Общение</option><option value="planning">Планы</option><option value="creativity">Творчество</option></select>
-              <button class="mini-btn" type="submit">Поставить учебную цель</button>
-            </form>
-            <ul class="insights" id="e5-goals"></ul>
-            <span class="soul-lbl soul-gap">9, 13, 14 · Обучение, пробелы и исследования</span>
-            <form id="e5-gap-form">
-              <label class="lbl" for="e5-gap">Что Яэри пока не знает?</label>
-              <input class="field" id="e5-gap" maxlength="220" placeholder="Как проверить надёжность таких выводов?" required>
-              <button class="mini-btn" type="submit">Добавить исследовательский вопрос</button>
-            </form>
-            <ul class="soul-simple" id="e5-gaps"></ul>
-            <span class="soul-lbl soul-gap">10–11 · Причинные гипотезы и мысленные эксперименты</span>
-            <form id="e5-hypothesis-form">
-              <label class="lbl" for="e5-cause">Возможная причина</label>
-              <input class="field" id="e5-cause" maxlength="180" required placeholder="Например: частые уточнения">
-              <label class="lbl" for="e5-effect">Предполагаемое следствие</label>
-              <input class="field" id="e5-effect" maxlength="180" required placeholder="Ответы становятся точнее">
-              <button type="submit" class="mini-btn">Создать непроверенную гипотезу</button>
-            </form>
-            <ul class="insights" id="e5-hypotheses"></ul>
-            <form id="e5-experiment-form">
-              <label class="lbl" for="e5-experiment-hypothesis">Гипотеза для проверки</label>
-              <select class="field" id="e5-experiment-hypothesis"></select>
-              <label class="lbl" for="e5-alternative">Альтернативное объяснение</label>
-              <input class="field" id="e5-alternative" maxlength="230" required>
-              <label class="lbl" for="e5-prediction">Что ожидается?</label>
-              <input class="field" id="e5-prediction" maxlength="230" required>
-              <label class="lbl" for="e5-measure">Как проверить результат?</label>
-              <input class="field" id="e5-measure" maxlength="170" required>
-              <button type="submit" class="mini-btn">Запланировать мысленный эксперимент</button>
-            </form>
-            <ul class="insights" id="e5-experiments"></ul>
-            <span class="soul-lbl soul-gap">12 · Новые концепции из нескольких источников</span>
-            <ul class="insights" id="e5-concepts"></ul>
-            <span class="soul-lbl soul-gap">33–36, 38 · Стратегии, тесты и защита от деградации</span>
-            <form id="e5-strategy-form">
-              <label class="lbl" for="e5-method">Новый метод мышления</label>
-              <select class="field" id="e5-method">
-                <option value="evidence-first">Проверять источники</option><option value="alternatives">Сравнивать альтернативы</option>
-                <option value="clarify">Уточнять неопределённое</option><option value="concise">Кратко отвечать на простое</option>
-                <option value="cross-domain">Переносить подходы</option><option value="deep-analysis">Глубокий анализ</option>
-                <option value="uncertainty">Калибровать уверенность</option><option value="causal-check">Проверять причинность</option>
-              </select>
-              <label class="lbl" for="e5-strategy-domain">Область применения</label>
-              <select class="field" id="e5-strategy-domain"><option value="reasoning">Мышление</option><option value="research">Исследование</option><option value="communication">Общение</option><option value="learning">Обучение</option><option value="planning">Планы</option><option value="creativity">Творчество</option></select>
-              <button class="mini-btn" type="submit">Предложить и протестировать метод</button>
-            </form>
-            <ul class="insights" id="e5-strategies"></ul>
-            <span class="soul-lbl soul-gap">16 · Перенос полезного метода в новую область</span>
-            <form id="e5-transfer-form">
-              <label class="lbl" for="e5-transfer-strategy">Одобренный метод</label>
-              <select class="field" id="e5-transfer-strategy"></select>
-              <label class="lbl" for="e5-transfer-domain">Новая область</label>
-              <select class="field" id="e5-transfer-domain"><option value="research">Исследование</option><option value="reasoning">Мышление</option><option value="communication">Общение</option><option value="learning">Обучение</option><option value="planning">Планы</option><option value="creativity">Творчество</option></select>
-              <label class="lbl" for="e5-transfer-example">Как проверить перенос?</label>
-              <input class="field" id="e5-transfer-example" maxlength="190" required>
-              <button type="submit" class="mini-btn">Предложить перенос</button>
-            </form>
-            <ul class="insights" id="e5-transfers"></ul>
-            <span class="soul-lbl soul-gap">37 · Калибровка уверенности по реальным исходам</span>
-            <p class="soul-small" id="e5-calibration-meta">Для оценки качества вероятностей нужны проверенные исходы.</p>
-            <form id="e5-calibration-form">
-              <label class="lbl" for="e5-calibration-claim">Проверяемый прогноз</label>
-              <input class="field" id="e5-calibration-claim" maxlength="210" required>
-              <label class="lbl" for="e5-percent">Предполагаемая вероятность (%)</label>
-              <input class="field" id="e5-percent" type="number" min="5" max="95" value="70" required>
-              <button type="submit" class="mini-btn">Записать вероятность</button>
-            </form>
-            <ul class="insights" id="e5-calibrations"></ul>
-            <span class="soul-lbl soul-gap">35 · Память об ошибках мышления</span>
-            <ul class="soul-simple" id="e5-errors"></ul>
-            <span class="soul-lbl soul-gap">40 · Журнал непрерывной эволюции</span>
-            <ul class="soul-simple" id="e5-logs"></ul>
-          </div>
-          <div class="card-foot"><span>Методы не меняют веса языковой модели. Прогнозы и гипотезы остаются непроверенными до подтверждения; новые правила применяются только после одобрения.</span></div>
         </section>
       </div>
     </main>
