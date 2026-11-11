@@ -142,9 +142,8 @@ try {
         Write-Host ('Откройте адрес вручную: ' + $address)
     }
 
-    # A separate process performs slow Cloud.ru background calls against a
-    # disposable snapshot. The HTTP loop remains responsive and is the only
-    # owner of the live JSON files.
+    # Slow model work runs in a disposable child process while HTTP remains
+    # responsive. The main loop alone commits validated JSON snapshots.
     $lastEvolutionPoll = 0L
     while ($true) {
         if ($null -ne $script:YBgJob) { [void](Complete-YBackground) }
@@ -201,81 +200,7 @@ try {
                 }
                 $client.SendTimeout = 30000
                 try {
-                    if ($method -eq 'GET' -and $pathPart -match '^/api/jobs/([a-f0-9]{32})
-                    Send-Json $stream 200 $result
-                } catch [YaeriHttpException] {
-                    Send-Json $stream $_.Exception.Code @{ error = $_.Exception.Message }
-                } catch {
-                    Write-Host ('Ошибка API: ' + $_.Exception.Message) -ForegroundColor Yellow
-                    Send-Json $stream 500 @{ error = ('Внутренняя ошибка: ' + $_.Exception.Message) }
-                }
-                continue
-            }
-
-            # ---------- Статические файлы ----------
-            if ($method -eq 'POST') {
-                $body = $utf8.GetBytes('Метод не поддерживается.')
-                Send-HttpResponse $stream 405 'Method Not Allowed' $body 'text/plain; charset=utf-8'
-                continue
-            }
-            $decoded = [System.Uri]::UnescapeDataString($pathPart)
-            if ($decoded -eq '/') { $decoded = '/index.html' }
-            $headOnly = ($method -eq 'HEAD')
-            $relative = $decoded.TrimStart([char]47).Replace([char]47, [char]92)
-            try {
-                $file = [System.IO.Path]::GetFullPath((Join-Path $siteRoot $relative))
-            } catch {
-                # Недопустимые символы в пути (например, «:» или «|»).
-                $body = $utf8.GetBytes('Некорректный адрес.')
-                Send-HttpResponse $stream 400 'Bad Request' $body 'text/plain; charset=utf-8' $headOnly
-                continue
-            }
-            $allowedPrefix = $siteRoot.TrimEnd([char]92) + [System.IO.Path]::DirectorySeparatorChar
-            $isAllowed = $file.StartsWith(
-                $allowedPrefix, [System.StringComparison]::OrdinalIgnoreCase
-            )
-
-            if (-not $isAllowed) {
-                $body = $utf8.GetBytes('Доступ запрещён.')
-                Send-HttpResponse $stream 403 'Forbidden' $body 'text/plain; charset=utf-8' $headOnly
-                continue
-            }
-            if (-not [System.IO.File]::Exists($file)) {
-                $body = $utf8.GetBytes('Страница не найдена.')
-                Send-HttpResponse $stream 404 'Not Found' $body 'text/plain; charset=utf-8' $headOnly
-                continue
-            }
-
-            $extension = [System.IO.Path]::GetExtension($file).ToLowerInvariant()
-            $type = switch ($extension) {
-                '.html' { 'text/html; charset=utf-8' }
-                '.css'  { 'text/css; charset=utf-8' }
-                '.js'   { 'application/javascript; charset=utf-8' }
-                '.json' { 'application/json; charset=utf-8' }
-                '.svg'  { 'image/svg+xml' }
-                '.png'  { 'image/png' }
-                '.webp' { 'image/webp' }
-                '.ico'  { 'image/x-icon' }
-                default { 'application/octet-stream' }
-            }
-            $body = [System.IO.File]::ReadAllBytes($file)
-            Send-HttpResponse $stream 200 'OK' $body $type $headOnly
-        } catch [System.IO.IOException] {
-            # Таймаут или обрыв соединения (пустое «запасное» соединение браузера).
-        } catch {
-            Write-Host ('Ошибка запроса: ' + $_.Exception.Message) -ForegroundColor Yellow
-        } finally {
-            $client.Dispose()
-        }
-    }
-} catch {
-    Write-Host ('Ошибка запуска Яэри: ' + $_.Exception.Message) -ForegroundColor Red
-    exit 1
-} finally {
-    Stop-YBackground
-    if ($null -ne $listener) { $listener.Stop() }
-}
-) {
+                    if ($method -eq 'GET' -and $pathPart -match '^/api/jobs/([a-f0-9]{32})$') {
                         $result = Get-YApiTask $Matches[1]
                     } elseif (Test-YAsyncApiRoute $method $pathPart) {
                         $result = Start-YApiTask $method $pathPart $request.Body
