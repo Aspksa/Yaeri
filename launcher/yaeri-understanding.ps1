@@ -168,7 +168,7 @@ function Update-YUndTurn([string]$Text) {
     $script:UTurn = @{ t = (Get-YNow); allowed = @(Get-YTopicsOf $Text) }
     $st = Get-YUserState $Text
     $script:Und.state = $st
-    [void]$script:Und.states.Add(@{ t = $st.t; tone = $st.tone; confidence = $st.confidence })
+    [void]$script:Und.states.Add(@{ t = $st.t; tone = $st.tone; confidence = $st.confidence; evidence = (New-YEvidence 'assistant_hypothesis' '' '' ([double]$st.confidence)) })
     Save-YUnderstanding
 }
 
@@ -194,7 +194,7 @@ function Add-YUndEntry([string]$Section, [string]$Text, [string]$Topic, [string]
     if ((Get-YTopicMode $topic) -eq 'off') { return $false }
     [void]$script:Und.map.Add(@{
         id = (New-YId); t = (Get-YNow); section = $Section; text = $text; topic = $topic
-        quote = (Get-YCleanLine $Quote 300); source = $Source
+        quote = (Get-YCleanLine $Quote 300); source = $Source; evidence = $(if ($Source -eq 'owner') { New-YEvidence 'user_manual' 'user' '' 1 } else { New-YEvidence 'user_quote' $Source $Quote 0 })
     })
     return $true
 }
@@ -290,7 +290,7 @@ function Add-YRating($Req) {
         for ($j = $at - 1; $j -ge 0; $j--) { if ([string]$script:History[$j]['role'] -eq 'user') { $user = [string]$script:History[$j]['text']; break } }
         if ($null -eq $existing) {
             [void]$script:Und.ratings.Add(@{
-                id = $id; t = (Get-YNow); score = $score; note = $note
+                id = $id; t = (Get-YNow); score = $score; note = $note; evidence = (New-YEvidence 'user_manual' 'user' '' 1)
                 user = (Get-YCleanLine $user 400); reply = (Get-YCleanLine ([string]$script:History[$at]['text']) 500)
                 status = $(if ($score -lt 0) { 'new' } else { 'done' })
             })

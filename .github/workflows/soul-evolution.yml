@@ -27,6 +27,15 @@ jobs:
       - name: Local API request guard tests
         shell: cmd
         run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\test-local-request.ps1
+      - name: Background worker optimistic commits
+        shell: cmd
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\\test-background.ps1
+      - name: Memory evidence persistence
+        shell: cmd
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\\test-provenance.ps1
+      - name: Browser bundle source parity
+        shell: cmd
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\\build-site.ps1 -Check
       - name: Browser JavaScript syntax
         shell: cmd
         run: node tests\check-site.js
