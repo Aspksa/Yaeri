@@ -358,6 +358,54 @@ function Get-YVec($Item) {
     return , $script:VecCache[$id]
 }
 
+# ---------- Защита локального API ----------
+function Test-YLoopbackName([string]$Name) {
+    $n = $Name.Trim().TrimEnd('.').ToLowerInvariant()
+    return ($n -eq 'localhost' -or $n -eq '127.0.0.1' -or $n -eq '[::1]' -or $n.EndsWith('.localhost'))
+}
+
+function Get-YHostName([string]$HostPort) {
+    # «127.0.0.1:5123» → «127.0.0.1», «[::1]:5123» → «[::1]».
+    $h = $HostPort.Trim()
+    if ($h.StartsWith('[')) {
+        $end = $h.IndexOf(']')
+        if ($end -gt 0) { return $h.Substring(0, $end + 1) }
+        return $h
+    }
+    $colon = $h.LastIndexOf(':')
+    if ($colon -ge 0) { return $h.Substring(0, $colon) }
+    return $h
+}
+
+function Get-YRequestBlockReason([string]$Method, $Headers) {
+    # Пустая строка — запрос можно выполнять; иначе — понятная причина отказа.
+    # Host отсекает DNS rebinding, Sec-Fetch-Site/Origin — запросы с чужих сайтов,
+    # обязательный JSON у POST — «простые» формы (для JSON браузер требует CORS, а сервер его не даёт).
+    # Порт не сравниваем: имя хоста уже гарантирует, что страница открыта с этого компьютера,
+    # а антивирусы и локальные прокси иногда подменяют порт или добавляют Origin.
+    $hostHeader = [string]$Headers['host']
+    if (-not $hostHeader) { return 'нет заголовка Host' }
+    if (-not (Test-YLoopbackName (Get-YHostName $hostHeader))) { return ('чужой адрес ' + $hostHeader) }
+    $site = ([string]$Headers['sec-fetch-site']).Trim().ToLowerInvariant()
+    if ($site -eq 'cross-site') { return 'запрос пришёл с другого сайта' }
+    $origin = ([string]$Headers['origin']).Trim()
+    if ($origin -and $origin -ne 'null') {
+        $uri = $null
+        if (-not [System.Uri]::TryCreate($origin, [System.UriKind]::Absolute, [ref]$uri) -or
+            ($uri.Scheme -ne 'http' -and $uri.Scheme -ne 'https') -or
+            -not (Test-YLoopbackName (Get-YHostName $uri.Authority))) {
+            return ('чужой источник ' + $origin)
+        }
+    }
+    if ($Method -eq 'POST') {
+        $type = [string]$Headers['content-type']
+        if (-not $type.TrimStart().StartsWith('application/json', [System.StringComparison]::OrdinalIgnoreCase)) {
+            return 'тело запроса не JSON'
+        }
+    }
+    return ''
+}
+
 # ---------- Cloud.ru ----------
 try {
     # Windows PowerShell 5.1 по умолчанию может не включать TLS 1.2.
