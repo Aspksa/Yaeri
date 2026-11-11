@@ -28,7 +28,6 @@ The default database path is `data/yaeri.sqlite3`. Add `*.sqlite3`, `*.sqlite3-w
 - `memories`: content, provenance, confidence, timestamps, JSON metadata
 - `embeddings`: float32 vector bytes and model identity (storage only)
 - `memory_links`: graph edges between memories
-- `agent_jobs` / `agent_events`: persistent agent queue and audit trail
 - `schema_migrations`: migration version registry
 
 SQLite is configured for WAL, foreign keys, and a 15-second busy timeout. SQL uses parameters. Semantic ranking, JSON-to-SQLite migration, and PowerShell integration are **future work**; do not delete the existing JSON files.
