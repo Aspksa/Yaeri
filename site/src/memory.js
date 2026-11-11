@@ -259,24 +259,58 @@
         return c;
       }
       function pcToday() { var n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()).getTime(); }
+      // Значки праздников в клетках календаря.
+      var PC_ICONS = { '01-07': '⭐', '02-23': '🎖️', '03-08': '🌷', '05-01': '🌼', '05-09': '🕊️', '06-12': '🏛️', '11-04': '🤝' };
+      function pcIcon(x) { return x.type === 'hol' ? (PC_ICONS[x.key] || (x.m === 0 ? '🎄' : '🎉')) : ''; }
+      function pcIsoWeek(dt) {
+        var t = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() + 3 - (dt.getDay() + 6) % 7);
+        return Math.floor((t - new Date(t.getFullYear(), 0, 4)) / 6048e5 + 0.5) + 1;
+      }
       function pcFillGrid(box, y, m, opts) {
+        opts = opts || {};
         box.textContent = '';
+        box.classList.toggle('weeks', !!opts.weeks);
+        if (opts.weeks) box.appendChild(el('span', 'wd wn-head', 'нед'));
         WEEK.forEach(function (w, i) { box.appendChild(el('span', 'wd' + (i >= 5 ? ' we' : ''), w)); });
         var lead = (new Date(y, m, 1).getDay() + 6) % 7;
-        for (var i = 0; i < lead; i++) box.appendChild(el('span', 'pc-d blank'));
         var n = new Date(y, m + 1, 0).getDate();
         var today = pcToday();
-        for (var d = 1; d <= n; d++) {
+        var curWeek = pcIsoWeek(new Date());
+        for (var pos = 0; pos < lead + n; pos++) {
+          var row = Math.floor(pos / 7);
+          if (opts.weeks && pos % 7 === 0) {
+            var first = new Date(y, m, Math.max(1, pos - lead + 1));
+            var wk = pcIsoWeek(first);
+            var wn = el('span', 'wn' + (wk === curWeek && first.getFullYear() === new Date().getFullYear() ? ' now' : ''), String(wk));
+            wn.setAttribute('data-row', row);
+            wn.title = wk + '-я неделя';
+            box.appendChild(wn);
+          }
+          if (pos < lead) { box.appendChild(el('span', 'pc-d blank')); continue; }
+          var d = pos - lead + 1;
           var x = pcDay(y, m, d);
-          var cell = el(opts && opts.buttons ? 'button' : 'span', pcCellClass(x, today) + (opts && opts.sel === d ? ' sel' : ''), String(d));
+          var cell = el(opts.buttons ? 'button' : 'span', pcCellClass(x, today) + (opts.sel === d ? ' sel' : ''), String(d));
           cell.title = pcDayText(x).replace(/<[^>]+>/g, '');
+          if (opts.weeks) cell.setAttribute('data-row', row);
+          var ico = opts.buttons && pcIcon(x);
+          if (ico) cell.appendChild(el('i', 'pc-ico', ico));
           tasksDecorateCell(cell, y, m, d);
-          if (opts && opts.buttons) {
+          if (opts.buttons) {
             cell.type = 'button';
             if (!cell.hasAttribute('aria-label')) cell.setAttribute('aria-label', cell.title);
             (function (xx) { cell.addEventListener('click', function () { opts.onPick(xx); }); }(x));
           }
           box.appendChild(cell);
+        }
+        if (opts.weeks && !box.dataset.hover) {
+          // Подсветка всей недели под курсором.
+          box.dataset.hover = '1';
+          var hot = function (r) {
+            each(box.querySelectorAll('.hot'), function (c) { c.classList.remove('hot'); });
+            if (r !== null) each(box.querySelectorAll('[data-row="' + r + '"]'), function (c) { c.classList.add('hot'); });
+          };
+          box.addEventListener('mouseover', function (e) { var t = e.target.closest && e.target.closest('[data-row]'); hot(t ? t.getAttribute('data-row') : null); });
+          box.addEventListener('mouseleave', function () { hot(null); });
         }
       }
       var pcState = (function () {
@@ -324,7 +358,7 @@
         mb.appendChild(el('small', '', ms.work + ' ' + plural(ms.work, 'рабочий день', 'рабочих дня', 'рабочих дней') + ' · ' + pcFmtH(ms.h40) + ' ч'));
         $('pc-prev').disabled = y === PC_FIRST && m === 0;
         $('pc-next').disabled = y === PC_LAST && m === 11;
-        pcFillGrid($('pc-grid'), y, m, { buttons: true, sel: pcState.sel, onPick: function (x) {
+        pcFillGrid($('pc-grid'), y, m, { buttons: true, weeks: true, sel: pcState.sel, onPick: function (x) {
           pcState.sel = pcState.sel === x.d ? 0 : x.d;
           tasksPickDay(x);
           renderProdCalendar(true);
@@ -346,6 +380,7 @@
           c.appendChild(el('span', '', s[1]));
           k.appendChild(c);
         });
+        if (typeof heatRenderYear === 'function') heatRenderYear(y);
         var box = $('pcy-months');
         box.textContent = '';
         var now = new Date();
@@ -511,7 +546,7 @@
             rs.title = ev.rest.d + ' ' + MONTHS_GEN[ev.rest.m] + ', ' + WEEK_FULL[ev.rest.wd];
             meta.appendChild(rs);
           }
-          [['неделя', week], ['день года', doy], ['суток прошло', Math.round(dayPart * 100) + '%']].forEach(function (x) {
+          [['неделя', week], ['день года', doy]].forEach(function (x) {
             var sp = el('span', '', x[0] + ' ');
             sp.appendChild(el('b', '', String(x[1])));
             meta.appendChild(sp);

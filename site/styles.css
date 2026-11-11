@@ -317,8 +317,8 @@
       --a-soft: hsl(42 90% 55% / .14); --on-a: hsl(30 60% 8%); --warn: hsl(186 95% 62%);
       --pc-hol: hsl(350 90% 66%); --pc-move: hsl(268 90% 76%);
     }
-    .now-card { background: radial-gradient(120% 90% at 0% 0%, hsl(40 70% 16% / .55), transparent 62%), var(--surface); border-color: hsl(40 40% 22%); }
-    .pc-card { border-color: hsl(40 40% 20%); background: radial-gradient(110% 40% at 100% 0%, hsl(40 70% 14% / .4), transparent 60%), var(--surface); }
+    .now-card { background: radial-gradient(120% 90% at 0% 0%, hsl(40 70% 16% / .55), transparent 62%), hsl(36 10% 5% / .6); border-color: hsl(40 40% 22%); }
+    .pc-card { border-color: hsl(40 40% 20%); background: radial-gradient(110% 40% at 100% 0%, hsl(40 70% 14% / .4), transparent 60%), hsl(36 10% 5% / .6); }
     .now-clock { display: flex; flex-direction: column; align-items: stretch; gap: 10px; }
     .dclock {
       position: relative; display: flex; align-items: flex-end; justify-content: center; gap: 6px; padding: 14px 12px 12px;
@@ -1318,3 +1318,104 @@
       body.pop-open .yaeri-fab { display: none; }
     }
   
+    /* ---------- Визуал 3: календарь, графики, небо, стекло ---------- */
+    /* Календарь: номера недель и подсветка недели */
+    .pc-grid.weeks { grid-template-columns: 1.7em repeat(7, 1fr); }
+    .pc-grid .wn-head { font-size: .5rem; letter-spacing: .04em; }
+    .pc-grid .wn { display: grid; place-items: center; color: var(--faint); font: 600 .62rem/1 var(--mono); border-radius: 6px; transition: color .2s, background .2s; }
+    .pc-grid .wn.now { color: var(--a); }
+    .pc-grid .wn.hot { color: var(--a-glow); background: hsl(42 90% 55% / .12); }
+    .pc-d.hot:not(.today) { border-color: hsl(42 80% 55% / .7); background-color: hsl(42 90% 55% / .1); }
+    /* Значок праздника и полоска загрузки дня */
+    .pc-d .pc-ico { position: absolute; left: 2px; top: 1px; font-size: .58rem; font-style: normal; line-height: 1; filter: drop-shadow(0 0 3px hsl(0 0% 0% / .6)); pointer-events: none; }
+    .pc-d .pc-load { position: absolute; top: 2px; left: 50%; height: 3px; border-radius: 99px; transform: translateX(-50%); background: linear-gradient(90deg, hsl(42 96% 62%), hsl(48 100% 80%)); pointer-events: none; }
+    .pc-d .pc-load.l1 { width: 26%; opacity: .45; }
+    .pc-d .pc-load.l2 { width: 44%; opacity: .65; }
+    .pc-d .pc-load.l3 { width: 62%; opacity: .85; }
+    .pc-d .pc-load.l4 { width: 80%; opacity: 1; box-shadow: 0 0 6px hsl(42 96% 62% / .8); }
+    .pc-d.today .pc-load { background: hsl(30 60% 10%); box-shadow: none; }
+    .pc-d.short .pc-load { left: 45%; }
+
+    /* Тепловая карта закрытых дел */
+    .pc-heat { display: grid; gap: 6px; }
+    .pc-heat-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+    .pc-heat-head b { font: 700 .66rem/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+    .pc-heat-head span { color: var(--faint); font: 500 .62rem/1.2 var(--mono); text-align: right; }
+    .heat { --weeks: 22; display: grid; gap: 3px; }
+    .heat-grid { display: grid; grid-template-columns: repeat(var(--weeks), 1fr); grid-template-rows: repeat(7, auto); grid-auto-flow: column; gap: 3px; }
+    .heat-grid i { aspect-ratio: 1; border-radius: 3px; background: hsl(40 18% 12%); border: 1px solid hsl(40 20% 16%); transition: transform .15s; }
+    .heat-grid i:hover { transform: scale(1.35); position: relative; z-index: 1; }
+    .heat-grid i.l1, .heat-legend i.l1 { background: hsl(40 60% 26%); border-color: hsl(40 60% 30%); }
+    .heat-grid i.l2, .heat-legend i.l2 { background: hsl(40 75% 38%); border-color: hsl(40 75% 44%); }
+    .heat-grid i.l3, .heat-legend i.l3 { background: hsl(42 90% 52%); border-color: hsl(44 95% 62%); }
+    .heat-grid i.l4, .heat-legend i.l4 { background: hsl(48 100% 72%); border-color: hsl(50 100% 86%); box-shadow: 0 0 6px hsl(46 100% 65% / .7); }
+    .heat-grid i.out { background: transparent; border-color: hsl(40 15% 12% / .5); }
+    .heat-grid i.today { outline: 1px solid var(--a-glow); outline-offset: 1px; }
+    .heat-months { display: grid; grid-template-columns: repeat(var(--weeks), 1fr); gap: 3px; color: var(--faint); font: 500 .62rem/1 var(--mono); }
+    .heat-months span { white-space: nowrap; overflow: visible; }
+    .heat.big .heat-grid i { border-radius: 4px; }
+    .heat-legend { display: flex; align-items: center; gap: 4px; margin-top: 8px; color: var(--faint); font: 500 .66rem/1 var(--mono); flex-wrap: wrap; }
+    .heat-legend i { width: 11px; height: 11px; border-radius: 3px; background: hsl(40 18% 12%); border: 1px solid hsl(40 20% 16%); }
+    .heat-legend span { margin-left: 6px; color: var(--muted); }
+    .pc-heat-panel .heat { overflow-x: auto; }
+
+    /* Кольцо прогресса дня */
+    .t-ring { position: relative; flex: none; width: 34px; height: 34px; display: grid; place-items: center; margin: -6px 0; }
+    .t-ring svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+    .t-ring circle { fill: none; stroke-width: 4; }
+    .t-ring .bg { stroke: hsl(40 20% 16%); }
+    .t-ring .fg { stroke: hsl(42 96% 60%); stroke-linecap: round; transition: stroke-dashoffset .7s cubic-bezier(.2, .8, .2, 1); filter: drop-shadow(0 0 3px hsl(42 96% 60% / .6)); }
+    .t-ring.empty .fg { opacity: 0; }
+    .t-ring.full .fg { stroke: hsl(140 65% 55%); filter: drop-shadow(0 0 5px hsl(140 70% 55% / .8)); }
+    .t-ring b { position: relative; font: 700 .56rem/1 var(--mono); color: var(--ink); letter-spacing: -.02em; }
+    .t-ring.empty b { color: var(--faint); }
+    html[data-motion="on"] .t-ring.full { animation: ring-glow 2.4s ease-in-out infinite; }
+    @keyframes ring-glow { 50% { filter: drop-shadow(0 0 6px hsl(140 70% 55% / .6)); } }
+
+    /* Небо у часов: погода, солнце, луна */
+    .now-sky { display: grid; grid-template-columns: 1.15fr 1fr 1fr; gap: 6px; margin-top: 8px; }
+    .sky-tile { position: relative; min-width: 0; display: flex; align-items: center; gap: 6px; padding: 7px 8px; border: 1px solid hsl(40 35% 20%); border-radius: 10px; background: linear-gradient(160deg, hsl(40 40% 12% / .55), hsl(36 12% 5% / .6)); }
+    .sky-ico { font-size: 1.35rem; line-height: 1; filter: drop-shadow(0 0 6px hsl(45 100% 70% / .35)); }
+    .sky-txt { min-width: 0; display: grid; gap: 1px; }
+    .sky-txt b { font: 700 .9rem/1.1 var(--mono); color: var(--a); }
+    .sky-txt span { color: var(--muted); font-size: .66rem; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sky-temp { font-size: 1.05rem !important; color: var(--ink) !important; }
+    .sky-place { position: absolute; right: 6px; top: 3px; color: var(--faint); font: 500 .5rem/1 var(--mono); letter-spacing: .06em; max-width: 50%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sky-sun { flex-direction: column; gap: 2px; padding: 5px 8px; }
+    .sun-arc { width: 100%; height: 22px; overflow: visible; }
+    .sun-arc .arc { fill: none; stroke: hsl(42 70% 45% / .7); stroke-width: 1.2; stroke-dasharray: 2 2.5; }
+    .sun-arc .hz { stroke: hsl(40 25% 25%); stroke-width: 1; }
+    .sun-arc .sun { fill: hsl(46 100% 66%); filter: drop-shadow(0 0 4px hsl(45 100% 60%)); }
+    .sun-arc .sun.down { fill: hsl(40 15% 35%); filter: none; }
+    .sky-times { width: 100%; display: flex; justify-content: space-between; color: var(--muted); font: 600 .62rem/1 var(--mono); }
+    .sky-moon svg { width: 26px; height: 26px; flex: none; }
+    .moon-dark { fill: hsl(220 15% 14%); stroke: hsl(40 20% 28%); stroke-width: .8; }
+    .moon-lit { fill: hsl(48 60% 86%); filter: drop-shadow(0 0 3px hsl(48 80% 80% / .7)); }
+    .sky-moon .sky-txt b { color: hsl(48 60% 86%); }
+    .place-form { display: flex; gap: 8px; }
+    .place-form .field { flex: 1; min-width: 0; }
+
+    /* Стеклянные карточки с золотой рамкой */
+    body {
+      background:
+        radial-gradient(36rem 26rem at 8% 12%, hsl(var(--h) 70% 30% / .16), transparent 70%),
+        radial-gradient(40rem 30rem at 92% 88%, hsl(calc(var(--h) - 12) 70% 28% / .14), transparent 70%),
+        radial-gradient(60rem 40rem at 50% -20%, hsl(var(--h) 50% 14% / .45), transparent 65%),
+        var(--bg);
+    }
+    .card {
+      position: relative;
+      background-color: hsl(var(--h) 14% 6% / .62);
+      -webkit-backdrop-filter: blur(18px) saturate(1.25);
+      backdrop-filter: blur(18px) saturate(1.25);
+      box-shadow: inset 0 1px 0 hsl(0 0% 100% / .05), 0 12px 32px -18px rgb(0 0 0 / .8);
+      transition: border-color .3s, box-shadow .3s;
+    }
+    .card::before {
+      content: ""; position: absolute; left: 14px; right: 14px; top: -1px; height: 1px; pointer-events: none;
+      background: linear-gradient(90deg, transparent, hsl(var(--h) 90% 65% / .55), transparent); opacity: .5; transition: opacity .3s;
+    }
+    .card:hover { border-color: hsl(var(--h) 75% 50% / .55); box-shadow: inset 0 1px 0 hsl(0 0% 100% / .06), 0 0 0 1px hsl(var(--h) 90% 60% / .12), 0 16px 44px -16px hsl(var(--h) 90% 45% / .35); }
+    .card:hover::before { opacity: 1; }
+    /* Ячейки основного календаря ниже квадрата, чтобы под ним поместилась активность. */
+    .pc-grid.weeks .pc-d { aspect-ratio: auto; min-height: 0; height: 38px; }

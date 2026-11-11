@@ -21,6 +21,7 @@
         refreshBrain();
         soulDemo();
         tasksLoad();
+        skyInit();
       }
       function startOnline() {
         online = true;
@@ -35,6 +36,7 @@
           else greet();
           soulStart();
           tasksLoad();
+          skyInit();
         });
       }
 

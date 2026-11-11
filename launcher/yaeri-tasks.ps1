@@ -334,3 +334,23 @@ function Invoke-YTaskTags([string]$Content) {
     $clean = [regex]::Replace($clean, $script:TaskNoteTag, '')
     return @{ content = $clean.Trim(); acts = $acts.ToArray(); changed = $changed }
 }
+
+# Город для погоды и восхода у часов: data/place.json.
+function Get-YPlace {
+    $raw = Read-YJsonFile (Join-Path $script:DataDir 'place.json')
+    $p = Get-YValue $raw 'place' $null
+    if ($null -eq $p) { return @{ place = $null } }
+    return @{ place = @{ name = [string](Get-YValue $p 'name' ''); lat = [double](Get-YValue $p 'lat' 0); lon = [double](Get-YValue $p 'lon' 0) } }
+}
+
+function Set-YPlace($Req) {
+    $lat = 0.0; $lon = 0.0
+    $ci = [System.Globalization.CultureInfo]::InvariantCulture
+    if (-not [double]::TryParse([string](Get-YValue $Req 'lat' ''), [System.Globalization.NumberStyles]::Float, $ci, [ref]$lat) -or [math]::Abs($lat) -gt 90) { throw (New-YError 400 'Некорректная широта.') }
+    if (-not [double]::TryParse([string](Get-YValue $Req 'lon' ''), [System.Globalization.NumberStyles]::Float, $ci, [ref]$lon) -or [math]::Abs($lon) -gt 180) { throw (New-YError 400 'Некорректная долгота.') }
+    $name = ([string](Get-YValue $Req 'name' '')).Trim()
+    if ($name.Length -gt 60) { $name = $name.Substring(0, 60) }
+    $place = @{ name = $name; lat = $lat; lon = $lon }
+    Write-YJsonFile (Join-Path $script:DataDir 'place.json') @{ version = 1; place = $place }
+    return @{ ok = $true; place = $place }
+}
