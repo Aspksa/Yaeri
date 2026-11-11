@@ -1,0 +1,2 @@
+sentence-transformers>=3.0,<6
+huggingface-hub>=0.24,<2
