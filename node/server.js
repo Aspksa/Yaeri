@@ -56,6 +56,7 @@ function createServer(backendPort, options = {}) {
     throw new Error("Invalid backend port");
   }
   const maxBody = 8 * 1024 * 1024;
+  const backendToken = options.backendToken || process.env.YAERI_BACKEND_TOKEN || null;
   return http.createServer((req, res) => {
     const host = req.headers.host || "";
     if (!/^(?:127\.0\.0\.1|localhost):\d+$/i.test(host)) {
@@ -95,11 +96,17 @@ function createServer(backendPort, options = {}) {
       res.end(JSON.stringify({ error: policyError }));
       return;
     }
+    if (!backendToken && require.main === module) {
+      res.writeHead(503); res.end("Private API channel not initialized"); return;
+    }
     let received = 0;
     let failed = false;
+    const forwardedHeaders = { ...req.headers, host: "127.0.0.1:" + backendPort };
+    delete forwardedHeaders["x-yaeri-backend-token"];
+    if (backendToken) forwardedHeaders["x-yaeri-backend-token"] = backendToken;
     const upstream = http.request({
       hostname: "127.0.0.1", port: backendPort, method: req.method, path: req.url,
-      headers: { ...req.headers, host: "127.0.0.1:" + backendPort },
+      headers: forwardedHeaders,
       timeout: 190000
     }, upstreamRes => {
       if (failed) { upstreamRes.resume(); return; }

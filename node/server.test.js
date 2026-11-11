@@ -115,3 +115,28 @@ test("Node API rejects cross-site, forged origins and non-JSON POST", async () =
     await close(backend);
   }
 });
+
+test("Node authenticates private PowerShell API channel and ignores spoofed tokens", async () => {
+  const backend = http.createServer((req, res) => {
+    res.end(req.headers["x-yaeri-backend-token"] || "missing");
+  });
+  const backendPort = await listen(backend);
+  const frontend = createServer(backendPort, { backendToken: "private-secret" });
+  const port = await listen(frontend);
+  try {
+    const send = headers => new Promise((resolve, reject) => {
+      const req = http.request({ hostname: "127.0.0.1", port, path: "/api/status",
+        headers: { host: "127.0.0.1:" + port, ...headers } }, res => {
+        let body = "";
+        res.on("data", chunk => body += chunk);
+        res.on("end", () => resolve(body));
+      });
+      req.on("error", reject); req.end();
+    });
+    assert.equal(await send({}), "private-secret");
+    assert.equal(await send({ "x-yaeri-backend-token": "attacker" }), "private-secret");
+  } finally {
+    await close(frontend);
+    await close(backend);
+  }
+});
