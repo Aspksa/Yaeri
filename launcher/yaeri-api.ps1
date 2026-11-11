@@ -576,8 +576,9 @@ function Get-YStatus {
     try { $reindex = -not (Test-YIndexReady) } catch { $reindex = $false }
     return @{
         configured     = ((Test-YConfigured) -or [bool]$script:YLife.offline)
+        offline        = [bool]$script:YLife.offline
         keySource      = (Get-YKeySource)
-        provider       = $(if ($script:YLife.offline) { 'Ollama (localhost, автономно)' } else { 'Cloud.ru Foundation Models' })
+        provider       = $(if ($script:YLife.offline) { 'Встроенная память / локальная GGUF-модель (необязательно)' } else { 'Cloud.ru Foundation Models' })
         chatModel      = $(if ($script:YLife.offline) { [string]$script:YLife.localModel } else { [string]$script:Config.chatModel })
         smartModel     = $(if ($script:YLife.offline) { '' } else { [string]$script:Config.smartModel })
         embeddingModel = [string]$script:Config.embeddingModel
