@@ -85,6 +85,7 @@
                 <div class="now-line"><span class="now-weekday" id="now-weekday"></span><span class="now-date" id="now-date"></span></div>
                 <p class="now-status" id="now-status"></p>
                 <div class="now-meta" id="now-meta"></div>
+                <div class="now-sky" id="now-sky" aria-label="Небо и погода"></div>
               </div>
               <span class="vh" id="now-time"></span><span class="vh" id="now-sec"></span>
             </div>
@@ -105,6 +106,10 @@
               <button type="button" class="pc-arrow" id="pc-next" aria-label="Следующий месяц">›</button>
             </div>
             <div class="pc-grid" id="pc-grid" role="grid" aria-label="Дни месяца"></div>
+            <div class="pc-heat">
+              <div class="pc-heat-head"><b>Активность</b><span id="pc-heat-sum"></span></div>
+              <div class="heat" id="pc-heat" aria-label="Закрытые дела по дням"></div>
+            </div>
             <div class="pc-legend" aria-hidden="true">
               <span><i class="lg-work"></i>рабочий</span><span><i class="lg-short"></i>−1 час</span><span><i class="lg-off"></i>выходной</span><span><i class="lg-hol"></i>праздник</span><span><i class="lg-move"></i>перенос</span><span><i class="lg-task"></i>дела</span>
             </div>
@@ -145,6 +150,10 @@
           <div class="card-head">
             <h2 id="tasks-title">Дела</h2>
             <span class="card-meta" id="tasks-meta"></span>
+            <span class="t-ring" id="tasks-ring" role="img" aria-label="Прогресс дня">
+              <svg viewBox="0 0 40 40" aria-hidden="true"><circle class="bg" cx="20" cy="20" r="16"/><circle class="fg" id="tasks-ring-fg" cx="20" cy="20" r="16"/></svg>
+              <b id="tasks-ring-text">—</b>
+            </span>
           </div>
           <div class="tasks-tabs" role="tablist" aria-label="Какие дела показать">
             <button type="button" role="tab" data-tf="all">Все<i></i></button>
@@ -879,6 +888,11 @@
       </header>
       <div class="pc-sheet-body">
         <div class="pc-kpis" id="pcy-kpis"></div>
+        <section class="pc-panel pc-heat-panel" aria-labelledby="pchm-title">
+          <h3 id="pchm-title">Активность за год</h3>
+          <div class="heat big" id="pcy-heat" aria-label="Закрытые дела по дням года"></div>
+          <div class="heat-legend" aria-hidden="true">меньше <i class="l0"></i><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i> больше<span id="pcy-heat-sum"></span></div>
+        </section>
         <div class="pc-year" id="pcy-months"></div>
         <div class="pc-cols">
           <section class="pc-panel" aria-labelledby="pcq-title">
@@ -980,6 +994,16 @@
           <label><input class="vh" type="radio" name="size" value="xl"><span>Очень крупный</span></label>
         </div>
       </fieldset>
+
+      <section class="group">
+        <h3>Город для погоды</h3>
+        <p class="note">По нему у часов показываются погода, восход и закат. Название города уходит в сервис Open-Meteo.</p>
+        <form class="place-form" id="place-form" autocomplete="off">
+          <input class="field" id="set-place" type="text" maxlength="60" aria-label="Город" placeholder="Москва">
+          <button type="submit" class="mini-btn solid">Найти</button>
+        </form>
+        <p class="note small" id="place-note" aria-live="polite"></p>
+      </section>
 
       <fieldset class="group">
         <legend>Плотность</legend>

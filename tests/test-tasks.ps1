@@ -72,6 +72,13 @@ try {
     Import-YStore
     if ($script:Tasks.Count -ne $count) { throw 'Tasks not persisted.' }
     if ((Find-YTask $a.id).due -ne '2026-11-16') { throw 'Persisted move lost.' }
+    # Город для погоды.
+    if ($null -ne (Get-YPlace).place) { throw 'Place should be empty.' }
+    [void](Set-YPlace @{ name = 'Казань'; lat = 55.79; lon = 49.12 })
+    $pl = (Get-YPlace).place
+    if ($pl.name -ne 'Казань' -or [math]::Abs($pl.lat - 55.79) -gt 0.001) { throw 'Place not saved.' }
+    $bad = $false; try { [void](Set-YPlace @{ name = 'x'; lat = 120; lon = 0 }) } catch { $bad = $true }
+    if (-not $bad) { throw 'Invalid latitude accepted.' }
     Write-Host 'Tasks module tests passed.' -ForegroundColor Green
 } finally {
     Remove-Item -LiteralPath $testData -Recurse -Force -ErrorAction SilentlyContinue

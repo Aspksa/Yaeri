@@ -1301,6 +1301,8 @@ function Invoke-YApi([string]$Method, [string]$Path, [string]$BodyText) {
         'GET /api/tasks'           { return Get-YTasksList }
         'POST /api/tasks/save'     { return Save-YTask $req }
         'POST /api/tasks/delete'   { return Remove-YTask $req }
+        'GET /api/place'           { return Get-YPlace }
+        'POST /api/place'          { return Set-YPlace $req }
         'POST /api/memory/delete'  { return Remove-YMemoryItem $req }
         'GET /api/brain'            { return Get-YBrain }
         'GET /api/evidence'         { return Get-YEvidenceView }

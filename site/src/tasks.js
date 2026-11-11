@@ -122,6 +122,9 @@
         if (!mk.open && mk.done) dots.appendChild(el('b', 'ok'));
         if (mk.notes) dots.appendChild(el('b', 'note'));
         cell.appendChild(dots);
+        // Полоска загрузки дня: чем больше дел, тем длиннее и ярче.
+        var load = mk.open + mk.done;
+        if (load) cell.appendChild(el('i', 'pc-load l' + Math.min(4, load)));
         var parts = [];
         if (mk.open) parts.push(mk.open + ' ' + plural(mk.open, 'дело', 'дела', 'дел'));
         if (mk.done) parts.push('выполнено: ' + mk.done);
@@ -207,6 +210,7 @@
         var list = tasksFilterList();
         $('tasks-found').textContent = tasks.query ? 'найдено: ' + list.length : '';
         renderTasksWeek();
+        tasksVisuals();
         if (!list.length) {
           var empty = el('li', 'tasks-empty');
           empty.textContent = tasks.query ? 'Ничего не нашлось.' : tasks.day ? 'На этот день ничего нет. Добавьте дело формой выше.'
