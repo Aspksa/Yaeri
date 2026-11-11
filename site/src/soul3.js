@@ -12,6 +12,16 @@
           target.appendChild(li);
         });
       }
+      function loadEvidence() {
+        return api('evidence').then(function (d) {
+          $('evidence-summary').textContent = (d.total || 0) + ' записей с разными уровнями происхождения';
+          soul3List('evidence-list', d.recent || [], function (x) {
+            return (x.category || 'Память') + ': ' + (x.text || '—') + ' · ' + (x.label || 'источник неизвестен');
+          }, 'Память пока пуста.');
+        }).catch(function (err) {
+          $('evidence-summary').textContent = 'Не удалось получить источники: ' + err.message;
+        });
+      }
       function loadSoul3() {
         if (!online) return Promise.resolve();
         return api('soul3').then(function (d) {
@@ -68,7 +78,7 @@
             promises.appendChild(li);
           });
           if (!promises.children.length) promises.appendChild(el('li', 'soul-small', 'Пока нет обещаний.'));
-        }).catch(soul3Error);
+        }).then(loadEvidence).catch(soul3Error);
       }
       function saveSoul3Settings() {
         return api('soul3/settings', {
