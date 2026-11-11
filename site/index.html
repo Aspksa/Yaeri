@@ -75,28 +75,17 @@
           </div>
           <div class="card-body">
             <div class="now-clock">
-              <svg class="dial" id="now-dial" viewBox="0 0 200 200" role="img" aria-label="Часы со стрелками">
-                <defs>
-                  <radialGradient id="dialBg" cx="50%" cy="38%" r="70%"><stop offset="0" style="stop-color:hsl(42 60% 16%)"/><stop offset="1" style="stop-color:hsl(30 40% 4%)"/></radialGradient>
-                  <linearGradient id="dialArc" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:hsl(48 100% 76%)"/><stop offset="1" style="stop-color:hsl(22 95% 56%)"/></linearGradient>
-                </defs>
-                <circle cx="100" cy="100" r="96" class="dial-rim"/>
-                <circle cx="100" cy="100" r="88" fill="url(#dialBg)"/>
-                <circle cx="100" cy="100" r="92" class="dial-track"/>
-                <circle cx="100" cy="100" r="92" class="dial-day" id="dial-day" transform="rotate(-90 100 100)"/>
-                <g id="dial-ticks"></g>
-                <line class="hand h" id="hand-h" x1="100" y1="100" x2="100" y2="54"/>
-                <line class="hand m" id="hand-m" x1="100" y1="100" x2="100" y2="32"/>
-                <g id="hand-s"><line class="hand s" x1="100" y1="116" x2="100" y2="24"/><circle cx="100" cy="24" r="3" class="hand-tip"/></g>
-                <circle cx="100" cy="100" r="5" class="dial-hub"/>
-              </svg>
+              <div class="dclock" id="dclock" role="timer" aria-label="Текущее время">
+                <span class="dg" data-d="h1"></span><span class="dg" data-d="h2"></span><span class="dcolon" aria-hidden="true"><i></i><i></i></span><span class="dg" data-d="m1"></span><span class="dg" data-d="m2"></span>
+                <span class="dsec"><span class="dg sm" data-d="s1"></span><span class="dg sm" data-d="s2"></span></span>
+              </div>
+              <div class="dday" aria-hidden="true"><i id="dday-fill"></i></div>
               <div class="now-read">
-                <div class="now-time"><span id="now-time">00:00</span><small id="now-sec">00</small></div>
-                <div class="now-weekday" id="now-weekday"></div>
-                <div class="now-date" id="now-date"></div>
+                <div class="now-line"><span class="now-weekday" id="now-weekday"></span><span class="now-date" id="now-date"></span></div>
                 <p class="now-status" id="now-status"></p>
                 <div class="now-meta" id="now-meta"></div>
               </div>
+              <span class="vh" id="now-time"></span><span class="vh" id="now-sec"></span>
             </div>
           </div>
         </section>

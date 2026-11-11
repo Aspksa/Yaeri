@@ -131,7 +131,7 @@
     .view { flex: 1; min-height: 0; }
     .deck {
       display: grid; gap: 10px; padding: 10px;
-      grid-template-columns: minmax(360px, 420px) minmax(0, 1fr) minmax(360px, 440px);
+      grid-template-columns: minmax(330px, 380px) minmax(0, 1fr) minmax(320px, 390px);
     }
     .col { min-height: 0; display: flex; flex-direction: column; gap: 10px; }
     .card {
@@ -336,25 +336,43 @@
     }
     .now-card { background: radial-gradient(120% 90% at 0% 0%, hsl(40 70% 16% / .55), transparent 62%), var(--surface); border-color: hsl(40 40% 22%); }
     .pc-card { border-color: hsl(40 40% 20%); background: radial-gradient(110% 40% at 100% 0%, hsl(40 70% 14% / .4), transparent 60%), var(--surface); }
-    .now-clock { display: grid; grid-template-columns: 150px minmax(0, 1fr); align-items: center; gap: 16px; }
-    .dial { width: 150px; height: 150px; filter: drop-shadow(0 0 18px hsl(40 95% 55% / .28)); }
-    .dial-rim { fill: none; stroke: hsl(40 50% 30% / .7); stroke-width: 1; }
-    .dial-track { fill: none; stroke: hsl(40 30% 18%); stroke-width: 4; }
-    .dial-day { fill: none; stroke: url(#dialArc); stroke-width: 4; stroke-linecap: round; stroke-dasharray: 578.05; stroke-dashoffset: 578.05; transition: stroke-dashoffset 1s linear; }
-    .dial .tick { stroke: hsl(40 25% 40%); stroke-width: 1; }
-    .dial .tick.big { stroke: hsl(46 100% 78%); stroke-width: 2.5; stroke-linecap: round; }
-    .dial text { fill: hsl(44 60% 78%); font: 700 13px var(--mono); text-anchor: middle; dominant-baseline: central; }
-    .hand { stroke-linecap: round; }
-    .hand.h { stroke: hsl(44 100% 88%); stroke-width: 5; }
-    .hand.m { stroke: hsl(44 100% 78%); stroke-width: 3; }
-    .hand.s { stroke: hsl(350 95% 66%); stroke-width: 1.4; }
-    .hand-tip { fill: hsl(350 95% 66%); }
-    .dial-hub { fill: hsl(30 60% 8%); stroke: hsl(46 100% 78%); stroke-width: 2; }
-    #hand-h, #hand-m, #hand-s { transform-origin: 100px 100px; }
+    .now-clock { display: flex; flex-direction: column; align-items: stretch; gap: 10px; }
+    .dclock {
+      position: relative; display: flex; align-items: flex-end; justify-content: center; gap: 6px; padding: 14px 12px 12px;
+      border: 1px solid hsl(40 45% 22%); border-radius: 14px;
+      background: radial-gradient(120% 120% at 50% 0%, hsl(42 70% 14% / .55), transparent 65%), hsl(36 12% 4%);
+      box-shadow: inset 0 0 24px hsl(40 90% 45% / .12), 0 0 22px hsl(40 90% 45% / .12);
+      overflow: hidden;
+    }
+    .dclock::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, hsl(0 0% 100% / .05), transparent 45%, hsl(0 0% 0% / .25)); pointer-events: none; }
+    .dg {
+      position: relative; display: inline-block; width: .74em; height: 1em; overflow: hidden;
+      font: 700 4.6rem/1 var(--mono); letter-spacing: 0;
+      border-radius: 10px; background: linear-gradient(180deg, hsl(40 18% 9%), hsl(36 14% 5%)); box-shadow: inset 0 0 0 1px hsl(40 40% 20%), inset 0 -10px 18px hsl(0 0% 0% / .45);
+    }
+    .dg::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: hsl(0 0% 0% / .55); z-index: 2; }
+    .dg .reel { display: flex; flex-direction: column; transition: transform .5s cubic-bezier(.3, 1.4, .5, 1); will-change: transform; }
+    .dg .reel span {
+      display: block; height: 1em; line-height: 1; text-align: center;
+      color: transparent; background: linear-gradient(180deg, hsl(50 100% 86%), hsl(36 96% 56%)); -webkit-background-clip: text; background-clip: text;
+      filter: drop-shadow(0 0 10px hsl(42 95% 55% / .45));
+    }
+    .dg.sm { font-size: 1.7rem; width: .78em; border-radius: 6px; }
+    .dsec { display: flex; gap: 3px; margin-left: 4px; padding-bottom: 6px; opacity: .85; }
+    .dcolon { display: flex; flex-direction: column; justify-content: center; gap: .9rem; height: 4.6rem; padding: 0 2px; }
+    .dcolon i { width: 9px; height: 9px; border-radius: 50%; background: hsl(44 100% 70%); box-shadow: 0 0 10px hsl(42 100% 60%); }
+    html[data-motion="on"] .dcolon i { animation: colon 1s steps(1) infinite; }
+    @keyframes colon { 50% { opacity: .2; box-shadow: none; } }
+    html[data-motion="off"] .dg .reel { transition: none; }
+    .dday { position: relative; height: 6px; border-radius: 4px; background: hsl(40 25% 12%); overflow: hidden; }
+    .dday i { position: absolute; inset: 0 auto 0 0; width: 0; border-radius: inherit; background: linear-gradient(90deg, hsl(28 90% 45%), hsl(43 96% 60%), hsl(50 100% 82%)); box-shadow: 0 0 10px hsl(43 95% 55% / .7); transition: width 1s linear; }
+    html[data-motion="on"] .dday i::after { content: ""; position: absolute; right: 0; top: -3px; width: 12px; height: 12px; border-radius: 50%; background: hsl(50 100% 85%); box-shadow: 0 0 12px 3px hsl(45 100% 60%); animation: pulse-dot 2s ease-in-out infinite; }
+    @keyframes pulse-dot { 50% { transform: scale(.6); opacity: .6; } }
+    .now-line { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
     .now-read { min-width: 0; }
     .now-time { display: flex; align-items: baseline; gap: 6px; color: transparent; background: linear-gradient(180deg, hsl(50 100% 86%), hsl(36 96% 58%)); -webkit-background-clip: text; background-clip: text; font: 700 3.3rem/1 var(--mono); letter-spacing: -.01em; text-shadow: none; filter: drop-shadow(0 0 16px hsl(40 95% 55% / .35)); }
     .now-time small { font-size: 1.25rem; font-weight: 600; opacity: .75; }
-    .now-weekday { margin-top: 8px; color: var(--ink); font: 700 .95rem/1.2 var(--mono); letter-spacing: .16em; text-transform: uppercase; }
+    .now-weekday { margin-top: 0; color: var(--ink); font: 700 .95rem/1.2 var(--mono); letter-spacing: .16em; text-transform: uppercase; }
     .now-date { margin-top: 2px; color: var(--muted); font: 500 .82rem/1.4 var(--mono); letter-spacing: .06em; text-transform: none; }
     .now-status { margin: 10px 0 0; font-size: .9rem; }
     .now-meta { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
@@ -423,9 +441,7 @@
     .pc-hols time { font-size: .78rem; }
     .pc-src { font-size: .7rem; }
     @media (max-width: 820px) {
-      .now-clock { grid-template-columns: 120px minmax(0, 1fr); gap: 12px; }
-      .dial { width: 120px; height: 120px; }
-      .now-time { font-size: 2.6rem; }
+      .dg { font-size: 3.4rem; }
       .pc-year { grid-template-columns: 1fr; }
       .pc-sheet-head h2 { font-size: 2.4rem; }
     }
@@ -1285,7 +1301,7 @@
 
     /* ---------- Узкие экраны ---------- */
     @media (max-width: 1180px) {
-      .deck { grid-template-columns: minmax(330px, 370px) minmax(0, 1fr) minmax(300px, 340px); }
+      .deck { grid-template-columns: minmax(310px, 350px) minmax(0, 1fr) minmax(290px, 330px); }
     }
     @media (max-width: 820px) {
       body { overflow: auto; }
