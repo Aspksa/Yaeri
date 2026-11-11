@@ -529,6 +529,7 @@
 
       /* ---------- Сводка, журнал, часы ---------- */
       function renderStats() {
+        if (!$('st-notes')) return;
         $('st-notes').textContent = brainData.notes.length;
         $('st-mem').textContent = brainData.memoryTotal || brainData.memory.length;
         $('st-docs').textContent = brainData.docs.length;
@@ -1533,7 +1534,7 @@
         renderSoul();
       }
       function renderSoulMini() {
-        if (!soulData) return;
+        if (!soulData || !$('soul-mini-stage')) return;
         var s = soulData.soul;
         $('soul-mini-tails').innerHTML = tailsSvg(soulData.level);
         $('soul-mini-stage').textContent = soulData.stage;
@@ -3373,10 +3374,12 @@
           .catch(function (e) { soulMsg(e.message, true); });
       });
       function openSoul() { showView('soul'); }
-      $('soul-mini').addEventListener('click', openSoul);
-      $('soul-mini').addEventListener('keydown', function (event) {
-        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openSoul(); }
-      });
+      if ($('soul-mini')) {
+        $('soul-mini').addEventListener('click', openSoul);
+        $('soul-mini').addEventListener('keydown', function (event) {
+          if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openSoul(); }
+        });
+      }
 
       /* Действия, которые нужны графу памяти. */
       window.YaeriApp = {

@@ -781,7 +781,8 @@
       /* ---------- Взаимодействие ---------- */
       var state = { hover: null, sel: null, focus: null, query: '', matches: {} };
       var main = new Renderer($('brain-canvas'), false);
-      var mini = new Renderer($('mini-canvas'), true);
+      // Мини-карты в командном центре может не быть.
+      var mini = $('mini-canvas') ? new Renderer($('mini-canvas'), true) : null;
       var dirty = true;
       var needFit = true;
       var miniFit = true;
@@ -1194,7 +1195,7 @@
             dirty = true;
           }
           if (dirty || motion) { main.draw(now); dirty = false; }
-        } else if (view_ === 'deck' && mini.canvas.offsetParent !== null) {
+        } else if (view_ === 'deck' && mini && mini.canvas.offsetParent !== null) {
           if (mini.resize()) { miniDirty = true; miniFit = true; }
           if (miniFit && mini.w) { mini.fit(true); miniFit = false; }
           if (miniDirty || (motion && now - lastMini > 50)) {
@@ -1225,8 +1226,10 @@
       document.addEventListener('fullscreenchange', function () { if (!document.fullscreenElement && presenting) present(false); });
       document.addEventListener('keydown', function (e) { if (presenting && e.key === 'Escape') present(false); });
 
-      $('mini-brain').addEventListener('click', function () { App.showView('brain'); });
-      $('mini-brain').addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); App.showView('brain'); } });
+      if ($('mini-brain')) {
+        $('mini-brain').addEventListener('click', function () { App.showView('brain'); });
+        $('mini-brain').addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); App.showView('brain'); } });
+      }
 
       window.YBrain = {
         setData: function (d) {

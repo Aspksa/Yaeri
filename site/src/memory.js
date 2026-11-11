@@ -174,6 +174,7 @@
 
       /* ---------- Сводка, журнал, часы ---------- */
       function renderStats() {
+        if (!$('st-notes')) return;
         $('st-notes').textContent = brainData.notes.length;
         $('st-mem').textContent = brainData.memoryTotal || brainData.memory.length;
         $('st-docs').textContent = brainData.docs.length;
