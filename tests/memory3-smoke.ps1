@@ -64,4 +64,7 @@ $result = Search-YVector @{ query='локальный поиск'; localOnly=$tr
 Assert-Y ($script:cloudCalls -eq 0) 'Offline search invoked cloud embeddings'
 Assert-Y ($result.mode -eq 'local-lexical-bm25') 'Offline search mode missing'
 Assert-Y ($result.localOnly -eq $true) 'Offline flag missing'
+$defaultResult = Search-YVector @{ query='локальный поиск' }
+Assert-Y ($script:cloudCalls -eq 0) 'Default search invoked cloud embeddings'
+Assert-Y ($defaultResult.localOnly -eq $true) 'Default search must be offline'
 Write-Host 'Memory 3 smoke tests passed.' -ForegroundColor Green
