@@ -34,22 +34,3 @@ CREATE TABLE IF NOT EXISTS memory_links (
   PRIMARY KEY(from_id,to_id,relation),
   CHECK(from_id <> to_id)
 );
-CREATE TABLE IF NOT EXISTS agent_jobs (
-  id TEXT PRIMARY KEY,
-  agent TEXT NOT NULL,
-  task TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'queued' CHECK(status IN ('queued','running','completed','failed','cancelled')),
-  result_json TEXT CHECK(result_json IS NULL OR json_valid(result_json)),
-  error TEXT,
-  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
-);
-CREATE INDEX IF NOT EXISTS idx_agent_jobs_status ON agent_jobs(status,created_at);
-CREATE TABLE IF NOT EXISTS agent_events (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  job_id TEXT NOT NULL REFERENCES agent_jobs(id) ON DELETE CASCADE,
-  event_type TEXT NOT NULL,
-  payload_json TEXT NOT NULL DEFAULT '{}' CHECK(json_valid(payload_json)),
-  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
-);
-CREATE INDEX IF NOT EXISTS idx_agent_events_job ON agent_events(job_id,id);
