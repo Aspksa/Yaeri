@@ -146,6 +146,12 @@ try {
     )
     $listener.Start()
     $port = ([System.Net.IPEndPoint]$listener.LocalEndpoint).Port
+    # The PowerShell backend accepts API calls only from the Node frontend.
+    $secretBytes = New-Object byte[] 32
+    $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    try { $rng.GetBytes($secretBytes) } finally { $rng.Dispose() }
+    $script:YBackendToken = [Convert]::ToBase64String($secretBytes)
+    $env:YAERI_BACKEND_TOKEN = $script:YBackendToken
     # Reserve a loopback port for the persistent Python embedding worker.
     $reserve = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
     $reserve.Start()
@@ -165,6 +171,7 @@ try {
         [string]$port,
         ('"' + $nodePortFile + '"')
     ) -PassThru -WindowStyle Hidden
+    Remove-Item Env:YAERI_BACKEND_TOKEN -ErrorAction SilentlyContinue
     $nodePort = 0
     for ($attempt = 0; $attempt -lt 60; $attempt++) {
         if ($nodeService.HasExited) { throw 'Node HTTP frontend terminated at startup.' }
@@ -250,6 +257,11 @@ try {
 
             # ---------- API ----------
             if ($pathPart.StartsWith('/api/')) {
+                $suppliedToken = [string]$request.Headers['x-yaeri-backend-token']
+                if ($suppliedToken -cne $script:YBackendToken) {
+                    Send-Json $stream 403 @{ error = 'API доступен только через Node.js.' }
+                    continue
+                }
                 # Защита: только запросы со страницы самой Яэри (подробности в Get-YRequestBlockReason).
                 $blockReason = Get-YRequestBlockReason $method $request.Headers
                 if ($blockReason) {
