@@ -48,4 +48,23 @@ Assert-Y ($groups[0].action -eq 'review-only') 'Must not auto-resolve conflict'
 $records = @($groups[0].alternatives | ForEach-Object { $_.records } | ForEach-Object { $_ })
 Assert-Y ($records.Count -eq 3) 'All active sources must be preserved'
 Assert-Y (@($records | Where-Object { $_.sourceId -eq 'doc-1' }).Count -eq 1) 'Document source lost'
+# Offline contract: localOnly must not invoke the cloud embeddings function.
+$script:cloudCalls = 0
+function Test-YConfigured { return $true }
+function Get-YEmbeddings([string[]]$Texts) { $script:cloudCalls++; throw 'Cloud access forbidden in offline test' }
+function Get-YCleanLine([string]$Text, [int]$Max) { return $Text }
+function Save-YVector { }
+function Get-YEvidenceLabel($Item) { return 'local test' }
+function Find-YVectorMatches([string]$Query, $QueryVec, [int]$Top = 10, [long]$Before = [long]::MaxValue) {
+    Assert-Y ($null -eq $QueryVec) 'Offline query must not supply a remote embedding'
+    return @()
+}
+$script:YVector = @{ enabled=$true; searches=0L; lastSearch=0L }
+$result = Search-YVector @{ query='локальный поиск'; localOnly=$true }
+Assert-Y ($script:cloudCalls -eq 0) 'Offline search invoked cloud embeddings'
+Assert-Y ($result.mode -eq 'local-lexical-bm25') 'Offline search mode missing'
+Assert-Y ($result.localOnly -eq $true) 'Offline flag missing'
+$defaultResult = Search-YVector @{ query='локальный поиск' }
+Assert-Y ($script:cloudCalls -eq 0) 'Default search invoked cloud embeddings'
+Assert-Y ($defaultResult.localOnly -eq $true) 'Default search must be offline'
 Write-Host 'Memory 3 smoke tests passed.' -ForegroundColor Green

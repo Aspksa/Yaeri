@@ -288,8 +288,11 @@ function Search-YVector($Req) {
     $text = Get-YCleanLine ([string](Get-YValue $Req 'query' '')) 500
     if (-not $text) { throw (New-YError 400 'Напишите запрос для поиска в памяти.') }
     if (-not $script:YVector.enabled) { throw (New-YError 409 'Vector 2.0 отключён.') }
+    # localOnly is an explicit privacy guarantee: never call the cloud embedding API.
+    # Without a local embedding model, use the existing BM25 lexical retrieval.
+    $localOnly = [bool](Get-YValue $Req 'localOnly' $true)
     $vec = $null
-    if (Test-YConfigured) {
+    if (-not $localOnly -and (Test-YConfigured)) {
         try { $vec = [YaeriVec]::Decode((Get-YEmbeddings @($text))[0]) } catch { }
     }
     $hits = @(Find-YVectorMatches $text $vec 12)
@@ -309,5 +312,5 @@ function Search-YVector($Req) {
     $script:YVector.searches = [long]$script:YVector.searches + 1
     $script:YVector.lastSearch = Get-YNow
     Save-YVector
-    return @{ results = $response.ToArray(); total = $response.Count; mode = 'hybrid-local-rerank' }
+    return @{ results = $response.ToArray(); total = $response.Count; mode = $(if ($localOnly -or $null -eq $vec) { 'local-lexical-bm25' } else { 'hybrid-local-rerank' }); localOnly = $localOnly }
 }
