@@ -133,6 +133,22 @@ try {
     if ($script:Cur.lessons.Count -lt 1 -or $script:Cur.goals.Count -lt 2 -or $script:Cur.intensity -ne 'active') { throw 'Curiosity persistence failed.' }
     [void](Clear-YCuriosity)
     if ($script:Cur.lessons.Count -ne 0 -or $script:Cur.goals.Count -ne 0 -or $script:Cur.intensity -ne 'active') { throw 'Curiosity reset incorrect.' }
+    # Путь развития: 9 ступеней, затем бесконечные звёзды; данные души (xp) не меняются.
+    $p0 = Get-YSoulPath 0
+    if ($p0.level -ne 1 -or $p0.complete -or $p0.stars -ne 0) { throw 'Path at 0 xp incorrect.' }
+    $p9 = Get-YSoulPath 560
+    if ($p9.level -ne 9 -or -not $p9.complete -or $p9.stars -ne 0 -or $p9.starTo -ne 700) { throw 'Path at stage 9 incorrect.' }
+    $p1 = Get-YSoulPath 700
+    if ($p1.stars -ne 1 -or $p1.starFrom -ne 700 -or $p1.starTo -ne 860 -or $p1.constellationName -ne 'Лиса') { throw 'First star incorrect.' }
+    $big = Get-YSoulPath 100000
+    if ($big.stars -lt 9 -or $big.constellation -lt 2 -or $big.inConstellation -ne ($big.stars % 9)) { throw 'Stars beyond the first constellation incorrect.' }
+    $script:Soul.xp = 555
+    $jBefore = $script:Soul.journal.Count
+    if (-not (Add-YSoulXp 150)) { throw 'Stage 9 and first star should report growth.' }
+    if ($script:Soul.journal.Count -ne $jBefore + 2) { throw 'Stage and star milestones not journaled.' }
+    if ([string]$script:Soul.journal[$script:Soul.journal.Count - 2].text -notlike '*9-ю ступень*') { throw 'Stage milestone text incorrect.' }
+    if ((Get-YSoulView).path.stars -ne 1) { throw 'Soul view lacks path.' }
+
     Write-Host 'Soul Curiosity tests passed.' -ForegroundColor Green
 } catch {
     # В CI (Windows PowerShell 5.1) нужен стек: без него неясно, какой шаг упал.

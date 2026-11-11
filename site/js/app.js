@@ -185,7 +185,7 @@
           if (location.hash !== hash) history_.replaceState(null, '', hash || location.pathname + location.search);
         }
         if (window.YBrain) YBrain.onShow(name);
-        if (name === 'soul') { renderSoul(); if (online) { loadEvolution(); loadGrowth(); loadUnderstanding(); loadDepth(); } }
+        if (name === 'soul') { renderSoul(); if (online) loadSoul().catch(function () { /* покажем позже */ }); }
         syncFab();
         if (!fromHash && window.scrollY) window.scrollTo(0, 0);
       }
@@ -1506,64 +1506,103 @@
       });
 
 
-      /* ---------- Душа Яэри ---------- */
-      // Состояние души живёт на сервере (data\soul.json). Здесь только показ, правки хозяина
-      // и запуск раздумий: после нескольких реплик и при новой встрече.
-      var SOUL_STAGES = ['Искорка', 'Пробуждение', 'Любопытство', 'Знакомство', 'Доверие', 'Понимание', 'Привязанность', 'Родство', 'Девятый хвост'];
-      var SOUL_KINDS = { reflection: 'раздумье', muse: 'думала о вас', milestone: 'новый хвост', birth: 'пробуждение', moment: 'важный момент', dream: 'сон', secret: 'секрет' };
-      var soulData = null;
-      var soulTimer = 0;
-      var soulBusy = false;
-      var soulEditing = false;
+      /* ---------- Душа: данные, загрузка и фоновое поведение ---------- */
+      // Всё состояние души живёт на сервере (data\*.json). Здесь: загрузка, действия хозяина
+      // и автоматическое поведение (раздумья после разговора, сон в простое, утренняя и вечерняя забота).
+      // Отрисовка — в soul-ui.js.
+      var SOUL_STAGES = ['Искорка', 'Пробуждение', 'Любопытство', 'Знакомство', 'Доверие', 'Понимание', 'Привязанность', 'Родство', 'Полнота'];
+      var SOUL_XP = [0, 12, 35, 70, 120, 190, 280, 400, 560];
+      // После девятой ступени: звезда k стоит 120 + 20·k опыта, 9 звёзд = созвездие (как в yaeri-soul.ps1).
+      var SOUL_STAR_BASE = 120, SOUL_STAR_STEP = 20;
+      var SOUL_CONST = ['Лиса', 'Луна', 'Сакура', 'Ветер', 'Река', 'Гора', 'Пламя', 'Небо', 'Вечность'];
+      var SOUL_KINDS = { reflection: 'раздумье', muse: 'думала о вас', milestone: 'веха пути', birth: 'пробуждение', moment: 'важный момент', dream: 'сон', secret: 'секрет' };
+      var soulData = null, growthData = null, undData = null, depthData = null, evoData = null, s3Data = null, lifeData = null, e5Data = null, vecData = null;
+      var undRated = {};
+      var soulTimer = 0, soulBusy = false, soulEditing = false;
 
-      (function () {
-        // Градиенты хвостов лежат в отдельном невидимом SVG: так они работают, даже если карточка скрыта.
-        var defs = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        defs.setAttribute('width', '0');
-        defs.setAttribute('height', '0');
-        defs.setAttribute('aria-hidden', 'true');
-        defs.style.position = 'absolute';
-        defs.innerHTML = '<defs><linearGradient id="soulTail" x1="0" y1="1" x2="0" y2="0"><stop offset="0" style="stop-color:var(--a-deep)"/><stop offset=".55" style="stop-color:var(--a-strong)"/><stop offset=".85" style="stop-color:var(--a)"/><stop offset="1" style="stop-color:var(--a-glow)"/></linearGradient>' +
-          '<radialGradient id="soulPearl"><stop offset="0" stop-color="#fff"/><stop offset=".4" style="stop-color:var(--a-glow)"/><stop offset="1" style="stop-color:var(--a);stop-opacity:.2"/></radialGradient></defs>';
-        body.insertBefore(defs, body.firstChild);
-      }());
-
-      function tailsSvg(level) {
-        // Девять хвостов веером; зажигаются от центра к краям.
-        var order = [4, 3, 5, 2, 6, 1, 7, 0, 8];
-        var out = '<svg viewBox="0 0 200 132">';
-        for (var i = 0; i < 9; i++) {
-          var rank = order.indexOf(i);
-          var cls = rank < level ? 't-on' : (rank === level ? 't-next' : 't-off');
-          var angle = -76 + i * 19;
-          out += '<g transform="translate(100 120) rotate(' + angle + ')"><path class="' + cls + '" style="--i:' + i + '" d="M0 0 C -15 -24 -21 -62 -5 -98 C 0 -88 5 -90 11 -96 C 17 -62 13 -24 0 0 Z"/></g>';
-        }
-        return out + '<circle class="pearl" cx="100" cy="120" r="10"/></svg>';
+      function arr(x) { return Array.isArray(x) ? x : []; }
+      function dayKey(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+      function ago(t) {
+        var m = Math.max(0, Math.round((Date.now() - t) / 60000));
+        if (m < 1) return 'только что';
+        if (m < 60) return m + ' мин назад';
+        var h = Math.round(m / 60);
+        if (h < 24) return h + ' ' + plural(h, 'час', 'часа', 'часов') + ' назад';
+        var d = Math.round(h / 24);
+        return d + ' ' + plural(d, 'день', 'дня', 'дней') + ' назад';
+      }
+      function constName(i) { return i < SOUL_CONST.length ? SOUL_CONST[i] : 'Вечность ' + (i - SOUL_CONST.length + 2); }
+      function soulLevelOf(xp) { var l = 1; for (var i = 0; i < SOUL_XP.length; i++) if (xp >= SOUL_XP[i]) l = i + 1; return l; }
+      // Путь развития: ступени 1–9, затем бесконечные звёзды и созвездия.
+      function soulPath(xp) {
+        xp = Math.max(0, Number(xp) || 0);
+        var level = soulLevelOf(xp), top = SOUL_XP[SOUL_XP.length - 1];
+        var stars = 0, from = top, to = top + SOUL_STAR_BASE + SOUL_STAR_STEP;
+        if (xp >= top) while (xp >= to) { stars++; from = to; to = from + SOUL_STAR_BASE + SOUL_STAR_STEP * (stars + 1); }
+        var complete = level >= SOUL_STAGES.length;
+        var p = {
+          level: level, complete: complete, stars: stars, starFrom: from, starTo: to,
+          constellation: Math.floor(stars / 9) + 1, constellationName: constName(Math.floor(stars / 9)), inConstellation: stars % 9,
+          stage: SOUL_STAGES[level - 1], nextStage: complete ? '' : SOUL_STAGES[level]
+        };
+        if (complete) { p.from = from; p.to = to; p.next = 'звезда ' + (stars + 1); }
+        else { p.from = SOUL_XP[level - 1]; p.to = SOUL_XP[level]; p.next = SOUL_STAGES[level]; }
+        p.frac = Math.max(0, Math.min(1, (xp - p.from) / Math.max(1, p.to - p.from)));
+        p.left = Math.max(0, p.to - xp);
+        return p;
+      }
+      // Мастерство по областям: считается из уже накопленных данных души, уровни без потолка.
+      // Уровень n требует 5·n·(n−1) очков: 0, 10, 30, 60, 100…
+      function masteryLevel(points) {
+        points = Math.max(0, points);
+        var n = Math.floor((1 + Math.sqrt(1 + 0.8 * points)) / 2);
+        var from = 5 * n * (n - 1), to = 5 * (n + 1) * n;
+        return { level: n, frac: (points - from) / (to - from), left: Math.ceil(to - points) };
+      }
+      function soulMastery(d) {
+        var s = d.soul, o = s.owner || {};
+        var opened = arr(d.secretList).filter(function (x) { return x.opened; }).length;
+        var aimSum = arr(s.aims).reduce(function (a, x) { return a + (Number(x.progress) || 0); }, 0);
+        var defs = [
+          ['talk', 'Общение', (s.exchanges || 0), 'реплики в разговорах'],
+          ['think', 'Размышления', (s.reflections || 0) * 3 + (s.sleeps || 0) * 5, 'раздумья и сны'],
+          ['memory', 'Память', arr(s.moments).length * 4 + arr(s.journal).length, 'моменты и дневник'],
+          ['know', 'Понимание вас', (arr(o.goals).length + arr(o.likes).length + arr(o.worries).length) * 4 + Math.floor(String(o.portrait || '').length / 40) + arr(s.ownerMoods).length * 2, 'портрет и наблюдения'],
+          ['bond', 'Близость', (s.bond || 0) * 2 + opened * 10, 'доверие и секреты'],
+          ['world', 'Свой мир', arr(s.interests).length * 3 + arr(s.opinions).length * 3 + Math.floor(aimSum / 10), 'увлечения, мнения, цели']
+        ];
+        return defs.map(function (x) { var m = masteryLevel(x[2]); return { id: x[0], name: x[1], points: Math.round(x[2]), hint: x[3], level: m.level, frac: m.frac, left: m.left }; });
       }
       function soulDefault() {
         var t = Date.now();
         return {
           level: 1, maxLevel: 9, stage: SOUL_STAGES[0], nextStage: SOUL_STAGES[1], xpFrom: 0, xpTo: 12, due: false,
+          needs: { longing: 0, joy: 55, curiosity: 60 },
           traitList: [
             { id: 'warmth', name: 'Тепло', value: 62 }, { id: 'curiosity', name: 'Любопытство', value: 58 },
             { id: 'playful', name: 'Игривость', value: 45 }, { id: 'care', name: 'Забота', value: 60 },
             { id: 'wisdom', name: 'Мудрость', value: 30 }, { id: 'boldness', name: 'Смелость', value: 35 }
           ],
+          secretList: [20, 35, 50, 65, 80, 95].map(function (b, i) { return { bond: b, title: ['Откуда я', 'Когда тебя нет', 'Тайное желание', 'Подарок', 'Мой страх', 'Главное'][i], unlocked: false, opened: false }; }),
+          skills: [['/стих', 2], ['/совет', 3], ['/бережный-день', 4], ['/сказка', 5], ['/зеркало', 6], ['/мечта', 7], ['/письмо', 8], ['/наш-путь', 9]].map(function (x) { return { name: x[0], level: x[1], unlocked: false, desc: '' }; }),
           soul: {
             born: t, xp: 0, exchanges: 0, reflections: 0, bond: 10, bondNote: 'Мы только начинаем знакомиться.',
             self: 'Я Яэри, восьмихвостая лисица. Я только начинаю узнавать своего хозяина и саму себя.',
             mood: { name: 'тихая радость', why: 'Я только проснулась и рада знакомству.', t: t },
             owner: { portrait: '', goals: [], likes: [], worries: [] }, lessons: [], thought: '', thoughtNew: false,
             aims: [{ id: 'a1', text: 'Понять, что по-настоящему радует хозяина', progress: 0 }, { id: 'a2', text: 'Научиться помогать хозяину каждый день, без напоминаний', progress: 0 }],
-            journal: [{ id: 'birth', t: t, kind: 'birth', mood: 'тихая радость', text: 'Сегодня я проснулась. У меня пока горит только один хвост души, но я уже хочу узнать своего хозяина: чем он живёт, о чём мечтает и как я могу быть рядом.' }]
+            journal: [{ id: 'birth', t: t, kind: 'birth', mood: 'тихая радость', text: 'Сегодня я проснулась. Я только на первой ступени своего пути, но уже хочу узнать своего хозяина: чем он живёт, о чём мечтает и как я могу быть рядом.' }]
           }
         };
       }
-      function arr(x) { return Array.isArray(x) ? x : []; }
       function soulMsg(text, err) {
         var node = $('soul-status');
+        if (!node) return;
         node.textContent = text || '';
         node.classList.toggle('err', !!err);
+        node.hidden = !text;
+        clearTimeout(soulMsg.t);
+        if (text && !err) soulMsg.t = setTimeout(function () { node.hidden = true; }, 5000);
       }
       function setSoul(data) {
         if (!data || !data.soul) return;
@@ -1576,156 +1615,8 @@
         soulData = data;
         renderSoul();
       }
-      function renderSoulMini() {
-        if (!soulData || !$('soul-mini-stage')) return;
-        var s = soulData.soul;
-        $('soul-mini-tails').innerHTML = tailsSvg(soulData.level);
-        $('soul-mini-stage').textContent = soulData.stage;
-        $('soul-mini-mood').textContent = (s.mood.name || '') + ' · близость ' + s.bond;
-        $('soul-mini-meta').textContent = 'хвост ' + soulData.level + '/9';
-        var span = soulData.xpTo > soulData.xpFrom ? soulData.xpTo - soulData.xpFrom : 1;
-        var pct = soulData.xpTo < 0 ? 100 : Math.max(2, Math.min(100, (s.xp - soulData.xpFrom) / span * 100));
-        $('soul-mini-xp').style.width = pct + '%';
-        var th = $('soul-mini-thought');
-        th.hidden = !s.thought;
-        th.textContent = s.thought ? '«' + cut(s.thought, 140) + '»' : '';
-      }
-      function chipList(box, items, key) {
-        var ul = box.querySelector('ul');
-        ul.textContent = '';
-        if (!items.length) ul.appendChild(el('li', 'empty', key === 'lessons' ? 'Пока ничего. Яэри запишет сюда, что поняла о том, как с вами говорить.' : 'пока пусто'));
-        items.forEach(function (text, i) {
-          var li = el('li');
-          li.appendChild(el('span', '', text));
-          if (online) {
-            var del = el('button', '', '×');
-            del.type = 'button';
-            del.setAttribute('aria-label', 'Убрать: ' + text);
-            del.addEventListener('click', function () {
-              var next = items.slice();
-              next.splice(i, 1);
-              var patch = {};
-              patch[key] = next;
-              soulUpdate(patch);
-            });
-            li.appendChild(del);
-          }
-          ul.appendChild(li);
-        });
-        box.querySelector('input').hidden = !online;
-      }
-      function renderSoul() {
-        if (!soulData) soulData = soulDefault();
-        renderSoulMini();
-        if (currentView !== 'soul') return;
-        var d = soulData, s = d.soul;
-        $('soul-demo').hidden = online;
-        renderHero();
-        $('soul-tails').innerHTML = tailsSvg(d.level);
-        $('soul-stage').textContent = d.stage;
-        $('soul-level').textContent = 'хвост души ' + d.level + ' из ' + (d.maxLevel || 9);
-        var span = d.xpTo > d.xpFrom ? d.xpTo - d.xpFrom : 1;
-        var pct = d.xpTo < 0 ? 100 : Math.max(0, Math.min(100, (s.xp - d.xpFrom) / span * 100));
-        $('soul-xp').style.width = pct + '%';
-        $('soul-xp-bar').setAttribute('aria-valuenow', Math.round(pct));
-        $('soul-xp-note').textContent = d.xpTo < 0 ? 'Все девять хвостов горят.' : 'До ступени «' + d.nextStage + '»: ещё ' + Math.max(0, d.xpTo - s.xp) + ' опыта (реплика — 1, раздумье — 5)';
-        $('soul-mood').textContent = s.mood.name || '—';
-        $('soul-mood-why').textContent = s.mood.why || '';
-        $('soul-bond').style.width = Math.max(2, s.bond) + '%';
-        $('soul-bond-val').textContent = s.bond + '/100';
-        $('soul-bond-note').textContent = s.bondNote || '';
-        var days = Math.max(1, Math.floor((Date.now() - (s.born || Date.now())) / 864e5) + 1);
-        $('soul-st-ex').textContent = s.exchanges || 0;
-        $('soul-st-ref').textContent = s.reflections || 0;
-        $('soul-st-days').textContent = days;
-        $('soul-age').textContent = 'с ' + dmy(s.born || Date.now());
-        if (!soulEditing) {
-          $('soul-self').value = s.self || '';
-          $('soul-portrait').value = (s.owner && s.owner.portrait) || '';
-        }
-        $('soul-self').readOnly = !online;
-        fitSoulText($('soul-self'));
-        fitSoulText($('soul-portrait'));
-        $('soul-portrait').readOnly = !online;
-
-        var th = $('soul-thought');
-        th.hidden = !s.thought;
-        $('soul-thought-text').textContent = s.thought || '';
-
-        var list = $('soul-journal');
-        list.textContent = '';
-        var jq = jState.q.toLowerCase();
-        var shown = s.journal.slice().reverse().filter(function (j) {
-          if (jState.day && dayKey(new Date(j.t || 0)) !== jState.day) return false;
-          return !jq || String(j.text || '').toLowerCase().indexOf(jq) > -1 || String(j.mood || '').toLowerCase().indexOf(jq) > -1 || String(SOUL_KINDS[j.kind] || '').indexOf(jq) > -1;
-        });
-        $('soul-journal-count').textContent = (shown.length !== s.journal.length ? shown.length + ' из ' : '') + s.journal.length + ' ' + plural(s.journal.length, 'запись', 'записи', 'записей');
-        renderJCal(s.journal);
-        var jf = $('soul-jfilter');
-        jf.hidden = !jState.day && !jq;
-        jf.textContent = '';
-        if (!jf.hidden) {
-          jf.appendChild(el('span', '', (jState.day ? 'За ' + jState.day.split('-').reverse().join('.') : 'Все дни') + (jq ? ' · «' + jState.q + '»' : '')));
-          jf.appendChild(smallBtn('Показать всё', 'Сбросить фильтр дневника', function () { jState.day = ''; jState.q = ''; $('soul-jsearch').value = ''; renderSoul(); }, 'mini-btn'));
-        }
-        shown.forEach(function (j) {
-          var li = el('li', 'k-' + (j.kind || 'reflection'));
-          var head = el('div', 'j-head');
-          head.appendChild(el('b', '', SOUL_KINDS[j.kind] || 'запись'));
-          head.appendChild(el('span', '', dmy(j.t) + ' ' + hhmm(j.t)));
-          if (j.mood) head.appendChild(el('span', '', j.mood));
-          li.appendChild(head);
-          li.appendChild(el('p', 'j-text', j.text));
-          if (online) {
-            var del = el('button', 'j-del', '×');
-            del.type = 'button';
-            del.setAttribute('aria-label', 'Удалить запись дневника');
-            del.addEventListener('click', function () {
-              if (window.confirm('Удалить эту запись из дневника Яэри?')) soulUpdate({ removeJournal: j.id });
-            });
-            li.appendChild(del);
-          }
-          list.appendChild(li);
-        });
-        if (!s.journal.length) list.appendChild(el('li', 'empty', 'Дневник пока пуст.'));
-        else if (!shown.length) list.appendChild(el('li', 'empty', 'Ничего не нашлось.'));
-
-        each(document.querySelectorAll('#soul .soul-list[data-key]'), function (box) {
-          var key = box.getAttribute('data-key');
-          chipList(box, key === 'lessons' ? s.lessons : s.owner[key] || [], key);
-        });
-
-        renderSoulGrowth(d, s);
-        renderTraitChart(d, s);
-        renderGrowth();
-
-        var traits = $('soul-traits');
-        traits.textContent = '';
-        arr(d.traitList).forEach(function (t) {
-          var row = el('label', 'trait');
-          row.appendChild(el('span', '', t.name));
-          var range = el('input');
-          range.type = 'range';
-          range.min = 0;
-          range.max = 100;
-          range.value = t.value;
-          range.disabled = !online;
-          range.setAttribute('aria-label', t.name);
-          var out = el('output', '', String(t.value));
-          range.addEventListener('input', function () { out.textContent = range.value; });
-          range.addEventListener('change', function () {
-            var patch = { traits: {} };
-            patch.traits[t.id] = Number(range.value);
-            soulUpdate(patch);
-          });
-          row.appendChild(range);
-          row.appendChild(out);
-          traits.appendChild(row);
-        });
-      }
       function soulUpdate(patch) {
         if (!online) return Promise.resolve();
-        soulMsg('Сохраняю…');
         return api('soul/update', patch).then(function (data) { setSoul(data); soulMsg('Сохранено.'); })
           .catch(function (e) { soulMsg(e.message, true); });
       }
@@ -1735,310 +1626,106 @@
         field.style.height = 'auto';
         field.style.height = Math.min(field.scrollHeight + 4, 420) + 'px';
       }
-      function bindSoulText(id, key) {
-        var field = $(id);
-        field.addEventListener('input', function () { fitSoulText(field); });
-        field.addEventListener('focus', function () { soulEditing = true; });
-        field.addEventListener('blur', function () {
-          soulEditing = false;
-          if (!online || !soulData) return;
-          var cur = key === 'portrait' ? soulData.soul.owner.portrait : soulData.soul[key];
-          if (field.value.trim() === String(cur || '').trim()) return;
-          var patch = {};
-          patch[key] = field.value;
-          soulUpdate(patch);
+
+      /* Загрузка остальных частей души. Каждая — свой файл на сервере; ошибки не мешают остальным. */
+      function quiet(p) { return p.catch(function () { /* Покажем при следующем обновлении. */ }); }
+      function setGrowth(d) { if (d && d.stages) { growthData = d; renderSoulParts(); } }
+      function setUnderstanding(d) {
+        if (!d || !d.sections) return;
+        undData = d;
+        undRated = {};
+        arr(d.rated).forEach(function (r) { undRated[r.id] = r.score; });
+        renderSoulParts();
+        decorateRated();
+      }
+      function setDepth(d) { if (d && d.settings) { depthData = d; renderSoulParts(); } }
+      function loadGrowth() { return online ? quiet(api('soul/growth').then(setGrowth)) : Promise.resolve(); }
+      function loadUnderstanding() { return online ? quiet(api('soul/understanding').then(setUnderstanding)) : Promise.resolve(); }
+      function loadDepth() { return online ? quiet(api('soul/depth').then(setDepth)) : Promise.resolve(); }
+      function loadEvolution() { return online ? quiet(api('soul/evolution').then(function (d) { evoData = d; renderSoulParts(); })) : Promise.resolve(); }
+      function loadSoul3() { return online ? quiet(api('soul3').then(function (d) { s3Data = d; renderSoulParts(); })) : Promise.resolve(); }
+      function loadLife4() { return online ? quiet(api('life').then(function (d) { lifeData = d; renderSoulParts(); })) : Promise.resolve(); }
+      function loadEvolution5() { return online ? quiet(api('evolution5').then(function (d) { e5Data = d; renderSoulParts(); })) : Promise.resolve(); }
+      function loadVector2() { return online ? quiet(api('vector').then(function (d) { vecData = d; renderSoulParts(); })) : Promise.resolve(); }
+      function loadSoulExtras() {
+        // Сервер однопоточный: запросы по очереди, чтобы не мешать чату.
+        return loadGrowth().then(loadUnderstanding).then(loadDepth).then(loadEvolution).then(loadSoul3)
+          .then(loadLife4).then(loadEvolution5).then(loadVector2);
+      }
+      function loadSoul() {
+        return api('soul').then(function (data) { setSoul(data); return loadSoulExtras(); });
+      }
+      setInterval(function () {
+        if (online && currentView === 'soul' && !document.hidden) loadSoul().catch(function () { /* позже */ });
+      }, 90000);
+
+      /* Действия по решениям хозяина: одобрить или отклонить то, что Яэри предложила сама. */
+      function soulDecide(kind, id, yes) {
+        var call;
+        if (kind === 'skill') call = api('soul/depth/skill', { id: id, action: yes ? 'approve' : 'reject' }).then(setDepth);
+        else if (kind === 'proposal') call = api('soul/depth/proposal', { id: id, action: yes ? 'approve' : 'reject' }).then(setDepth).then(function () { return api('soul').then(setSoul); });
+        else if (kind === 'insight') call = api('soul/growth/insight', { id: id, action: yes ? 'confirm' : 'dismiss' }).then(setGrowth);
+        else if (kind === 'tool') call = api('life/tools/decide', { id: id, action: yes ? 'approve' : 'reject' }).then(loadLife4);
+        else if (kind === 'e5goal') call = api('evolution5/goal/step', { id: id, action: yes ? 'approve' : 'cancel' }).then(loadEvolution5);
+        else if (kind === 'strategy' || kind === 'concept' || kind === 'transfer') call = api('evolution5/' + kind + '/decide', { id: id, action: yes ? 'approve' : 'reject' }).then(loadEvolution5);
+        else if (kind === 'nudge') call = api('soul/depth/nudge', { action: yes ? 'ok' : 'later' }).then(setDepth);
+        else return Promise.resolve();
+        return call.then(function () { soulMsg(yes ? 'Принято.' : 'Отклонено.'); }).catch(function (e) { soulMsg(e.message, true); });
+      }
+
+      /* Оценки ответов в чате (👍 / 👎): из них Яэри сама выводит уроки. */
+      function decorateRated() {
+        each(document.querySelectorAll('.rate[data-mid]'), function (bar) {
+          var sc = undRated[bar.getAttribute('data-mid')] || 0;
+          bar.querySelector('.up').setAttribute('aria-pressed', sc > 0 ? 'true' : 'false');
+          bar.querySelector('.down').setAttribute('aria-pressed', sc < 0 ? 'true' : 'false');
         });
       }
-      bindSoulText('soul-self', 'self');
-      bindSoulText('soul-portrait', 'portrait');
-      each(document.querySelectorAll('#soul .soul-list input'), function (inp) {
-        inp.addEventListener('keydown', function (event) {
-          if (event.key !== 'Enter' || event.isComposing) return;
-          event.preventDefault();
-          var text = inp.value.trim();
-          if (!text || !soulData) return;
-          var key = inp.parentNode.getAttribute('data-key');
-          var cur = key === 'lessons' ? soulData.soul.lessons : soulData.soul.owner[key];
-          var patch = {};
-          patch[key] = arr(cur).concat([text]);
-          inp.value = '';
-          soulUpdate(patch);
-        });
-      });
-
-
-      /* Дневник: поиск и календарь. */
-      var jState = { q: '', day: '', month: null };
-      var JWEEK = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
-      function renderJCal(journal) {
-        var days = {};
-        journal.forEach(function (j) { var k = dayKey(new Date(j.t || 0)); days[k] = (days[k] || 0) + 1; });
-        if (!jState.month) jState.month = new Date();
-        var m = jState.month;
-        var cal = $('soul-jcal');
-        cal.textContent = '';
-        var head = el('div', 'cal-head');
-        head.appendChild(smallBtn('‹', 'Предыдущий месяц', function () { jState.month = new Date(m.getFullYear(), m.getMonth() - 1, 1); renderSoul(); }));
-        var title = '';
-        try { title = m.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }); } catch (e) { title = (m.getMonth() + 1) + '.' + m.getFullYear(); }
-        head.appendChild(el('span', '', title));
-        head.appendChild(smallBtn('›', 'Следующий месяц', function () { jState.month = new Date(m.getFullYear(), m.getMonth() + 1, 1); renderSoul(); }));
-        cal.appendChild(head);
-        JWEEK.forEach(function (w) { cal.appendChild(el('span', 'wd', w)); });
-        var first = new Date(m.getFullYear(), m.getMonth(), 1);
-        var lead = (first.getDay() + 6) % 7;
-        for (var i = 0; i < lead; i++) cal.appendChild(el('span'));
-        var total = new Date(m.getFullYear(), m.getMonth() + 1, 0).getDate();
-        var today = dayKey(new Date());
-        for (var dd = 1; dd <= total; dd++) {
-          (function (key, n) {
-            var cnt = days[key] || 0;
-            var b = el('button', 'd' + (cnt ? ' has' : '') + (key === jState.day ? ' sel' : '') + (key === today ? ' today' : ''), String(n));
-            b.type = 'button';
-            b.disabled = !cnt;
-            b.title = cnt ? cnt + ' ' + plural(cnt, 'запись', 'записи', 'записей') : 'записей нет';
-            b.addEventListener('click', function () { jState.day = jState.day === key ? '' : key; renderSoul(); });
-            cal.appendChild(b);
-          })(dayKey(new Date(m.getFullYear(), m.getMonth(), dd)), dd);
+      function rateBar(m, row) {
+        var bar = el('div', 'rate');
+        bar.setAttribute('data-mid', m.id);
+        var up = el('button', 'up', '👍'), down = el('button', 'down', '👎');
+        [[up, 'Хороший ответ'], [down, 'Ответ не понравился']].forEach(function (p) { p[0].type = 'button'; p[0].title = p[1]; p[0].setAttribute('aria-label', p[1]); p[0].setAttribute('aria-pressed', 'false'); });
+        function send(score, note) {
+          api('soul/rate', { id: m.id, score: score, note: note || '' }).then(setUnderstanding).catch(function () { /* Не страшно: оценку можно поставить ещё раз. */ });
         }
-      }
-      $('soul-jsearch').addEventListener('input', function () { jState.q = this.value.trim(); renderSoul(); });
-
-      /* График характера. */
-      var TRAIT_COLORS = ['hsl(168, 68%, 62%)', 'hsl(45, 90%, 62%)', 'hsl(330, 80%, 70%)', 'hsl(208, 80%, 66%)', 'hsl(262, 70%, 74%)', 'hsl(24, 90%, 64%)'];
-      function renderTraitChart(d, s) {
-        var traits = arr(d.traitList);
-        var pts = arr(s.traitHistory).slice();
-        var today = dayKey(new Date());
-        var cur = {};
-        traits.forEach(function (t) { cur[t.id] = t.value; });
-        if (!pts.length || pts[pts.length - 1].day !== today) pts.push({ day: today, traits: cur });
-        var box = $('soul-chart');
-        var W = 320, H = 150, L = 26, R = 8, T = 8, B = 20;
-        var lo = 100, hi = 0;
-        pts.forEach(function (p) { traits.forEach(function (t) { var v = p.traits[t.id]; if (typeof v === 'number') { lo = Math.min(lo, v); hi = Math.max(hi, v); } }); });
-        lo = Math.max(0, Math.floor((lo - 5) / 10) * 10);
-        hi = Math.min(100, Math.ceil((hi + 5) / 10) * 10);
-        if (hi - lo < 20) { hi = Math.min(100, lo + 20); lo = Math.max(0, hi - 20); }
-        function X(i) { return pts.length < 2 ? (L + W - R) / 2 : L + i * (W - L - R) / (pts.length - 1); }
-        function Y(v) { return T + (hi - v) * (H - T - B) / (hi - lo); }
-        var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '">';
-        for (var g = lo; g <= hi; g += (hi - lo > 40 ? 20 : 10)) {
-          svg += '<line class="grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(g) + '" y2="' + Y(g) + '"/><text x="' + (L - 4) + '" y="' + (Y(g) + 3) + '" text-anchor="end">' + g + '</text>';
-        }
-        var fmt = function (k) { return k.slice(8, 10) + '.' + k.slice(5, 7); };
-        svg += '<text x="' + L + '" y="' + (H - 5) + '">' + fmt(pts[0].day) + '</text>';
-        if (pts.length > 1) svg += '<text x="' + (W - R) + '" y="' + (H - 5) + '" text-anchor="end">' + fmt(pts[pts.length - 1].day) + '</text>';
-        traits.forEach(function (t, ti) {
-          var c = TRAIT_COLORS[ti % TRAIT_COLORS.length];
-          var path = '';
-          pts.forEach(function (p, i) {
-            var v = p.traits[t.id];
-            if (typeof v !== 'number') return;
-            path += (path ? ' L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1);
-          });
-          if (pts.length > 1) svg += '<path d="' + path + '" fill="none" stroke="' + c + '" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>';
-          pts.forEach(function (p, i) {
-            var v = p.traits[t.id];
-            if (typeof v !== 'number') return;
-            svg += '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(v).toFixed(1) + '" r="' + (pts.length > 40 ? 1.2 : 2.4) + '" fill="' + c + '"><title>' + t.name + ' ' + v + ' · ' + fmt(p.day) + '</title></circle>';
-          });
+        up.addEventListener('click', function () { send(up.getAttribute('aria-pressed') === 'true' ? 0 : 1); });
+        down.addEventListener('click', function () {
+          if (down.getAttribute('aria-pressed') === 'true') { send(0); return; }
+          if (row.querySelector('.rate-note')) return;
+          var box = el('div', 'rate-note');
+          var field = el('input', 'field');
+          field.type = 'text';
+          field.maxLength = 300;
+          field.placeholder = 'Что не так? (необязательно)';
+          field.setAttribute('aria-label', 'Что не так с ответом');
+          var ok = el('button', 'mini-btn solid', 'Отправить');
+          ok.type = 'button';
+          function done() { send(-1, field.value.trim()); box.remove(); }
+          ok.addEventListener('click', done);
+          field.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); done(); } });
+          box.appendChild(field);
+          box.appendChild(ok);
+          bar.insertAdjacentElement('afterend', box);
+          field.focus();
         });
-        box.innerHTML = svg + '</svg>';
-        $('soul-chart-meta').textContent = pts.length + ' ' + plural(pts.length, 'день', 'дня', 'дней');
-        var lg = $('soul-chart-legend');
-        lg.textContent = '';
-        traits.forEach(function (t, ti) {
-          var first = pts[0].traits[t.id];
-          var delta = typeof first === 'number' ? t.value - first : 0;
-          var sp = el('span');
-          var i = el('i');
-          i.style.background = TRAIT_COLORS[ti % TRAIT_COLORS.length];
-          sp.appendChild(i);
-          sp.appendChild(document.createTextNode(t.name + ' '));
-          sp.appendChild(el('b', '', String(t.value)));
-          if (delta) sp.appendChild(document.createTextNode(' (' + (delta > 0 ? '+' : '') + delta + ')'));
-          lg.appendChild(sp);
-        });
+        bar.appendChild(up);
+        bar.appendChild(down);
+        row.appendChild(bar);
+        decorateRated();
       }
 
-      function smallBtn(text, label, fn, cls) {
-        var b = el('button', cls || '', text);
-        b.type = 'button';
-        b.setAttribute('aria-label', label);
-        b.title = label;
-        b.addEventListener('click', fn);
-        return b;
-      }
-      function dayKey(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
-      function renderSoulGrowth(d, s) {
-        // Сон и грусть.
-        var sad = d.sadStreak || 0;
-        $('soul-sad').hidden = sad < 2;
-        $('soul-sad').textContent = sad >= 2 ? 'Яэри замечает, что вам грустно уже ' + sad + ' ' + plural(sad, 'день', 'дня', 'дней') + ' подряд, и бережёт вас.' : '';
-        $('soul-sleep-note').textContent = s.lastSleep ? 'Последний сон: ' + dmy(s.lastSleep) + ' ' + hhmm(s.lastSleep) + ' · всего ' + (s.sleeps || 0) + '. Засыпает сама, когда вы не работаете.' : 'Ещё ни разу не спала. Уснёт сама, когда вы отойдёте от компьютера.';
-
-        // Настроение хозяина за 30 дней.
-        var byDay = {};
-        arr(s.ownerMoods).forEach(function (m) { byDay[m.day] = m; });
-        var strip = $('soul-moods');
-        strip.textContent = '';
-        var now = new Date();
-        var seen = 0;
-        for (var i = 29; i >= 0; i--) {
-          var day = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
-          var m = byDay[dayKey(day)];
-          var bar = el('i', m ? 's' + (m.score < 0 ? 'm' + (-m.score) : m.score) : '');
-          bar.title = day.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) + (m ? ': ' + (m.label || m.score) : ': нет данных');
-          if (m) seen++;
-          strip.appendChild(bar);
-        }
-        var last = arr(s.ownerMoods)[arr(s.ownerMoods).length - 1];
-        $('soul-moods-note').textContent = seen ? 'Последнее: ' + (last.label || '') + ' (' + last.day.split('-').reverse().join('.') + ')' : 'Яэри отмечает ваше настроение, когда обдумывает разговоры.';
-
-        // Важные моменты.
-        var moments = arr(s.moments).slice().sort(function (a, b) { return (b.pinned - a.pinned) || (b.strength - a.strength); });
-        var ul = $('soul-moments');
-        ul.textContent = '';
-        $('soul-moments-count').textContent = moments.length ? moments.length + ' ' + plural(moments.length, 'момент', 'момента', 'моментов') : '';
-        if (!moments.length) ul.appendChild(el('li', 'empty', 'Пока нет. Яэри сохранит сюда по-настоящему важное: ваши успехи, решения, первые разы.'));
-        moments.forEach(function (mo) {
-          var li = el('li');
-          li.style.opacity = String(0.45 + Math.min(1, mo.strength / 10) * 0.55);
-          li.appendChild(el('b', '', mo.title));
-          if (mo.text) li.appendChild(el('p', '', mo.text));
-          var str = el('span', 'str');
-          var fill = el('i');
-          fill.style.width = Math.round(mo.strength * 10) + '%';
-          str.appendChild(fill);
-          str.title = 'Сила памяти: ' + mo.strength + ' из 10 · ' + dmy(mo.t);
-          li.appendChild(str);
-          if (online) {
-            var acts = el('span', 'acts');
-            acts.appendChild(smallBtn('📌', mo.pinned ? 'Можно забыть' : 'Не забывать', function () { soulUpdate({ momentId: mo.id, pinned: !mo.pinned }); }, mo.pinned ? 'on' : ''));
-            acts.appendChild(smallBtn('×', 'Забыть момент', function () { if (window.confirm('Пусть Яэри забудет «' + mo.title + '»?')) soulUpdate({ momentId: mo.id, remove: true }); }));
-            li.appendChild(acts);
-          }
-          ul.appendChild(li);
-        });
-
-        // Её цели.
-        var aims = $('soul-aims');
-        aims.textContent = '';
-        arr(s.aims).forEach(function (a) {
-          var li = el('li');
-          li.appendChild(el('span', '', a.text));
-          li.appendChild(el('output', '', a.progress + '%'));
-          if (online) li.appendChild(smallBtn('×', 'Убрать цель', function () { soulUpdate({ removeAim: a.id }); }));
-          else li.appendChild(el('span'));
-          var bar = el('span', 'bar');
-          var fill = el('i');
-          fill.style.width = Math.max(2, a.progress) + '%';
-          bar.appendChild(fill);
-          li.appendChild(bar);
-          aims.appendChild(li);
-        });
-        if (!arr(s.aims).length) aims.appendChild(el('li', 'empty', 'Целей пока нет.'));
-        $('soul-aim-add').hidden = !online;
-
-        // Её увлечения.
-        var ints = $('soul-interests');
-        ints.textContent = '';
-        if (!arr(s.interests).length) ints.appendChild(el('li', 'empty', 'Появятся из ваших разговоров.'));
-        arr(s.interests).forEach(function (it) {
-          var li = el('li');
-          li.style.opacity = String(0.5 + Math.min(1, it.strength / 10) * 0.5);
-          li.title = (it.note ? it.note + ' · ' : '') + 'сила ' + it.strength;
-          li.appendChild(el('span', '', it.name));
-          if (online) li.appendChild(smallBtn('×', 'Убрать увлечение', function () { soulUpdate({ removeInterest: it.name }); }));
-          ints.appendChild(li);
-        });
-
-        // Её мнения.
-        var ops = $('soul-opinions');
-        ops.textContent = '';
-        if (!arr(s.opinions).length) ops.appendChild(el('li', 'empty', 'Своё мнение появится, когда ей будет о чём подумать.'));
-        arr(s.opinions).forEach(function (o) {
-          var li = el('li');
-          var t = el('span');
-          t.appendChild(el('b', '', o.topic + ': '));
-          t.appendChild(document.createTextNode(o.view));
-          li.appendChild(t);
-          if (online) li.appendChild(smallBtn('×', 'Убрать мнение', function () { soulUpdate({ removeOpinion: o.topic }); }));
-          ops.appendChild(li);
-        });
-
-        // Потребности.
-        var needs = d.needs || { longing: 0, joy: 55, curiosity: 60 };
-        var nbox = $('soul-needs');
-        nbox.textContent = '';
-        [['longing', 'Скучает'], ['joy', 'Радость'], ['curiosity', 'Любопытство']].forEach(function (p) {
-          var v = Math.max(0, Math.min(100, needs[p[0]] || 0));
-          var row = el('div', 'need ' + p[0]);
-          row.appendChild(el('span', '', p[1]));
-          var bar = el('span', 'nbar');
-          var fill = el('i');
-          fill.style.width = v + '%';
-          bar.appendChild(fill);
-          row.appendChild(bar);
-          row.appendChild(el('output', '', String(v)));
-          nbox.appendChild(row);
-        });
-
-        // Секреты.
-        var sec = $('soul-secrets');
-        sec.textContent = '';
-        arr(d.secretList).forEach(function (x) {
-          var li = el('li', x.unlocked ? '' : 'locked');
-          var head = el('div', 's-head');
-          head.appendChild(el('b', '', (x.unlocked ? (x.opened ? '🔓 ' : '🎁 ') : '🔒 ') + x.title));
-          head.appendChild(el('span', '', x.unlocked ? (x.opened ? dmy(x.t) : 'новый секрет') : 'близость ' + x.bond));
-          li.appendChild(head);
-          if (x.opened) li.appendChild(el('p', '', x.text));
-          else if (x.unlocked && online) {
-            var open = el('button', 'mini-btn solid', 'Открыть');
-            open.type = 'button';
-            open.style.marginTop = '6px';
-            open.addEventListener('click', function () { soulUpdate({ openSecret: x.bond }); flash('happy', 3200); });
-            li.appendChild(open);
-          }
-          sec.appendChild(li);
-        });
-        if (!arr(d.secretList).length) sec.appendChild(el('li', 'locked', 'Секреты появятся, когда вы станете ближе.'));
-
-        // Умения по ступеням.
-        var sk = $('soul-skills');
-        sk.textContent = '';
-        arr(d.skills).forEach(function (k) {
-          var li = el('li', k.unlocked ? '' : 'locked');
-          li.appendChild(el('b', '', k.name));
-          li.appendChild(el('span', '', k.unlocked ? k.desc + ' — в «Навыках»' : 'откроется на хвосте ' + k.level));
-          sk.appendChild(li);
-        });
-      }
-      $('soul-aim-add').addEventListener('keydown', function (event) {
-        if (event.key !== 'Enter' || event.isComposing) return;
-        event.preventDefault();
-        var text = this.value.trim();
-        if (!text) return;
-        this.value = '';
-        soulUpdate({ addAim: text });
-      });
-
-      // Фон: «сон», когда хозяин не работает, и забота утром и вечером.
+      /* Автоматика: раздумья после разговора, сон в простое, забота утром и вечером. Кнопок нет — всё само. */
       var IDLE_SLEEP = 15 * 60000;
       var careAsked = {};
       function soulSleep(mode) {
         if (!online || soulBusy || pending) return Promise.resolve(null);
         soulBusy = true;
-        $('soul-sleep').disabled = true;
-        if (mode === 'force') soulMsg('Яэри засыпает и перебирает память…');
         return api('soul/sleep', { mode: mode, name: settings.name, model: modelSelect.value }).then(function (data) {
           setSoul(data);
-          if (!data.skipped) soulMsg('Яэри поспала и пересобрала память: в дневнике новая запись.');
           return data;
-        }).catch(function (e) { soulMsg(e.message, true); return null; })
-          .then(function (data) { soulBusy = false; $('soul-sleep').disabled = false; return data; });
+        }).catch(function () { return null; })
+          .then(function (data) { soulBusy = false; return data; });
       }
       function careCheck() {
         if (!online || !settings.soul || !settings.care || pending || soulBusy) return;
@@ -2062,1296 +1749,6 @@
         if (soulData.sleepDue && idle > IDLE_SLEEP) soulSleep('auto');
         else if (idle < 5 * 60000 && !document.hidden) careCheck();
       }, 60000);
-      $('soul-sleep').addEventListener('click', function () { soulSleep('force'); });
-
-      /* ---------- Soul Evolution: history and activity ---------- */
-      function fillEvolutionList(id, items, format, empty) {
-        var target = $(id);
-        target.textContent = '';
-        if (!Array.isArray(items) || !items.length) {
-          target.appendChild(el('li', 'soul-small', empty));
-          return;
-        }
-        items.slice(-10).reverse().forEach(function (item) {
-          var li = el('li');
-          li.appendChild(el('span', 'soul-small', format(item)));
-          target.appendChild(li);
-        });
-      }
-      function loadEvolution() {
-        if (!online) return Promise.resolve();
-        return api('soul/evolution').then(function (data) {
-          $('soul-evo-enabled').checked = !!data.enabled;
-          $('soul-evo-meta').textContent = (data.counts && data.counts.episodes || 0) + ' событий памяти';
-          $('soul-evo-state').textContent = (data.enabled ? 'Активна' : 'Приостановлена') +
-            ' · очередь: ' + data.queued +
-            (data.lastTask ? ' · последняя задача: ' + data.lastTask : '') +
-            (data.lastError ? ' · ошибка: ' + data.lastError : '');
-          fillEvolutionList('soul-evo-events', data.events, function (x) {
-            return (x.kind || 'событие') + ': ' + (x.text || '');
-          }, 'Внутренних событий пока нет.');
-          fillEvolutionList('soul-evo-timeline', data.timeline, function (x) {
-            return (x.field || '') + ': ' + (x.before || '—') + ' → ' + (x.after || '') +
-              (x.reason ? ' (' + x.reason + ')' : '');
-          }, 'Изменений личности пока нет.');
-          fillEvolutionList('soul-evo-facts', data.facts, function (x) {
-            return (x.status === 'active' ? '✓ ' : '? ') + (x.key || '') + ': ' + (x.value || '') +
-              ' · уверенность ' + Math.round((x.confidence || 0) * 100) + '% · ' + (x.status || '');
-          }, 'Проверенных знаний пока нет.');
-        }).catch(function (err) {
-          $('soul-evo-state').textContent = 'Ошибка получения состояния: ' + err.message;
-        });
-      }
-      $('soul-evo-clear').addEventListener('click', function () {
-        if (!window.confirm('Очистить эпизоды, знания, исправления и историю автономной жизни? Другие воспоминания и дневник души останутся.')) return;
-        api('soul/evolution/clear', {}).then(loadEvolution).catch(function (err) {
-          $('soul-evo-state').textContent = err.message;
-        });
-      });
-      $('soul-evo-enabled').addEventListener('change', function () {
-        var control = this;
-        control.disabled = true;
-        api('soul/evolution', { enabled: control.checked })
-          .then(loadEvolution)
-          .catch(function (err) { $('soul-evo-state').textContent = err.message; })
-          .then(function () { control.disabled = false; });
-      });
-      setInterval(function () {
-        if (online && currentView === 'soul' && !document.hidden) loadEvolution();
-      }, 60000);
-
-      /* ---------- Душа: подвкладки, рост и графики ---------- */
-      var growthData = null;
-      var SOUL_TABS = ['now', 'growth', 'memory', 'world', 'char', 'depth'];
-      var SOUL_XP = [0, 12, 35, 70, 120, 190, 280, 400, 560];
-      var GROWTH_ICONS = { nudge: '🌧️', character: '🦊', principle: '📜', skill: '🛠️', proposal: '🪞', review: '🔍', study: '📖', insight: '💡', question: '❓', lesson: '🧭', goal: '🎯', map: '🗺️', 'goal-new': '🌱', 'goal-done': '🏆', sleep: '🌙', reflection: '💭' };
-      var GROWTH_RAN = {
-        study: 'разобрала ваш разговор', lessons: 'вывела уроки из поправок', goals: 'обновила учебные цели', wonder: 'задумалась о вас',
-        ratings: 'разобрала ваши оценки ответов', review: 'перечитала свои ответы', character: 'чуть-чуть выросла характером', principles: 'подумала о своих принципах', skills: 'подумала о новом навыке', maintenance: 'навела порядок в памяти', opinions: 'пересмотрела свои мнения', sleep: 'уснула и пересобрала воспоминания', reflection: 'подумала о разговорах'
-      };
-      var INTENSITY_NOTE = {
-        off: 'Только разговоры, сон и размышления. Собственного любопытства и учебных целей нет.',
-        quiet: 'Редко: догадки раз в несколько часов, цели раз в сутки, пауза между задачами 20 минут.',
-        normal: 'Раз в пару часов задумывается о вас, цели обновляет несколько раз в день.',
-        active: 'Часто: думает о вас каждые 45 минут, шаг обучения раз в 3 минуты. Запросов больше.'
-      };
-      var TONE_FACE = { joy: 'happy', sad: 'sorry', sleepy: 'sleep', think: 'think', calm: 'idle' };
-      function soulTone(name) {
-        name = String(name || '').toLowerCase();
-        if (/груст|тоск|печал|скуч|тревож|обид|одинок|винов/.test(name)) return 'sad';
-        if (/сонн|сон\b|уста|дрем|покой|умирот/.test(name)) return 'sleepy';
-        if (/раздум|задум|любопыт|интерес|размышл|сосредоточ/.test(name)) return 'think';
-        if (/рад|счаст|весел|игрив|восторг|довольн|вдохнов|нежн|тепл/.test(name)) return 'joy';
-        return 'calm';
-      }
-      function renderHero() {
-        if (!soulData) return;
-        var tone = soulTone(soulData.soul.mood && soulData.soul.mood.name);
-        $('soul-hero').setAttribute('data-tone', tone);
-        var src = 'yaeri/' + TONE_FACE[tone] + '-face.webp';
-        var face = $('soul-face');
-        if (face.getAttribute('src') !== src) face.setAttribute('src', src);
-      }
-      function showSoulTab(name, focus) {
-        if (SOUL_TABS.indexOf(name) < 0) name = 'now';
-        SOUL_TABS.forEach(function (k) {
-          var t = $('stab-' + k);
-          t.setAttribute('aria-selected', k === name ? 'true' : 'false');
-          t.tabIndex = k === name ? 0 : -1;
-          $('sp-' + k).hidden = k !== name;
-          if (k === name && focus) t.focus();
-        });
-        try { localStorage.setItem('yaeri-soul-tab', name); } catch (e) { /* без запоминания вкладки */ }
-        fitSoulText($('soul-self'));
-        fitSoulText($('soul-portrait'));
-        if (name === 'growth') renderGrowth();
-        if (name === 'depth' && typeof renderDepth === 'function') renderDepth();
-      }
-      each(document.querySelectorAll('.stab'), function (b) {
-        b.addEventListener('click', function () { showSoulTab(b.getAttribute('data-sp')); });
-        b.addEventListener('keydown', function (e) {
-          var i = SOUL_TABS.indexOf(b.getAttribute('data-sp'));
-          if (e.key === 'ArrowRight') { e.preventDefault(); showSoulTab(SOUL_TABS[(i + 1) % SOUL_TABS.length], true); }
-          else if (e.key === 'ArrowLeft') { e.preventDefault(); showSoulTab(SOUL_TABS[(i + SOUL_TABS.length - 1) % SOUL_TABS.length], true); }
-        });
-      });
-      (function () {
-        var saved = 'now';
-        try { saved = localStorage.getItem('yaeri-soul-tab') || 'now'; } catch (e) { saved = 'now'; }
-        showSoulTab(saved);
-      }());
-
-      function ago(t) {
-        var m = Math.max(0, Math.round((Date.now() - t) / 60000));
-        if (m < 1) return 'только что';
-        if (m < 60) return m + ' мин назад';
-        var h = Math.round(m / 60);
-        if (h < 24) return h + ' ' + plural(h, 'час', 'часа', 'часов') + ' назад';
-        var d = Math.round(h / 24);
-        return d + ' ' + plural(d, 'день', 'дня', 'дней') + ' назад';
-      }
-      function dayMs(key) { var p = String(key).split('-'); return Date.UTC(+p[0], +p[1] - 1, +p[2]); }
-      function dayLabel(key) { return String(key).slice(8, 10) + '.' + String(key).slice(5, 7); }
-      function chartEmpty(box, text) { box.innerHTML = '<div class="chart-empty">' + text + '</div>'; }
-      function legendFill(box, items) {
-        box.textContent = '';
-        items.forEach(function (it) {
-          var sp = el('span');
-          var i = el('i');
-          i.style.background = it.color;
-          sp.appendChild(i);
-          sp.appendChild(document.createTextNode(it.label + ' '));
-          sp.appendChild(el('b', '', String(it.value)));
-          box.appendChild(sp);
-        });
-      }
-      // Линейный график по датам: подсказка и направляющая при наведении или касании.
-      function drawLines(box, cfg) {
-        var days = cfg.days, n = days.length;
-        var W = Math.max(300, Math.round(box.clientWidth) || 640), H = 230, L = 36, R = cfg.thresholds && cfg.thresholds.length ? 54 : 14, T = 12, B = 26;
-        var t0 = dayMs(days[0]), t1 = dayMs(days[n - 1]);
-        function X(i) { return n < 2 || t1 === t0 ? (L + W - R) / 2 : L + (dayMs(days[i]) - t0) * (W - L - R) / (t1 - t0); }
-        var lo = cfg.yMin || 0, hi = cfg.yMax;
-        function Y(v) { return T + (hi - v) * (H - T - B) / (hi - lo); }
-        var id = box.id, s = '<svg viewBox="0 0 ' + W + ' ' + H + '"><defs>';
-        cfg.series.forEach(function (sr, k) {
-          s += '<linearGradient id="' + id + '-g' + k + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:' + sr.color + ';stop-opacity:.38"/><stop offset="1" style="stop-color:' + sr.color + ';stop-opacity:0"/></linearGradient>';
-        });
-        s += '</defs>';
-        for (var g = 0; g <= 4; g++) {
-          var v = lo + (hi - lo) * g / 4;
-          s += '<line class="grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '"/><text x="' + (L - 6) + '" y="' + (Y(v) + 3).toFixed(1) + '" text-anchor="end">' + Math.round(v) + '</text>';
-        }
-        var lastLabelY = 1e9;
-        (cfg.thresholds || []).slice().sort(function (a, b) { return b.v - a.v; }).forEach(function (th) {
-          if (th.v <= lo || th.v > hi) return;
-          var ty = Y(th.v);
-          s += '<line class="thr" x1="' + L + '" x2="' + (W - R) + '" y1="' + ty.toFixed(1) + '" y2="' + ty.toFixed(1) + '"/>';
-          // Подписи ступеней не накладываем друг на друга.
-          if (lastLabelY === 1e9 || ty - lastLabelY >= 13) { s += '<text class="thr-l" x="' + (W - R + 5) + '" y="' + (ty + 3).toFixed(1) + '">' + th.label + '</text>'; lastLabelY = ty; }
-        });
-        s += '<text x="' + L + '" y="' + (H - 7) + '">' + dayLabel(days[0]) + '</text>';
-        if (n > 1) s += '<text x="' + (W - R) + '" y="' + (H - 7) + '" text-anchor="end">' + dayLabel(days[n - 1]) + '</text>';
-        if (n > 4) s += '<text x="' + ((L + W - R) / 2).toFixed(1) + '" y="' + (H - 7) + '" text-anchor="middle">' + dayLabel(days[Math.floor((n - 1) / 2)]) + '</text>';
-        cfg.series.forEach(function (sr, k) {
-          var d = '';
-          sr.values.forEach(function (v, i) { d += (i ? ' L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); });
-          if (n > 1 && cfg.area) s += '<path d="' + d + ' L' + X(n - 1).toFixed(1) + ' ' + Y(lo).toFixed(1) + ' L' + X(0).toFixed(1) + ' ' + Y(lo).toFixed(1) + ' Z" fill="url(#' + id + '-g' + k + ')"/>';
-          if (n > 1) s += '<path class="ln" style="stroke:' + sr.color + '" d="' + d + '"/>';
-          var last = n - 1;
-          s += '<circle class="pt" style="fill:' + sr.color + '" cx="' + X(last).toFixed(1) + '" cy="' + Y(sr.values[last]).toFixed(1) + '" r="4"/>';
-        });
-        s += '<line class="guide" id="' + id + '-guide" y1="' + T + '" y2="' + (H - B) + '" x1="0" x2="0" style="display:none"/>';
-        s += '<rect id="' + id + '-hit" x="' + L + '" y="0" width="' + (W - L - R) + '" height="' + H + '" fill="transparent" style="touch-action:pan-y"/></svg>';
-        box.innerHTML = s;
-        var svg = box.querySelector('svg'), guide = $(id + '-guide'), hit = $(id + '-hit');
-        var tip = el('div', 'c-tip');
-        tip.hidden = true;
-        box.appendChild(tip);
-        function show(e) {
-          var r = svg.getBoundingClientRect();
-          var sx = (e.clientX - r.left) * W / r.width;
-          var best = 0, bd = 1e9;
-          for (var i = 0; i < n; i++) { var dd = Math.abs(X(i) - sx); if (dd < bd) { bd = dd; best = i; } }
-          guide.setAttribute('x1', X(best)); guide.setAttribute('x2', X(best)); guide.style.display = '';
-          tip.textContent = '';
-          tip.appendChild(el('b', '', days[best].split('-').reverse().join('.')));
-          var top = 1e9;
-          cfg.series.forEach(function (sr) {
-            var row = el('div');
-            var dot = el('i');
-            dot.style.background = sr.color;
-            row.appendChild(dot);
-            row.appendChild(document.createTextNode(sr.label + ': ' + sr.values[best]));
-            tip.appendChild(row);
-            top = Math.min(top, Y(sr.values[best]));
-          });
-          tip.hidden = false;
-          tip.style.left = Math.max(60, Math.min(r.width - 60, X(best) * r.width / W)) + 'px';
-          tip.style.top = Math.max(30, top * r.height / H) + 'px';
-        }
-        function hide() { guide.style.display = 'none'; tip.hidden = true; }
-        hit.addEventListener('pointermove', show);
-        hit.addEventListener('pointerdown', show);
-        hit.addEventListener('pointerleave', hide);
-      }
-      function renderLadder() {
-        var d = soulData;
-        var ol = $('g-ladder');
-        ol.textContent = '';
-        var stages = growthData && growthData.stages ? growthData.stages : SOUL_STAGES.map(function (n, i) { return { level: i + 1, name: n, xp: SOUL_XP[i], t: 0 }; });
-        var lvl = d.level || 1;
-        var span = d.xpTo > d.xpFrom ? d.xpTo - d.xpFrom : 1;
-        var frac = d.xpTo < 0 ? 0 : Math.max(0, Math.min(1, (d.soul.xp - d.xpFrom) / span));
-        ol.style.setProperty('--p', String(Math.min(1, (lvl - 1 + frac) / 8)));
-        stages.forEach(function (st) {
-          var li = el('li', st.level < lvl ? 'done' : (st.level === lvl ? 'cur' : ''));
-          if (st.level === lvl) li.setAttribute('aria-current', 'step');
-          li.appendChild(el('span', 'dot', st.level <= lvl ? String(st.level) : String(st.level)));
-          var lt = el('span', 'lt');
-          lt.appendChild(el('b', '', st.name));
-          lt.appendChild(el('small', '', st.level <= lvl && st.t ? dmy(st.t) : 'от ' + st.xp + ' оп.'));
-          li.appendChild(lt);
-          ol.appendChild(li);
-        });
-        $('g-ladder-meta').textContent = 'ступень ' + lvl + ' из ' + stages.length + ' · опыт ' + d.soul.xp;
-      }
-      function renderXpChart() {
-        var box = $('g-xp-chart');
-        var ser = growthData ? arr(growthData.series) : [];
-        if (!ser.length) {
-          chartEmpty(box, online ? 'График появится после первого дня работы: Яэри записывает опыт раз в день.' : 'Подключите Cloud.ru: график опыта и ступеней начнёт строиться сам.');
-          $('g-xp-legend').textContent = '';
-          $('g-xp-meta').textContent = '';
-          return;
-        }
-        var days = ser.map(function (p) { return p.day; });
-        var xs = ser.map(function (p) { return p.xp; });
-        var maxXp = Math.max.apply(null, xs);
-        var stages = arr(growthData.stages);
-        var top = SOUL_XP[SOUL_XP.length - 1];
-        for (var i = 0; i < SOUL_XP.length; i++) { if (SOUL_XP[i] > maxXp) { top = SOUL_XP[i]; break; } }
-        top = Math.max(top, 12);
-        drawLines(box, {
-          days: days, yMax: top, area: true, series: [{ label: 'Опыт', color: 'var(--a)', values: xs }],
-          thresholds: stages.filter(function (s) { return s.level > 1; }).map(function (s) { return { v: s.xp, label: 'ступ. ' + s.level }; })
-        });
-        var first = xs[0], lastv = xs[xs.length - 1];
-        $('g-xp-meta').textContent = ser.length + ' ' + plural(ser.length, 'день', 'дня', 'дней');
-        legendFill($('g-xp-legend'), [
-          { color: 'var(--a)', label: 'Опыт сейчас', value: lastv },
-          { color: 'var(--faint)', label: 'за период', value: (lastv - first >= 0 ? '+' : '') + (lastv - first) },
-          { color: 'var(--warn)', label: 'близость', value: ser[ser.length - 1].bond }
-        ]);
-      }
-      function renderKnowChart() {
-        var box = $('g-know-chart');
-        var ser = growthData ? arr(growthData.series) : [];
-        if (!ser.length) { chartEmpty(box, 'Здесь будет видно, как растут её знания о вас, моменты, догадки и уроки.'); $('g-know-legend').textContent = ''; $('g-know-meta').textContent = ''; return; }
-        var defs = [['facts', 'Знания', TRAIT_COLORS[0]], ['episodes', 'Эпизоды', TRAIT_COLORS[1]], ['insights', 'Догадки', TRAIT_COLORS[2]], ['lessons', 'Уроки', TRAIT_COLORS[3]]];
-        var mx = 5;
-        var series = defs.map(function (df) {
-          var vals = ser.map(function (p) { return p[df[0]] || 0; });
-          mx = Math.max(mx, Math.max.apply(null, vals));
-          return { label: df[1], color: df[2], values: vals };
-        });
-        drawLines(box, { days: ser.map(function (p) { return p.day; }), yMax: Math.ceil(mx * 1.15 / 4) * 4, series: series });
-        legendFill($('g-know-legend'), series.map(function (sr) { return { color: sr.color, label: sr.label, value: sr.values[sr.values.length - 1] }; }));
-        $('g-know-meta').textContent = 'накопительно';
-      }
-      function renderCallsChart() {
-        var box = $('g-calls-chart');
-        var ser = growthData ? arr(growthData.series).slice(-14) : [];
-        if (!ser.length) { chartEmpty(box, 'Сколько запросов она тратит на учёбу в фоне, по дням.'); $('g-calls-legend').textContent = ''; $('g-calls-meta').textContent = ''; return; }
-        var lim = growthData.dailyLimit || 0;
-        var mx = Math.max(4, lim, Math.max.apply(null, ser.map(function (p) { return p.calls || 0; })));
-        var W = Math.max(300, Math.round(box.clientWidth) || 640), H = 190, L = 34, R = 10, T = 12, B = 26, slot = (W - L - R) / ser.length, bw = Math.min(34, slot * 0.62);
-        function Y(v) { return T + (mx - v) * (H - T - B) / mx; }
-        var s = '<svg viewBox="0 0 ' + W + ' ' + H + '">';
-        for (var g = 0; g <= 4; g++) { var v = mx * g / 4; s += '<line class="grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '"/><text x="' + (L - 6) + '" y="' + (Y(v) + 3).toFixed(1) + '" text-anchor="end">' + Math.round(v) + '</text>'; }
-        ser.forEach(function (p, i) {
-          var x = L + slot * i + (slot - bw) / 2, c = p.calls || 0, h = Math.max(c ? 2 : 0, (H - T - B) * c / mx);
-          s += '<rect class="bar" x="' + x.toFixed(1) + '" y="' + (H - B - h).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="3" style="fill:var(--a)"><title>' + dayLabel(p.day) + ': ' + c + ' ' + plural(c, 'запрос', 'запроса', 'запросов') + '</title></rect>';
-        });
-        if (lim > 0) s += '<line class="thr" x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(lim).toFixed(1) + '" y2="' + Y(lim).toFixed(1) + '" style="stroke:var(--warn)"/><text class="thr-l" x="' + (W - R) + '" y="' + (Y(lim) - 4).toFixed(1) + '" text-anchor="end" style="fill:var(--warn)">лимит ' + lim + '</text>';
-        s += '<text x="' + L + '" y="' + (H - 7) + '">' + dayLabel(ser[0].day) + '</text>';
-        if (ser.length > 1) s += '<text x="' + (W - R) + '" y="' + (H - 7) + '" text-anchor="end">' + dayLabel(ser[ser.length - 1].day) + '</text>';
-        box.innerHTML = s + '</svg>';
-        var total = ser.reduce(function (a, p) { return a + (p.calls || 0); }, 0);
-        $('g-calls-meta').textContent = 'за ' + ser.length + ' ' + plural(ser.length, 'день', 'дня', 'дней');
-        legendFill($('g-calls-legend'), [{ color: 'var(--a)', label: 'Всего запросов', value: total }, { color: 'var(--warn)', label: 'Сегодня', value: ser[ser.length - 1].calls || 0 }]);
-      }
-      function renderRadar() {
-        var box = $('g-radar');
-        var traits = arr(soulData.traitList);
-        if (!traits.length) { chartEmpty(box, 'Черты характера появятся позже.'); return; }
-        var hist = arr(soulData.soul.traitHistory);
-        var base = hist.length > 1 ? hist[0].traits : null;
-        var W = 340, H = 270, cx = 170, cy = 135, Rr = 92, n = traits.length;
-        function pt(i, v) { var a = -Math.PI / 2 + i * 2 * Math.PI / n; return [cx + Math.cos(a) * Rr * v / 100, cy + Math.sin(a) * Rr * v / 100]; }
-        function poly(f) { return traits.map(function (t, i) { var p = pt(i, f(t)); return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' '); }
-        var s = '<svg viewBox="0 0 ' + W + ' ' + H + '">';
-        [25, 50, 75, 100].forEach(function (r) { s += '<polygon class="rd-g" points="' + poly(function () { return r; }) + '"/>'; });
-        traits.forEach(function (t, i) { var p = pt(i, 100); s += '<line class="rd-g" x1="' + cx + '" y1="' + cy + '" x2="' + p[0].toFixed(1) + '" y2="' + p[1].toFixed(1) + '"/>'; });
-        if (base) s += '<polygon class="rd-old" points="' + poly(function (t) { return typeof base[t.id] === 'number' ? base[t.id] : t.value; }) + '"/>';
-        s += '<polygon class="rd-now" points="' + poly(function (t) { return t.value; }) + '"/>';
-        traits.forEach(function (t, i) {
-          var p = pt(i, 100), lp = pt(i, 100 + 20), vp = pt(i, t.value);
-          var anchor = Math.abs(lp[0] - cx) < 8 ? 'middle' : (lp[0] > cx ? 'start' : 'end');
-          s += '<circle cx="' + vp[0].toFixed(1) + '" cy="' + vp[1].toFixed(1) + '" r="3.5" style="fill:var(--a-glow)"/>';
-          s += '<text x="' + lp[0].toFixed(1) + '" y="' + (lp[1] + 3).toFixed(1) + '" text-anchor="' + anchor + '" style="fill:var(--ink)">' + t.name + ' <tspan style="fill:var(--a)">' + t.value + '</tspan></text>';
-        });
-        box.innerHTML = s + '</svg>';
-      }
-      function renderGoals() {
-        var box = $('g-goals');
-        box.textContent = '';
-        var goals = growthData ? arr(growthData.goals).slice().sort(function (a, b) { return (a.status === 'done') - (b.status === 'done'); }) : [];
-        var act = goals.filter(function (g) { return g.status === 'active'; }).length;
-        $('g-goals-meta').textContent = goals.length ? act + ' ' + plural(act, 'цель', 'цели', 'целей') + ' в работе' : '';
-        if (!goals.length) { box.appendChild(el('li', 'empty soul-small', online ? 'Пока целей нет: Яэри сама поставит их, когда немного узнает вас. Нажмите «Учиться сейчас», чтобы ускорить.' : 'Свои учебные цели Яэри ставит, когда подключена к Cloud.ru.')); return; }
-        goals.forEach(function (g) {
-          var li = el('li', g.status === 'done' ? 'done' : '');
-          var ring = el('div', 'ring');
-          ring.style.setProperty('--v', String(g.progress || 0));
-          ring.appendChild(el('span', '', (g.progress || 0) + '%'));
-          li.appendChild(ring);
-          var t = el('div', 'goal-t');
-          t.appendChild(el('b', '', g.text));
-          t.appendChild(el('span', '', (g.status === 'done' ? 'Достигнуто. ' : '') + (g.why || '')));
-          li.appendChild(t);
-          var steps = arr(g.steps);
-          if (steps.length) {
-            var ul = el('ul', 'steps');
-            steps.forEach(function (st) { ul.appendChild(el('li', st.done ? 'on' : '', st.text)); });
-            li.appendChild(ul);
-          }
-          box.appendChild(li);
-        });
-      }
-      function growthAct(id, action) {
-        return api('soul/growth/insight', { id: id, action: action }).then(setGrowth).catch(function (e) { $('g-ctl-status').textContent = e.message; });
-      }
-      function renderInsights() {
-        var ul = $('g-insights');
-        ul.textContent = '';
-        var items = growthData ? arr(growthData.insights).filter(function (x) { return x.status !== 'dismissed'; }).slice().reverse() : [];
-        $('g-ins-meta').textContent = items.length ? items.length + ' ' + plural(items.length, 'догадка', 'догадки', 'догадок') : '';
-        if (!items.length) ul.appendChild(el('li', 'empty soul-small', 'Когда вас нет, Яэри размышляет о вас и сверяет догадки с памятью и документами. Они появятся здесь.'));
-        items.forEach(function (x) {
-          var li = el('li');
-          li.appendChild(el('div', 'iq', x.question));
-          li.appendChild(el('p', '', x.answer));
-          var act = el('div', 'ia');
-          act.appendChild(el('span', 'badge' + (x.status === 'confirmed' ? ' ok' : ''), x.status === 'confirmed' ? 'подтверждено' : 'гипотеза'));
-          act.appendChild(el('span', 'badge', x.basis === 'docs' ? 'из документов' : 'из памяти'));
-          if (online && x.status === 'hypothesis') {
-            act.appendChild(smallBtn('Это так', 'Подтвердить догадку', function () { growthAct(x.id, 'confirm'); }, 'mini-btn solid'));
-            act.appendChild(smallBtn('Не так', 'Отклонить догадку', function () { growthAct(x.id, 'dismiss'); }, 'mini-btn'));
-          }
-          li.appendChild(act);
-          ul.appendChild(li);
-        });
-        var q = $('g-questions');
-        q.textContent = '';
-        var qs = growthData ? arr(growthData.questions).slice().reverse() : [];
-        if (!qs.length) q.appendChild(el('li', 'empty', 'Пока вопросов нет.'));
-        qs.forEach(function (x) { q.appendChild(el('li', '', x.q)); });
-      }
-      function renderGrowthLessons() {
-        var ul = $('g-lessons');
-        ul.textContent = '';
-        var items = growthData ? arr(growthData.lessons).slice().reverse() : [];
-        $('g-lessons-meta').textContent = items.length ? String(items.length) : '';
-        if (!items.length) ul.appendChild(el('li', 'empty', 'Когда вы поправите Яэри, она запишет здесь правило, чтобы не повторять ошибку.'));
-        items.forEach(function (x) { ul.appendChild(el('li', '', x.rule)); });
-      }
-      function renderFeedList() {
-        var ul = $('g-feed');
-        ul.textContent = '';
-        var items = growthData ? arr(growthData.feed).slice(-14).reverse() : [];
-        $('g-feed-meta').textContent = items.length ? 'последнее ' + ago(items[0].t) : '';
-        if (!items.length) { ul.appendChild(el('li', 'empty', online ? 'Пока тихо. Как только Яэри что-то узнает, подумает или поставит себе цель, это появится здесь.' : 'Лента обучения появится, когда Яэри подключится к Cloud.ru.')); return; }
-        items.forEach(function (it) {
-          var li = el('li');
-          li.appendChild(el('span', 'ico', GROWTH_ICONS[it.kind] || '✨'));
-          var box = el('div');
-          box.appendChild(el('time', '', dmy(it.t) + ' ' + hhmm(it.t)));
-          box.appendChild(el('p', '', it.text));
-          li.appendChild(box);
-          ul.appendChild(li);
-        });
-      }
-      function renderGrowthControls() {
-        var g = growthData;
-        each(document.querySelectorAll('#g-int button'), function (b) {
-          var on = !!g && b.getAttribute('data-int') === g.intensity;
-          b.setAttribute('aria-checked', on ? 'true' : 'false');
-          b.disabled = !online;
-        });
-        $('g-int-note').textContent = g ? INTENSITY_NOTE[g.intensity] || '' : 'Настройки появятся, когда Яэри подключится к Cloud.ru.';
-        var sel = $('g-limit');
-        sel.disabled = !online;
-        if (g) {
-          var v = String(g.dailyLimit);
-          if (!sel.querySelector('option[value="' + v + '"]')) { var o = el('option', '', v); o.value = v; sel.appendChild(o); }
-          sel.value = v;
-          var pct = g.dailyLimit > 0 ? Math.min(100, g.usedToday * 100 / g.dailyLimit) : 0;
-          $('g-usage-bar').style.width = Math.max(g.usedToday ? 3 : 0, pct) + '%';
-          $('g-usage-text').textContent = g.dailyLimit > 0
-            ? 'Сегодня: ' + g.usedToday + ' из ' + g.dailyLimit + ' ' + plural(g.dailyLimit, 'запроса', 'запросов', 'запросов') + (g.limitReached ? '. Лимит исчерпан: фоновая учёба на паузе до полуночи.' : '.')
-            : 'Сегодня: ' + g.usedToday + ' запросов (без лимита).';
-          $('g-ctl-meta').textContent = g.lastAction ? 'шаг ' + ago(g.lastAction) : '';
-          if (g.lastError) $('g-ctl-status').textContent = 'Последняя ошибка: ' + g.lastError;
-        } else {
-          $('g-usage-bar').style.width = '0%';
-          $('g-usage-text').textContent = '';
-          $('g-ctl-meta').textContent = '';
-        }
-      }
-      function renderGrowth() {
-        if (!soulData) soulData = soulDefault();
-        renderFeedList();
-        if (currentView !== 'soul') return;
-        renderLadder();
-        renderXpChart();
-        renderKnowChart();
-        renderCallsChart();
-        renderRadar();
-        renderGoals();
-        renderInsights();
-        renderGrowthLessons();
-        renderGrowthControls();
-        renderUnderstanding();
-      }
-      function setGrowth(data) {
-        if (!data || !data.stages) return;
-        growthData = data;
-        renderGrowth();
-      }
-      function loadGrowth() {
-        if (!online) return Promise.resolve();
-        return api('soul/growth').then(setGrowth).catch(function () { /* Покажем при следующем обновлении. */ });
-      }
-      each(document.querySelectorAll('#g-int button'), function (b) {
-        b.addEventListener('click', function () {
-          if (!online) return;
-          api('soul/growth/settings', { intensity: b.getAttribute('data-int') }).then(setGrowth).catch(function (e) { $('g-ctl-status').textContent = e.message; });
-        });
-      });
-      $('g-limit').addEventListener('change', function () {
-        api('soul/growth/settings', { dailyLimit: Number(this.value) }).then(setGrowth).catch(function (e) { $('g-ctl-status').textContent = e.message; });
-      });
-      $('g-run').addEventListener('click', function () {
-        var btn = this;
-        btn.disabled = true;
-        $('g-ctl-status').textContent = 'Яэри учится…';
-        api('soul/growth/run', {}).then(function (data) {
-          setGrowth(data);
-          $('g-ctl-status').textContent = data.ran ? 'Готово: Яэри ' + (GROWTH_RAN[data.ran] || 'поучилась') + '.' : 'Пока нечему учиться: всё свежо. Поговорите с ней, и будет над чем думать.';
-          return loadSoul();
-        }).catch(function (e) { $('g-ctl-status').textContent = e.message; }).then(function () { btn.disabled = false; });
-      });
-      setInterval(function () {
-        if (online && currentView === 'soul' && !document.hidden) loadGrowth();
-      }, 60000);
-      (function () {
-        var timer = 0;
-        window.addEventListener('resize', function () {
-          clearTimeout(timer);
-          timer = setTimeout(function () { if (currentView === 'soul' && !$('sp-growth').hidden) renderGrowth(); }, 160);
-        });
-      }());
-
-      /* ---------- Понимание: состояние, карта человека, темы, оценки ответов ---------- */
-      var undData = null;
-      var undRated = {};
-      var TONE_HINT = {
-        tired: 'Отвечает короче и мягче, без лишних вопросов.',
-        hurry: 'Сначала результат, коротко, без вступлений.',
-        tense: 'Спокойный тон, без шуток; сначала про чувства.',
-        sad: 'Тепло, не торопит с советами, сначала слушает.',
-        joy: 'Делит радость, говорит живее.',
-        neutral: 'Явных признаков усталости или спешки нет.'
-      };
-      var TOPIC_MODES = [['open', 'Открыто'], ['hold', 'Не использовать без запроса'], ['off', 'Не запоминать']];
-      function undError(e) { var n = $('u-map-status'); if (n) n.textContent = e && e.message ? e.message : 'Не получилось.'; }
-      function setUnderstanding(d) {
-        if (!d || !d.sections) return;
-        undData = d;
-        undRated = {};
-        arr(d.rated).forEach(function (r) { undRated[r.id] = r.score; });
-        renderUnderstanding();
-        decorateRated();
-      }
-      function loadUnderstanding() {
-        if (!online) return Promise.resolve();
-        return api('soul/understanding').then(setUnderstanding).catch(function () { /* Покажем при следующем обновлении. */ });
-      }
-      function renderUnderstanding() {
-        if (currentView !== 'soul') return;
-        renderRead();
-        renderMap();
-        renderTopics();
-        renderRatings();
-      }
-      function renderRead() {
-        var box = $('u-read'), strip = $('u-strip');
-        var st = undData && undData.state;
-        var tone = st && st.confidence >= 0.66 ? st.tone : 'neutral';
-        box.textContent = '';
-        strip.textContent = '';
-        if (!undData) {
-          box.appendChild(el('p', 'soul-small', online ? 'Загружаю…' : 'Когда Яэри подключится к Cloud.ru, здесь будет видно, как она читает ваши сообщения.'));
-          return;
-        }
-        var line = el('p', 'u-line');
-        line.appendChild(document.createTextNode('Сейчас вы, похоже, '));
-        line.appendChild(el('b', 'tone-' + tone, st && tone !== 'neutral' ? st.label : 'спокойны'));
-        box.appendChild(line);
-        box.appendChild(el('p', 'soul-small', TONE_HINT[tone]));
-        arr(undData.states).forEach(function (s) {
-          var dot = el('i', 'tone-' + (s.confidence >= 0.66 ? s.tone : 'neutral'));
-          dot.title = hhmm(s.t) + ' · ' + dmy(s.t);
-          strip.appendChild(dot);
-        });
-        $('u-state-meta').textContent = st ? ago(st.t) : '';
-      }
-      function renderMap() {
-        var box = $('u-map');
-        box.textContent = '';
-        $('u-map-meta').textContent = undData ? undData.total + ' ' + plural(undData.total, 'запись', 'записи', 'записей') : '';
-        if (!undData) { box.appendChild(el('p', 'soul-small', 'Карта появится, когда Яэри подключится к Cloud.ru и вы немного расскажете о себе.')); }
-        arr(undData && undData.sections).forEach(function (sec) {
-          var card = el('div', 'map-sec');
-          card.appendChild(el('h3', '', sec.name));
-          var wrap = el('div', 'soul-list');
-          var ul = el('ul');
-          if (!sec.entries.length) ul.appendChild(el('li', 'empty', 'Пока пусто'));
-          sec.entries.forEach(function (e) {
-            var li = el('li');
-            if (e.hidden) { li.classList.add('held'); li.title = 'Тема не используется без запроса'; }
-            li.appendChild(el('span', '', (e.hidden ? '🔒 ' : '') + e.text));
-            if (online) li.appendChild(smallBtn('×', 'Удалить запись: ' + e.text, function () {
-              api('soul/understanding/map', { action: 'delete', id: e.id }).then(setUnderstanding).catch(undError);
-            }));
-            ul.appendChild(li);
-          });
-          wrap.appendChild(ul);
-          if (online) {
-            var input = el('input', 'field');
-            input.type = 'text';
-            input.maxLength = 220;
-            input.placeholder = '+ добавить';
-            input.setAttribute('aria-label', 'Добавить в раздел «' + sec.name + '»');
-            input.addEventListener('keydown', function (ev) {
-              if (ev.key !== 'Enter' || !input.value.trim()) return;
-              ev.preventDefault();
-              api('soul/understanding/map', { action: 'add', section: sec.id, text: input.value.trim() }).then(function (d) { input.value = ''; setUnderstanding(d); }).catch(undError);
-            });
-            wrap.appendChild(input);
-          }
-          card.appendChild(wrap);
-          box.appendChild(card);
-        });
-        var gl = $('u-gaps');
-        gl.textContent = '';
-        var gaps = arr(undData && undData.gaps);
-        if (undData && !gaps.length) gl.appendChild(el('li', 'empty soul-small', 'Все разделы карты заполнены.'));
-        gaps.forEach(function (g) {
-          var li = el('li', g.dismissed ? 'off' : '');
-          li.appendChild(el('span', '', g.name + (g.dismissed ? ' · не спрашивает' : '')));
-          if (online) {
-            var act = el('span', 'ga');
-            if (!g.dismissed) {
-              act.appendChild(smallBtn('Спросить', 'Пусть спросит про раздел «' + g.name + '»', function () { gapAct(g.id, 'ask'); }, 'mini-btn'));
-              act.appendChild(smallBtn('Не спрашивать', 'Не спрашивать про «' + g.name + '»', function () { gapAct(g.id, 'dismiss'); }, 'mini-btn'));
-            } else act.appendChild(smallBtn('Вернуть', 'Снова спрашивать про «' + g.name + '»', function () { gapAct(g.id, 'restore'); }, 'mini-btn'));
-            li.appendChild(act);
-          }
-          gl.appendChild(li);
-        });
-      }
-      function gapAct(section, action) {
-        api('soul/understanding/gap', { section: section, action: action }).then(setUnderstanding).catch(undError);
-      }
-      function renderTopics() {
-        var box = $('u-topics');
-        box.textContent = '';
-        if (!undData) { box.appendChild(el('p', 'soul-small', 'Настройки тем доступны, когда Яэри подключена к Cloud.ru.')); return; }
-        arr(undData.topics).forEach(function (t) {
-          var row = el('div', 'topic-row');
-          var name = el('span', 'tn');
-          name.appendChild(el('b', '', t.name));
-          name.appendChild(el('small', '', t.count + ' ' + plural(t.count, 'запись', 'записи', 'записей')));
-          row.appendChild(name);
-          var sel = el('select', 'field');
-          sel.setAttribute('aria-label', 'Режим темы «' + t.name + '»');
-          TOPIC_MODES.forEach(function (m) { var o = el('option', '', m[1]); o.value = m[0]; if (m[0] === t.mode) o.selected = true; sel.appendChild(o); });
-          sel.disabled = !online;
-          sel.addEventListener('change', function () {
-            api('soul/understanding/topic', { topic: t.id, mode: sel.value }).then(setUnderstanding).catch(undError);
-          });
-          row.appendChild(sel);
-          box.appendChild(row);
-        });
-      }
-      function renderRatings() {
-        var box = $('u-rate-chart'), list = $('u-rate-list');
-        var r = undData && undData.ratings;
-        list.textContent = '';
-        if (!r || (!r.up && !r.down)) {
-          chartEmpty(box, online ? 'Оценивайте ответы Яэри кнопками 👍 и 👎 под сообщениями в чате. Плохие оценки она разберёт и превратит в правила.' : 'Оценки ответов появятся, когда Яэри подключена к Cloud.ru.');
-          $('u-rate-legend').textContent = '';
-          $('u-rate-meta').textContent = '';
-          return;
-        }
-        var days = arr(r.daily);
-        var W = Math.max(280, Math.round(box.clientWidth) || 420), H = 150, L = 28, R = 8, T = 10, B = 24;
-        var mx = Math.max(3, Math.max.apply(null, days.map(function (d) { return d.up + d.down; })));
-        var slot = (W - L - R) / days.length, bw = Math.min(30, slot * 0.6);
-        function Y(v) { return T + (mx - v) * (H - T - B) / mx; }
-        var s = '<svg viewBox="0 0 ' + W + ' ' + H + '">';
-        for (var g = 0; g <= 2; g++) { var v = mx * g / 2; s += '<line class="grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '"/><text x="' + (L - 6) + '" y="' + (Y(v) + 3).toFixed(1) + '" text-anchor="end">' + Math.round(v) + '</text>'; }
-        days.forEach(function (d, i) {
-          var x = L + slot * i + (slot - bw) / 2, hu = (H - T - B) * d.up / mx, hd = (H - T - B) * d.down / mx;
-          s += '<rect class="bar" x="' + x.toFixed(1) + '" y="' + (H - B - hu).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + hu.toFixed(1) + '" rx="2" style="fill:var(--a)"><title>' + dayLabel(d.day) + ': 👍 ' + d.up + '</title></rect>';
-          s += '<rect class="bar" x="' + x.toFixed(1) + '" y="' + (H - B - hu - hd).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + hd.toFixed(1) + '" rx="2" style="fill:var(--danger)"><title>' + dayLabel(d.day) + ': 👎 ' + d.down + '</title></rect>';
-        });
-        s += '<text x="' + L + '" y="' + (H - 7) + '">' + dayLabel(days[0].day) + '</text>';
-        if (days.length > 1) s += '<text x="' + (W - R) + '" y="' + (H - 7) + '" text-anchor="end">' + dayLabel(days[days.length - 1].day) + '</text>';
-        box.innerHTML = s + '</svg>';
-        var week = r.weekUp + r.weekDown;
-        $('u-rate-meta').textContent = week ? 'за неделю ' + Math.round(r.weekUp * 100 / week) + '% 👍' : '';
-        legendFill($('u-rate-legend'), [{ color: 'var(--a)', label: '👍 всего', value: r.up }, { color: 'var(--danger)', label: '👎 всего', value: r.down }]);
-        arr(r.recentDown).slice().reverse().forEach(function (x) {
-          var li = el('li');
-          li.appendChild(el('b', '', cut(x.user, 70)));
-          li.appendChild(el('span', '', x.rule ? 'Урок: ' + x.rule : (x.status === 'new' ? 'Скоро разберёт…' : 'Урока не вышло')));
-          list.appendChild(li);
-        });
-      }
-      // Оценки под ответами в чате.
-      function decorateRated() {
-        each(document.querySelectorAll('.rate[data-mid]'), function (bar) {
-          var sc = undRated[bar.getAttribute('data-mid')] || 0;
-          bar.querySelector('.up').setAttribute('aria-pressed', sc > 0 ? 'true' : 'false');
-          bar.querySelector('.down').setAttribute('aria-pressed', sc < 0 ? 'true' : 'false');
-        });
-      }
-      function rateBar(m, row) {
-        var bar = el('div', 'rate');
-        bar.setAttribute('data-mid', m.id);
-        var up = el('button', 'up', '👍'), down = el('button', 'down', '👎');
-        [[up, 'Хороший ответ'], [down, 'Ответ не понравился']].forEach(function (p) { p[0].type = 'button'; p[0].title = p[1]; p[0].setAttribute('aria-label', p[1]); p[0].setAttribute('aria-pressed', 'false'); });
-        function send(score, note) {
-          api('soul/rate', { id: m.id, score: score, note: note || '' }).then(setUnderstanding).catch(function () { /* Не страшно: оценку можно поставить ещё раз. */ });
-        }
-        up.addEventListener('click', function () { send(up.getAttribute('aria-pressed') === 'true' ? 0 : 1); });
-        down.addEventListener('click', function () {
-          if (down.getAttribute('aria-pressed') === 'true') { send(0); return; }
-          if (row.querySelector('.rate-note')) return;
-          var form = el('div', 'rate-note');
-          var input = el('input', 'field');
-          input.type = 'text';
-          input.maxLength = 300;
-          input.placeholder = 'Что не так? (необязательно)';
-          input.setAttribute('aria-label', 'Что не так с ответом');
-          var ok = el('button', 'mini-btn solid', 'Отправить');
-          ok.type = 'button';
-          function done() { send(-1, input.value.trim()); form.remove(); }
-          ok.addEventListener('click', done);
-          input.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); done(); } });
-          form.appendChild(input);
-          form.appendChild(ok);
-          bar.insertAdjacentElement('afterend', form);
-          input.focus();
-        });
-        bar.appendChild(up);
-        bar.appendChild(down);
-        row.appendChild(bar);
-        decorateRated();
-      }
-      setInterval(function () {
-        if (online && currentView === 'soul' && !document.hidden) loadUnderstanding();
-      }, 60000);
-
-      /* ---------- Soul 3.0: consent, growth, goals and explicit promises ---------- */
-      function soul3Error(err) {
-        $('soul3-status').textContent = err && err.message ? err.message : 'Не удалось обновить Soul 3.0.';
-      }
-      function soul3List(id, items, format, empty) {
-        var target = $(id);
-        target.textContent = '';
-        if (!items || !items.length) { target.appendChild(el('li', 'soul-small', empty)); return; }
-        items.slice(-12).reverse().forEach(function (item) {
-          var li = el('li');
-          li.appendChild(el('span', 'soul-small', format(item)));
-          target.appendChild(li);
-        });
-      }
-      function loadEvidence() {
-        return api('evidence').then(function (d) {
-          $('evidence-summary').textContent = (d.total || 0) + ' записей с разными уровнями происхождения';
-          soul3List('evidence-list', d.recent || [], function (x) {
-            return (x.category || 'Память') + ': ' + (x.text || '—') + ' · ' + (x.label || 'источник неизвестен');
-          }, 'Память пока пуста.');
-        }).catch(function (err) {
-          $('evidence-summary').textContent = 'Не удалось получить источники: ' + err.message;
-        });
-      }
-      function vector2Error(err) {
-        $('vec2-status').textContent = 'Vector 2.0: ' + (err && err.message ? err.message : 'ошибка');
-      }
-      function loadVector2() {
-        if (!online) return Promise.resolve();
-        return api('vector').then(function (data) {
-          $('vec2-enabled').checked = !!data.enabled;
-          $('vec2-rerank').checked = !!data.rerank;
-          $('vec2-associations').checked = !!data.associations;
-          var q = data.quality || {};
-          $('vec2-status').textContent = 'Индекс: ' + (q.total || 0) + ' записей, ' +
-            (q.vectorized || 0) + ' векторов, ' + (q.lexicalOnly || 0) +
-            ' только по словам · повторно использовано эмбеддингов: ' + (q.savedEmbeddings || 0);
-          var errors = [];
-          (q.conflicts || []).slice(0, 4).forEach(function (x) {
-            errors.push('Нужно уточнить: ' + x.key + ' — «' + x.a + '» или «' + x.b + '»');
-          });
-          (q.duplicates || []).slice(0, 5).forEach(function (x) {
-            errors.push('Похожие записи: ' + x.first + ' / ' + x.second + ' (источники сохраняются)');
-          });
-          (q.nearDuplicates || []).slice(0, 4).forEach(function (x) {
-            errors.push('Смысловой дубль: ' + x.first + ' / ' + x.second +
-              ' · похожесть ' + Math.round(x.similarity * 100) + '% · требуется проверка');
-          });
-          if (q.old) errors.push('Старше года: ' + q.old + ' (не удаляются автоматически)');
-          soul3List('vec2-quality', errors, function (x) { return x; },
-            'Пока нет обнаруженных дубликатов и противоречий.');
-        }).catch(vector2Error);
-      }
-      function saveVector2() {
-        return api('vector/settings', {
-          enabled: $('vec2-enabled').checked,
-          rerank: $('vec2-rerank').checked,
-          associations: $('vec2-associations').checked
-        }).then(loadVector2).catch(vector2Error);
-      }
-      ['vec2-enabled', 'vec2-rerank', 'vec2-associations'].forEach(function (id) {
-        $(id).addEventListener('change', saveVector2);
-      });
-      $('vec2-search-form').addEventListener('submit', function (ev) {
-        ev.preventDefault();
-        var query = $('vec2-search').value.trim();
-        if (!query) return;
-        var btn = this.querySelector('button');
-        btn.disabled = true;
-        $('vec2-status').textContent = 'Яэри ищет в своих воспоминаниях…';
-        api('vector/search', { query: query }).then(function (data) {
-          soul3List('vec2-results', data.results || [], function (x) {
-            return '[' + x.space + '] ' + x.text + ' · ' + x.source +
-              ' · релевантность ' + Math.round(x.score * 100) + '%' +
-              (x.associated ? ' · связанное воспоминание' : '') +
-              (x.emotion ? ' · эмоциональный контекст: ' + x.emotion : '');
-          }, 'По этому запросу ничего не найдено.');
-          return loadVector2();
-        }).catch(vector2Error).then(function () { btn.disabled = false; });
-      });
-      function loadSoul3() {
-        if (!online) return Promise.resolve();
-        return api('soul3').then(function (d) {
-          $('soul3-enabled').checked = !!d.enabled;
-          $('soul3-affection').value = String(d.affection);
-          $('soul3-initiative').checked = !!d.initiative;
-          $('soul3-trust').textContent = 'Доверие: ' + (d.trust || 0) + '/100';
-          $('soul3-status').textContent = d.enabled ? 'Развитие активно · данные хранятся локально' : 'Развитие приостановлено';
-          soul3List('soul3-values', d.values, function (x) { return x; }, 'Ценности пока не заданы.');
-          soul3List('soul3-milestones', (d.milestones || []).concat(d.interests || []),
-            function (x) { return x.text || ''; }, 'Пока нет подтверждённых переломных моментов.');
-          soul3List('soul3-bond', (d.moments || []).concat(d.preferences || [], d.repairs || []),
-            function (x) { return x.text || ''; }, 'Яэри ещё изучает ваши предпочтения и уроки.');
-          soul3List('soul3-growth', d.growth,
-            function (x) { return (x.kind || 'событие') + ': ' + (x.text || ''); }, 'История роста появится после совместных событий.');
-          var plans = $('soul3-plans');
-          plans.textContent = '';
-          (d.plans || []).slice(-8).reverse().forEach(function (plan) {
-            var li = el('li');
-            li.appendChild(el('strong', '', (plan.goal || '') + (plan.status === 'completed' ? ' ✓' : '')));
-            (plan.steps || []).forEach(function (step) {
-              var row = el('div', 'soul-small');
-              var check = document.createElement('input');
-              check.type = 'checkbox';
-              check.checked = !!step.done;
-              check.disabled = plan.status !== 'active';
-              check.setAttribute('aria-label', 'Выполнен шаг: ' + step.text);
-              check.addEventListener('change', function () {
-                api('soul3/plans/step', { id: plan.id, stepId: step.id, done: check.checked })
-                  .then(loadSoul3).catch(function (e) { soul3Error(e); check.checked = !check.checked; });
-              });
-              row.appendChild(check);
-              row.appendChild(el('span', '', ' ' + (step.text || '')));
-              li.appendChild(row);
-            });
-            plans.appendChild(li);
-          });
-          if (!plans.children.length) plans.appendChild(el('li', 'soul-small', 'Пока нет планов.'));
-          var promises = $('soul3-promises');
-          promises.textContent = '';
-          (d.promises || []).slice(-12).reverse().forEach(function (p) {
-            var li = el('li');
-            li.appendChild(el('span', 'soul-small', (p.text || '') + (p.due ? ' · срок ' + p.due : '') + ' · ' + p.status));
-            if (p.status === 'active') {
-              [['completed', 'Выполнено'], ['cancelled', 'Отменить']].forEach(function (item) {
-                var b = el('button', 'mini-btn', item[1]);
-                b.type = 'button';
-                b.addEventListener('click', function () {
-                  api('soul3/promises/update', { id: p.id, status: item[0] }).then(loadSoul3).catch(soul3Error);
-                });
-                li.appendChild(b);
-              });
-            }
-            promises.appendChild(li);
-          });
-          if (!promises.children.length) promises.appendChild(el('li', 'soul-small', 'Пока нет обещаний.'));
-        }).then(loadEvidence).then(loadVector2).then(loadLife4).catch(soul3Error);
-      }
-      function saveSoul3Settings() {
-        return api('soul3/settings', {
-          enabled: $('soul3-enabled').checked,
-          affection: Number($('soul3-affection').value),
-          initiative: $('soul3-initiative').checked
-        }).then(loadSoul3).catch(soul3Error);
-      }
-      ['soul3-enabled', 'soul3-affection', 'soul3-initiative'].forEach(function (id) {
-        $(id).addEventListener('change', saveSoul3Settings);
-      });
-      $('soul3-plan-form').addEventListener('submit', function (ev) {
-        ev.preventDefault();
-        var goal = $('soul3-goal').value.trim();
-        if (!goal) return;
-        var btn = this.querySelector('button');
-        btn.disabled = true;
-        $('soul3-status').textContent = 'Яэри составляет шаги плана…';
-        api('soul3/plans', { goal: goal, generate: true })
-          .then(function () { $('soul3-goal').value = ''; return loadSoul3(); })
-          .catch(soul3Error).then(function () { btn.disabled = false; });
-      });
-      $('soul3-promise-form').addEventListener('submit', function (ev) {
-        ev.preventDefault();
-        var text = $('soul3-promise').value.trim();
-        if (!text) return;
-        api('soul3/promises', { text: text, due: $('soul3-due').value })
-          .then(function () { $('soul3-promise').value = ''; $('soul3-due').value = ''; return loadSoul3(); })
-          .catch(soul3Error);
-      });
-      $('soul3-clear').addEventListener('click', function () {
-        if (!window.confirm('Удалить отдельные данные Soul 3.0: интересы, этапы роста, память отношений, планы и обещания? Другие данные души сохранятся.')) return;
-        api('soul3/clear', {}).then(loadSoul3).catch(soul3Error);
-      });
-      setInterval(function () {
-        if (online && currentView === 'soul' && !document.hidden) loadSoul3();
-      }, 60000);
-
-
-      /* ---------- Yaeri Life 4.0: grounded world, feedback, consented tools, offline ---------- */
-      function life4Error(err) {
-        $('life4-status').textContent = 'Yaeri Life: ' + (err && err.message ? err.message : 'неизвестная ошибка');
-      }
-      function loadLife4() {
-        if (!online) return Promise.resolve();
-        return api('life').then(function (d) {
-          $('life4-offline').checked = !!d.offline;
-          $('life4-language').value = d.language || 'gentle';
-          $('life4-nickname').value = d.nickname || '';
-          $('life4-model').value = d.localModel || 'yaeri-local';
-          var world = d.world || {}, review = d.review || {};
-          $('life4-status').textContent = 'Модель мира: ' + (world.nodeCount || 0) + ' узлов и ' +
-            (world.edgeCount || 0) + ' связей. Причинные связи пока считаются утверждениями, а не доказательствами.';
-          $('life4-review').textContent = 'Самооценка: ' + (review.rated || 0) +
-            ' оценённых ответов, ' + (review.positive || 0) + ' полезных, ' +
-            (review.negative || 0) + ' требующих улучшения; ' +
-            (review.forecastsVerified || 0) + ' проверенных прогнозов, ' +
-            (review.forecastAccuracyPercent == null ? 'точность пока неизвестна' :
-              'точность ' + review.forecastAccuracyPercent + '%') + '.';
-          soul3List('life4-world', (world.nodes || []).slice(-12), function (x) {
-            return '[' + x.type + '; ' + x.origin + '] ' + x.label;
-          }, 'Модель мира заполнится после подтверждённых событий и фактов.');
-          var forecasts = $('life4-forecasts'); forecasts.textContent = '';
-          (review.forecasts || []).slice(-6).reverse().forEach(function (f) {
-            var li = el('li');
-            li.appendChild(el('span', 'soul-small', (f.question || 'Прогноз') +
-              ' · ' + (f.status === 'unverified' ? 'не проверен' : f.status)));
-            if (f.status === 'unverified' || f.status === 'unknown') {
-              [['accurate','Сбылось'],['inaccurate','Не сбылось'],['unknown','Неизвестно']].forEach(function (opt) {
-                var btn = el('button', 'mini-btn', opt[1]); btn.type = 'button';
-                btn.addEventListener('click', function () {
-                  api('life/forecast', { id: f.id, status: opt[0] }).then(loadLife4).catch(life4Error);
-                });
-                li.appendChild(btn);
-              });
-            }
-            forecasts.appendChild(li);
-          });
-          if (!forecasts.children.length) forecasts.appendChild(el('li','soul-small','Нет прогнозов для оценки.'));
-          var tools = $('life4-tools'); tools.textContent = '';
-          ((d.tools || {}).tools || []).slice(-15).reverse().forEach(function (t) {
-            var li = el('li');
-            li.appendChild(el('span','soul-small', t.name + ' [' + t.kind + '] · ' + t.status +
-              (t.why ? ' · ' + t.why : '')));
-            if (t.status === 'proposed') {
-              [['approve','Одобрить'],['reject','Отклонить']].forEach(function (opt) {
-                var b = el('button','mini-btn', opt[1]); b.type = 'button';
-                b.addEventListener('click', function () {
-                  api('life/tools/decide',{ id:t.id, action:opt[0] }).then(loadLife4).catch(life4Error);
-                }); li.appendChild(b);
-              });
-            } else if (t.status === 'active') {
-              var run = el('button','mini-btn','Запустить'); run.type = 'button';
-              run.addEventListener('click', function () {
-                var val = '';
-                if (t.kind === 'memory-search') {
-                  val = window.prompt('Что искать в памяти?','') || '';
-                  if (!val) return;
-                }
-                api('life/tools/run',{ id:t.id, input:val }).then(function (result) {
-                  $('life4-status').textContent = JSON.stringify(result).slice(0,1200);
-                }).catch(life4Error);
-              }); li.appendChild(run);
-              var disable = el('button','mini-btn','Отключить'); disable.type = 'button';
-              disable.addEventListener('click', function () {
-                api('life/tools/decide',{ id:t.id, action:'disable' }).then(loadLife4).catch(life4Error);
-              }); li.appendChild(disable);
-            }
-            tools.appendChild(li);
-          });
-          if (!tools.children.length) tools.appendChild(el('li','soul-small','Пока нет предложений инструментов.'));
-          $('life4-local-status').textContent = d.offline ?
-            'Автономный режим включён. Облачные запросы запрещены; локальный GGUF-сервер необязателен.' :
-            'Cloud.ru разрешён. Встроенная память доступна после перехода в автономный режим.';
-        }).catch(life4Error);
-      }
-      $('life4-save-style').addEventListener('click',function () {
-        api('life/settings',{ language:$('life4-language').value, nickname:$('life4-nickname').value,
-          localModel:$('life4-model').value }).then(loadLife4).catch(life4Error);
-      });
-      $('life4-offline').addEventListener('change',function () {
-        var offline = this.checked;
-        api('life/settings',{ offline: offline, localModel:$('life4-model').value })
-          .then(function () { return api('status'); })
-          .then(applyConfig).then(loadLife4).catch(life4Error);
-      });
-      $('life4-enable-offline').addEventListener('click',function () {
-        api('life/settings',{ offline: true }).then(function () { return api('status'); })
-          .then(applyConfig).then(loadLife4).catch(function (err) {
-            keyMsg('Не удалось включить автономность: ' + err.message, 'err');
-          });
-      });
-      $('life4-test').addEventListener('click',function () {
-        $('life4-local-status').textContent = 'Проверяю локальный сервер…';
-        api('life/local/test', {}).then(function (r) {
-          $('life4-local-status').textContent = r.generative ?
-            'Локальная GGUF-модель готова; запросы только на 127.0.0.1.' :
-            'Встроенный режим памяти работает без модели. ' + (r.error || '');
-        }).catch(function (err) { $('life4-local-status').textContent = err.message; });
-      });
-      $('life4-tool-form').addEventListener('submit',function (ev) {
-        ev.preventDefault();
-        var name = $('life4-tool-name').value.trim();
-        if (!name) return;
-        api('life/tools/propose',{kind:$('life4-kind').value,name:name,why:'Предложено хозяином'})
-          .then(function () { $('life4-tool-name').value = ''; return loadLife4(); }).catch(life4Error);
-      });
-      /* ---------- Глубина: предчувствие, варианты будущего, свой характер, философия, навыки, самоулучшение ---------- */
-      var depthData = null;
-      var DEPTH_FLAGS = [
-        ['rhythm', 'Предчувствие', 'Замечает выгорание и застревание по ритму сообщений'],
-        ['foresight', 'Варианты будущего', 'Перед советом прогоняет варианты развития (1 запрос «умной» модели)'],
-        ['character', 'Свой характер', 'Вкусы, привычки и причуды растут в фоне'],
-        ['philosophy', 'Философия', 'Формулирует свои принципы и помнит, откуда они'],
-        ['skills', 'Самописные навыки', 'Пишет себе сценарии; работают только после одобрения'],
-        ['review', 'Самоулучшение', 'Оценивает свои ответы и предлагает правки души']
-      ];
-      var OWN_KINDS = [['taste', 'Вкусы'], ['habit', 'Привычки'], ['quirk', 'Причуды']];
-      var PROP_TYPES = { lesson: 'урок общения', rule: 'правило стиля', self: 'кем себя считает', trait: 'черта характера' };
-      var DEPTH_EVERY = { off: 'Фоновое обучение выключено: глубина думает только по кнопкам ниже.', quiet: 'Тихо: самооценка раз в сутки, характер раз в двое суток, принципы и навыки раз в трое.', normal: 'Обычно: самооценка раз в 8 часов, характер раз в сутки, принципы и навыки раз в полтора дня.', active: 'Активно: самооценка раз в 3 часа, характер раз в 8 часов, принципы и навыки раз в 12 часов.' };
-      function futList(f) {
-        var wrap = el('div');
-        var ul = el('ul', 'fut');
-        arr(f.options).forEach(function (o, i) {
-          var li = el('li');
-          li.appendChild(el('b', '', (i + 1) + '. ' + o.path));
-          li.appendChild(el('span', '', '→ ' + o.outcome));
-          var extra = [];
-          if (o.chance) extra.push('вероятность: ' + o.chance);
-          if (o.good) extra.push('плюс: ' + o.good);
-          if (o.risk) extra.push('риск: ' + o.risk);
-          if (extra.length) li.appendChild(el('small', '', extra.join(' · ')));
-          ul.appendChild(li);
-        });
-        wrap.appendChild(ul);
-        if (f.lean) wrap.appendChild(el('p', 'fut-lean', 'Я бы выбрала: ' + f.lean));
-        return wrap;
-      }
-      function depthError(e) { $('d-ctl-status').textContent = e && e.message ? e.message : 'Не получилось.'; }
-      function setDepth(d) {
-        if (!d || !d.settings) return;
-        depthData = d;
-        renderDepth();
-      }
-      function loadDepth() {
-        if (!online) return Promise.resolve();
-        return api('soul/depth').then(setDepth).then(loadEvolution5).catch(function () { /* Покажем при следующем обновлении. */ });
-      }
-      function depthPost(path, payload) {
-        return api('soul/depth/' + path, payload).then(setDepth).catch(depthError);
-      }
-      function renderDepth() {
-        if (currentView !== 'soul' || $('sp-depth').hidden) return;
-        renderRhythm();
-        renderSims();
-        renderOwn();
-        renderPhil();
-        renderDepthSkills();
-        renderReview();
-        renderDepthFlags();
-      }
-      function emptyLi(ul, text) { ul.appendChild(el('li', 'empty soul-small', text)); }
-      function renderRhythm() {
-        var box = $('d-meters'), sig = $('d-signals');
-        box.textContent = '';
-        sig.textContent = '';
-        var r = depthData && depthData.rhythm;
-        if (!depthData) { box.appendChild(el('p', 'soul-small', online ? 'Загружаю…' : 'Предчувствие заработает, когда Яэри подключится к серверу.')); $('d-nudge').hidden = true; return; }
-        if (!depthData.settings.rhythm) box.appendChild(el('p', 'soul-small', 'Предчувствие выключено в настройках глубины.'));
-        [['burnout', 'Выгорание'], ['stuck', 'Застревание']].forEach(function (k) {
-          var v = r && typeof r[k[0]] === 'number' ? r[k[0]] : 0;
-          var row = el('div', 'meter' + (v >= 60 ? ' hot' : ''));
-          row.appendChild(el('span', '', k[1]));
-          var bar = el('div', 'soul-bond');
-          var fill = el('i');
-          fill.style.width = Math.max(v ? 3 : 0, v) + '%';
-          bar.appendChild(fill);
-          row.appendChild(bar);
-          row.appendChild(el('b', '', String(v)));
-          box.appendChild(row);
-        });
-        var list = r ? arr(r.signals) : [];
-        if (!list.length) emptyLi(sig, 'Тревожных признаков не видно.');
-        list.forEach(function (x) { sig.appendChild(el('li', '', x)); });
-        $('d-rhythm-meta').textContent = r && r.t ? ago(r.t) : '';
-        var n = depthData.nudge;
-        var open = n && (n.status === 'new' || n.status === 'shown');
-        $('d-nudge').hidden = !open;
-        if (open) $('d-nudge-text').textContent = 'Яэри заметила: ' + n.text;
-      }
-      function renderSims() {
-        var ul = $('d-sims');
-        ul.textContent = '';
-        var items = depthData ? arr(depthData.simulations).slice().reverse() : [];
-        $('d-sims-meta').textContent = items.length ? String(items.length) : '';
-        if (!items.length) emptyLi(ul, 'Попросите совета («стоит ли…», «что лучше…»), и здесь появятся варианты, которые она прогнала.');
-        items.forEach(function (s) {
-          var li = el('li');
-          li.appendChild(el('div', 'iq', dmy(s.t) + ' ' + hhmm(s.t)));
-          li.appendChild(el('p', '', s.question));
-          li.appendChild(futList(s));
-          ul.appendChild(li);
-        });
-      }
-      function strengthDots(n) { var s = ''; for (var i = 0; i < 5; i++) s += i < n ? '●' : '○'; return s; }
-      function renderOwn() {
-        var box = $('d-own'), log = $('d-charlog');
-        box.textContent = '';
-        log.textContent = '';
-        var own = depthData ? arr(depthData.own) : [];
-        $('d-own-meta').textContent = own.length ? String(own.length) : '';
-        OWN_KINDS.forEach(function (k) {
-          var items = own.filter(function (x) { return x.kind === k[0]; });
-          var g = el('div', 'own-group');
-          g.appendChild(el('span', 'soul-lbl', k[1]));
-          var ul = el('ul', 'soul-simple');
-          if (!items.length) emptyLi(ul, 'Пока не сложилось.');
-          items.forEach(function (x) {
-            var li = el('li');
-            li.appendChild(document.createTextNode(x.text));
-            var d = el('span', 'own-dots', strengthDots(x.strength));
-            d.title = 'Сила: ' + x.strength + ' из 5';
-            li.appendChild(d);
-            if (x.why) li.title = 'Откуда: ' + x.why;
-            if (online) li.appendChild(smallBtn('×', 'Убрать: ' + x.text, function () { depthPost('remove', { list: 'traitsOwn', id: x.id }); }, 'mini-btn'));
-            ul.appendChild(li);
-          });
-          g.appendChild(ul);
-          box.appendChild(g);
-        });
-        var l = depthData ? arr(depthData.charLog).slice().reverse() : [];
-        if (!l.length) emptyLi(log, 'Изменений пока не было.');
-        l.forEach(function (x) { log.appendChild(el('li', '', dmy(x.t) + ' — ' + x.text)); });
-      }
-      function renderPhil() {
-        var ul = $('d-phil');
-        ul.textContent = '';
-        var items = depthData ? arr(depthData.principles) : [];
-        $('d-phil-meta').textContent = items.length ? items.length + ' ' + plural(items.length, 'принцип', 'принципа', 'принципов') : '';
-        if (!items.length) emptyLi(ul, 'Принципы появятся, когда у неё накопится опыт: уроки, моменты, мнения.');
-        items.forEach(function (p) {
-          var li = el('li');
-          li.appendChild(el('p', '', '«' + p.text + '»'));
-          li.appendChild(el('div', 'iq', 'Откуда: ' + p.origin));
-          var src = el('div', 'd-src');
-          arr(p.sources).forEach(function (s) { var b = el('span', 'badge', s.code); b.title = s.text; src.appendChild(b); });
-          if (arr(p.revisions).length) src.appendChild(el('span', 'badge', 'уточнялся ' + arr(p.revisions).length + ' р.'));
-          if (online) src.appendChild(smallBtn('Убрать', 'Убрать принцип', function () { depthPost('remove', { list: 'principles', id: p.id }); }, 'mini-btn'));
-          li.appendChild(src);
-          ul.appendChild(li);
-        });
-      }
-      var SKILL_STATUS = { proposed: 'ждёт одобрения', active: 'работает', off: 'выключен' };
-      function renderDepthSkills() {
-        var ul = $('d-skills');
-        ul.textContent = '';
-        var items = depthData ? arr(depthData.skills).slice().reverse() : [];
-        var waiting = items.filter(function (x) { return x.status === 'proposed'; }).length;
-        $('d-skills-meta').textContent = waiting ? waiting + ' ждут одобрения' : (items.length ? String(items.length) : '');
-        if (!items.length) emptyLi(ul, 'Когда Яэри заметит повторяющиеся просьбы, она напишет себе навык и покажет его здесь.');
-        items.forEach(function (sk) {
-          var li = el('li');
-          li.appendChild(el('div', 'iq', '/' + sk.command + (sk.triggers && sk.triggers.length ? ' · включается на: ' + sk.triggers.join(', ') : '')));
-          li.appendChild(el('p', '', sk.name + ': ' + sk.instruction));
-          if (arr(sk.steps).length) {
-            var st = el('ul', 'soul-simple');
-            sk.steps.forEach(function (x) { st.appendChild(el('li', '', x)); });
-            li.appendChild(st);
-          }
-          if (sk.why) li.appendChild(el('div', 'iq', 'Зачем: ' + sk.why));
-          var act = el('div', 'ia');
-          act.appendChild(el('span', 'badge' + (sk.status === 'active' ? ' ok' : ''), SKILL_STATUS[sk.status] || sk.status));
-          if (sk.uses) act.appendChild(el('span', 'badge', 'использован ' + sk.uses + ' р.'));
-          if (online) {
-            if (sk.status !== 'active') act.appendChild(smallBtn(sk.status === 'off' ? 'Включить' : 'Одобрить', 'Одобрить навык', function () { depthPost('skill', { id: sk.id, action: 'approve' }); }, 'mini-btn solid'));
-            if (sk.status === 'proposed') act.appendChild(smallBtn('Отклонить', 'Отклонить навык', function () { depthPost('skill', { id: sk.id, action: 'reject' }); }, 'mini-btn'));
-            if (sk.status === 'active') act.appendChild(smallBtn('Выключить', 'Выключить навык', function () { depthPost('skill', { id: sk.id, action: 'disable' }); }, 'mini-btn'));
-            act.appendChild(smallBtn('Удалить', 'Удалить навык', function () { depthPost('skill', { id: sk.id, action: 'delete' }); }, 'mini-btn'));
-          }
-          li.appendChild(act);
-          if (online) {
-            var t = el('div', 'd-test');
-            var inp = el('input', 'field');
-            inp.type = 'text';
-            inp.maxLength = 1000;
-            inp.placeholder = sk.example || 'Пример запроса для проверки';
-            inp.setAttribute('aria-label', 'Пример запроса для навыка ' + sk.name);
-            var go = smallBtn('Проверить в песочнице', 'Проверить навык без памяти и доступа к данным', function () {
-              go.disabled = true;
-              go.textContent = 'Проверяю…';
-              depthPost('skill/test', { id: sk.id, text: inp.value }).then(function () { go.disabled = false; });
-            }, 'mini-btn');
-            t.appendChild(inp);
-            t.appendChild(go);
-            if (sk.test && sk.test.output) {
-              t.appendChild(el('div', 'iq', 'Песочница, ' + ago(sk.test.t) + ': «' + sk.test.input + '»'));
-              t.appendChild(el('pre', '', sk.test.output));
-            }
-            li.appendChild(t);
-          }
-          ul.appendChild(li);
-        });
-      }
-      function renderEvalChart() {
-        var box = $('d-eval-chart');
-        var ser = depthData ? arr(depthData.evalSeries) : [];
-        if (!ser.length) { chartEmpty(box, 'Здесь будет видно, как она сама оценивает свои ответы (1–10) по дням.'); return; }
-        var W = Math.max(300, Math.round(box.clientWidth) || 640), H = 170, L = 26, R = 10, T = 12, B = 24, slot = (W - L - R) / ser.length, bw = Math.min(34, slot * 0.62);
-        function Y(v) { return T + (10 - v) * (H - T - B) / 10; }
-        var s = '<svg viewBox="0 0 ' + W + ' ' + H + '">';
-        [0, 5, 10].forEach(function (v) { s += '<line class="grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '"/><text x="' + (L - 6) + '" y="' + (Y(v) + 3).toFixed(1) + '" text-anchor="end">' + v + '</text>'; });
-        ser.forEach(function (p, i) {
-          var x = L + slot * i + (slot - bw) / 2, h = (H - T - B) * p.avg / 10;
-          s += '<rect class="bar" x="' + x.toFixed(1) + '" y="' + (H - B - h).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="3" style="fill:' + (p.avg >= 7 ? 'var(--a)' : 'var(--warn)') + '"><title>' + dayLabel(p.day) + ': ' + p.avg + ' (' + p.n + ' ' + plural(p.n, 'ответ', 'ответа', 'ответов') + ')</title></rect>';
-        });
-        s += '<text x="' + L + '" y="' + (H - 7) + '">' + dayLabel(ser[0].day) + '</text>';
-        if (ser.length > 1) s += '<text x="' + (W - R) + '" y="' + (H - 7) + '" text-anchor="end">' + dayLabel(ser[ser.length - 1].day) + '</text>';
-        box.innerHTML = s + '</svg>';
-      }
-      function renderReview() {
-        renderEvalChart();
-        var ul = $('d-props');
-        ul.textContent = '';
-        var items = depthData ? arr(depthData.proposals).slice().reverse() : [];
-        var waiting = items.filter(function (x) { return x.status === 'proposed'; }).length;
-        $('d-review-meta').textContent = waiting ? waiting + ' ' + plural(waiting, 'правка ждёт', 'правки ждут', 'правок ждут') : '';
-        if (!items.length) emptyLi(ul, 'Пока она довольна собой или ещё не перечитывала ответы.');
-        items.forEach(function (p) {
-          var li = el('li');
-          li.appendChild(el('div', 'iq', PROP_TYPES[p.type] || p.type));
-          if (p.type === 'self' && p.before) {
-            var d = el('p', 'd-diff');
-            d.appendChild(el('s', '', p.before));
-            li.appendChild(d);
-          }
-          if (p.type === 'trait' && p.before) li.appendChild(el('p', 'd-diff', 'Было ' + p.before + (p.status === 'applied' ? ', стало ' : ', станет ') + Math.max(0, Math.min(100, Number(p.before) + Number(p.delta)))));
-          li.appendChild(el('p', '', p.text));
-          if (p.why) li.appendChild(el('div', 'iq', 'Почему: ' + p.why));
-          var act = el('div', 'ia');
-          act.appendChild(el('span', 'badge' + (p.status === 'applied' ? ' ok' : ''), p.status === 'proposed' ? 'предложено' : (p.status === 'applied' ? 'применено' : 'отклонено')));
-          if (online && p.status === 'proposed') {
-            act.appendChild(smallBtn('Применить', 'Применить правку души', function () { depthPost('proposal', { id: p.id, action: 'approve' }).then(loadSoul); }, 'mini-btn solid'));
-            act.appendChild(smallBtn('Отклонить', 'Отклонить правку', function () { depthPost('proposal', { id: p.id, action: 'reject' }); }, 'mini-btn'));
-          }
-          li.appendChild(act);
-          ul.appendChild(li);
-        });
-        var rl = $('d-rules');
-        rl.textContent = '';
-        var rules = depthData ? arr(depthData.rules) : [];
-        if (!rules.length) emptyLi(rl, 'Пока нет.');
-        rules.forEach(function (r) {
-          var li = el('li', '', r.text);
-          if (online) li.appendChild(smallBtn('×', 'Убрать правило', function () { depthPost('remove', { list: 'rules', id: r.id }); }, 'mini-btn'));
-          rl.appendChild(li);
-        });
-        var ev = $('d-evals');
-        ev.textContent = '';
-        var evals = depthData ? arr(depthData.evals).slice().reverse() : [];
-        if (!evals.length) emptyLi(ev, 'Самооценок пока нет.');
-        evals.forEach(function (x) { ev.appendChild(el('li', '', x.score + '/10 · «' + x.q + '» — ' + (x.note || 'без замечаний'))); });
-      }
-      function renderDepthFlags() {
-        var box = $('d-flags');
-        box.textContent = '';
-        DEPTH_FLAGS.forEach(function (f) {
-          var lab = el('label', 'toggle');
-          var t = el('span', 't-text');
-          t.appendChild(el('span', 't-name', f[1]));
-          t.appendChild(el('span', 't-desc', f[2]));
-          lab.appendChild(t);
-          var inp = el('input', 'vh');
-          inp.type = 'checkbox';
-          inp.setAttribute('role', 'switch');
-          inp.checked = !!(depthData && depthData.settings[f[0]]);
-          inp.disabled = !online || !depthData;
-          inp.addEventListener('change', function () { var o = {}; o[f[0]] = inp.checked; depthPost('settings', o); });
-          lab.appendChild(inp);
-          var tr = el('span', 'track');
-          tr.setAttribute('aria-hidden', 'true');
-          lab.appendChild(tr);
-          box.appendChild(lab);
-        });
-        var note = depthData ? (DEPTH_EVERY[depthData.intensity] || '') : 'Настройки появятся, когда Яэри подключится к серверу.';
-        if (depthData && !depthData.smartModel) note += ' «Умная» модель не выбрана — думает основной.';
-        if (depthData && depthData.dailyLimit > 0) note += ' Сегодня потрачено ' + depthData.usedToday + ' из ' + depthData.dailyLimit + ' запросов.';
-        $('d-ctl-note').textContent = note;
-      }
-      each(document.querySelectorAll('#d-nudge [data-nudge]'), function (b) {
-        b.addEventListener('click', function () { depthPost('nudge', { action: b.getAttribute('data-nudge') }); });
-      });
-      each(document.querySelectorAll('[data-drun]'), function (b) {
-        b.addEventListener('click', function () {
-          b.disabled = true;
-          $('d-ctl-status').textContent = 'Яэри думает…';
-          api('soul/depth/run', { task: b.getAttribute('data-drun') }).then(function (d) {
-            setDepth(d);
-            $('d-ctl-status').textContent = 'Готово.';
-          }).catch(depthError).then(function () { b.disabled = false; });
-        });
-      });
-      $('d-clear').addEventListener('click', function () {
-        if (!window.confirm('Очистить глубину: её характер, принципы, навыки, правки и предчувствия? Остальная душа сохранится.')) return;
-        depthPost('clear', {});
-      });
-      setInterval(function () {
-        if (online && currentView === 'soul' && !document.hidden && !$('sp-depth').hidden) loadDepth();
-      }, 60000);
-
-      function loadSoul() {
-        return api('soul').then(function (data) {
-          setSoul(data);
-          loadEvolution();
-          loadGrowth();
-          loadUnderstanding();
-          loadSoul3();
-          loadDepth();
-        });
-      }
       function shareThought() {
         // Мысль, которую Яэри придумала, пока размышляла, она говорит первой.
         if (!online || !settings.soul || !soulData || !soulData.soul.thoughtNew) return Promise.resolve();
@@ -3364,27 +1761,20 @@
           return loadSoul();
         });
       }
-      function soulReflect(mode, quiet) {
+      function soulReflect(mode, quietMode) {
         if (!online || soulBusy) return Promise.resolve(null);
-        if (pending) { if (mode !== 'force') scheduleReflect(20000); return Promise.resolve(null); }
+        if (pending) { scheduleReflect(20000); return Promise.resolve(null); }
         soulBusy = true;
-        var pondering = mode === 'force' || (mood.base === 'idle' || mood.base === 'sleep');
+        var pondering = mood.base === 'idle' || mood.base === 'sleep';
         if (pondering) setBase('ponder');
-        $('soul-think').disabled = true;
-        soulMsg(mode === 'force' ? 'Яэри думает…' : '');
         return api('soul/reflect', { mode: mode, name: settings.name, model: modelSelect.value }).then(function (data) {
           setSoul(data);
-          if (data.skipped) { soulMsg(''); return data; }
-          soulMsg(data.kind === 'muse' ? 'Яэри подумала о вас и записала это в дневник.' : 'Яэри обдумала разговор и записала это в дневник.');
-          if (!quiet) flash(data.leveled ? 'grow' : 'happy', 3600);
-          else if (data.leveled) flash('grow', 4200);
+          if (data.skipped) return data;
+          if (data.leveled) flash('grow', 4200);
+          else if (!quietMode) flash('happy', 3600);
           return data;
-        }).catch(function (e) {
-          soulMsg(e.message, true);
-          return null;
-        }).then(function (data) {
+        }).catch(function () { return null; }).then(function (data) {
           soulBusy = false;
-          $('soul-think').disabled = false;
           if (mood.base === 'ponder') setBase(restMood());
           return data;
         });
@@ -3395,7 +1785,7 @@
       }
       function soulAfterChat(info) {
         if (info.leveled || currentView === 'soul') loadSoul().catch(function () { /* Покажем позже. */ });
-        else if (soulData) { soulData.soul.exchanges = (soulData.soul.exchanges || 0) + 1; soulData.soul.xp = (soulData.soul.xp || 0) + 1; renderSoulMini(); }
+        else if (soulData) { soulData.soul.exchanges = (soulData.soul.exchanges || 0) + 1; soulData.soul.xp = (soulData.soul.xp || 0) + 1; }
         // Подумать о разговоре, когда хозяин сделал паузу.
         if (info.due && settings.soul) scheduleReflect(45000);
       }
@@ -3417,23 +1807,16 @@
       function soulDemo() {
         clearTimeout(soulTimer);
         soulData = soulDefault();
+        growthData = undData = depthData = evoData = s3Data = lifeData = e5Data = vecData = null;
         renderSoul();
       }
-      $('soul-think').addEventListener('click', function () {
-        soulReflect('force', false).then(function (data) { if (data && !data.skipped) return shareThought(); });
+      // Кнопка в настройках подключения: включить автономный режим без Cloud.ru.
+      if ($('life4-enable-offline')) $('life4-enable-offline').addEventListener('click', function () {
+        api('life/settings', { offline: true }).then(function () { return api('status'); })
+          .then(applyConfig).then(loadLife4).catch(function (err) {
+            keyMsg('Не удалось включить автономность: ' + err.message, 'err');
+          });
       });
-      $('soul-reset').addEventListener('click', function () {
-        if (!window.confirm('Сбросить душу Яэри? Её характер, мысли о вас, уроки и дневник начнутся заново. Переписка, рабочая память и документы останутся.')) return;
-        api('soul/reset', {}).then(function (data) { setSoul(data); soulMsg('Душа начата заново.'); flash('greet', 3600); })
-          .catch(function (e) { soulMsg(e.message, true); });
-      });
-      function openSoul() { showView('soul'); }
-      if ($('soul-mini')) {
-        $('soul-mini').addEventListener('click', openSoul);
-        $('soul-mini').addEventListener('keydown', function (event) {
-          if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openSoul(); }
-        });
-      }
 
       /* Действия, которые нужны графу памяти. */
       window.YaeriApp = {
@@ -3454,171 +1837,1170 @@
         viewFromHash: viewFromHash,
         renderNotes: renderNotes
       };
+      /* ---------- Душа: интерфейс ---------- */
+      // Пять вкладок вместо шести и сорока карточек: Обзор, Путь, Память, Характер и Настройки.
+      // Всё, что Яэри делает сама, показывается как итог; ручные кнопки «подумать/уснуть/учиться» убраны.
+      var SOUL_TABS = ['now', 'path', 'memory', 'char', 'set'];
+      var SOUL_TAB_KEY = 'yaeri-soul-tab2';
+      var soulTab = 'now';
+      var SVGNS = 'http://www.w3.org/2000/svg';
+      var TONE_FACE = { joy: 'happy', sad: 'sorry', sleepy: 'sleep', think: 'think', calm: 'idle' };
+      var TONE_HINT = {
+        tired: 'Отвечает короче и мягче, без лишних вопросов.', hurry: 'Сначала результат, коротко, без вступлений.',
+        tense: 'Спокойный тон, без шуток; сначала про чувства.', sad: 'Тепло, не торопит с советами, сначала слушает.',
+        joy: 'Делит радость, говорит живее.', neutral: 'Явных признаков усталости или спешки нет.'
+      };
+      var INTENSITY_NOTE = {
+        off: 'Только разговоры, сон и раздумья. Своих целей и догадок нет.',
+        quiet: 'Редко: догадки раз в несколько часов, цели раз в сутки.',
+        normal: 'Раз в пару часов задумывается о вас, цели обновляет несколько раз в день.',
+        active: 'Часто: думает о вас каждые 45 минут. Запросов больше.'
+      };
+      var DEPTH_FLAGS = [
+        ['rhythm', 'Предчувствие', 'Замечает выгорание и застревание по ритму сообщений'],
+        ['foresight', 'Варианты будущего', 'Перед советом прогоняет 2–3 сценария'],
+        ['character', 'Свой характер', 'Вкусы, привычки и причуды растут сами'],
+        ['philosophy', 'Принципы', 'Формулирует, во что верит, и помнит, откуда это'],
+        ['skills', 'Свои навыки', 'Пишет себе сценарии; включаются после вашего «Да»'],
+        ['review', 'Самоулучшение', 'Перечитывает ответы и предлагает правки себя']
+      ];
+      var TOPIC_MODES = [['open', 'Открыто'], ['hold', 'Не использовать без запроса'], ['off', 'Не запоминать']];
+      var TRAIT_COLORS = ['hsl(43 92% 62%)', 'hsl(28 90% 62%)', 'hsl(338 75% 70%)', 'hsl(186 70% 62%)', 'hsl(262 65% 74%)', 'hsl(96 50% 60%)'];
+      var MASTERY_ICON = { talk: 'chat', think: 'thought', memory: 'book', know: 'eye', bond: 'heart', world: 'globe' };
 
-      /* ---------- Evolution 5.0: measurable learning and guarded improvements ---------- */
-      function evolution5Error(err) {
-        $('e5-status').textContent = err && err.message ? err.message : 'Не удалось обновить Evolution 5.0.';
+      /* Векторные иконки: одна линия, цвет от текста. */
+      var ICONS = {
+        spark: 'M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6',
+        star: 'M12 3.5l2.5 5.3 5.8.7-4.3 4 1.1 5.7L12 16.4 6.9 19.2 8 13.5 3.7 9.5l5.8-.7z',
+        moon: 'M19 14.5A7.5 7.5 0 0 1 9.5 5a7.5 7.5 0 1 0 9.5 9.5z',
+        book: 'M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5zM4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5',
+        bulb: 'M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.4 1.1 2.2h5c0-.8.4-1.6 1.1-2.2A6 6 0 0 0 12 3z',
+        question: 'M9.2 9a3 3 0 1 1 4.2 2.8c-.9.4-1.4 1.1-1.4 2.1v.6M12 18h.01M12 21.5a9.5 9.5 0 1 0 0-19 9.5 9.5 0 0 0 0 19z',
+        compass: 'M12 21.5a9.5 9.5 0 1 0 0-19 9.5 9.5 0 0 0 0 19zM15.5 8.5l-2 5-5 2 2-5z',
+        target: 'M12 21.5a9.5 9.5 0 1 0 0-19 9.5 9.5 0 0 0 0 19zM12 16.5a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM12 12.01V12',
+        sprout: 'M12 21v-9M12 12C12 7 8 5 4 5c0 4 3 7 8 7zM12 14c0-4 3-6 7-6 0 3.5-2.5 6-7 6z',
+        trophy: 'M8 4h8v5a4 4 0 0 1-8 0zM8 6H4.5a3 3 0 0 0 3.5 4M16 6h3.5a3 3 0 0 1-3.5 4M12 13v4M8.5 21h7M9.5 17h5v4h-5z',
+        map: 'M9 4L3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5zM9 4v13.5M15 6.5V20',
+        thought: 'M7 17.5C4.5 17.5 3 15.8 3 13.8c0-1.8 1.3-3.3 3-3.6C6.4 7.2 8.8 5 11.8 5c2.6 0 4.8 1.7 5.6 4 2 .3 3.6 2 3.6 4.1 0 2.4-1.9 4.4-4.4 4.4zM8 20.5h.01M5 22.5h.01',
+        scroll: 'M7 4h11a2 2 0 0 1 2 2v1h-4M7 4a2 2 0 0 0-2 2v12a2 2 0 0 1-2 2h11a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2M8.5 9.5h4M8.5 13h4',
+        tool: 'M14.5 6.5a4 4 0 0 0 5 5l-9 9a2.1 2.1 0 0 1-3-3l9-9a4 4 0 0 0-2-2zM14.5 6.5L17 4l3 3-2.5 2.5',
+        mirror: 'M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM12 15v6M9 21h6M9.5 6.5l-2 2',
+        search: 'M11 17.5a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13zM16 16l4.5 4.5',
+        lock: 'M6 11h12v10H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3M12 15v2.5',
+        unlock: 'M6 11h12v10H6zM8.5 11V8a3.5 3.5 0 0 1 6.8-1.2M12 15v2.5',
+        heart: 'M12 20.5s-7.5-4.5-7.5-10A4.3 4.3 0 0 1 12 8a4.3 4.3 0 0 1 7.5 2.5c0 5.5-7.5 10-7.5 10z',
+        chat: 'M4 5h16v11H9l-5 4z',
+        eye: 'M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+        globe: 'M12 21.5a9.5 9.5 0 1 0 0-19 9.5 9.5 0 0 0 0 19zM2.5 12h19M12 2.5c2.6 2.8 3.8 6 3.8 9.5s-1.2 6.7-3.8 9.5c-2.6-2.8-3.8-6-3.8-9.5S9.4 5.3 12 2.5z',
+        cloud: 'M7 18a4 4 0 0 1-.6-8A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9zM9 21l1-2M13 21l1-2',
+        check: 'M5 12.5l4.5 4.5L19 7.5',
+        cross: 'M6.5 6.5l11 11M17.5 6.5l-11 11',
+        pin: 'M9 4h6l-1 6 3 3H7l3-3zM12 13v8'
+      };
+      var FEED_ICON = {
+        nudge: 'cloud', character: 'star', principle: 'scroll', skill: 'tool', proposal: 'mirror', review: 'search', study: 'book',
+        insight: 'bulb', question: 'question', lesson: 'compass', goal: 'target', map: 'map', 'goal-new': 'sprout', 'goal-done': 'trophy',
+        sleep: 'moon', reflection: 'thought', muse: 'thought', milestone: 'star', dream: 'moon', secret: 'lock', moment: 'pin',
+        change: 'spark', bond: 'heart', birth: 'sprout'
+      };
+      function ico(name, cls) {
+        return '<svg class="ico' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" aria-hidden="true"><path d="' + (ICONS[name] || ICONS.spark) + '"/></svg>';
       }
-      function evolution5Button(text, callback) {
-        var b = el('button', 'mini-btn', text);
+      function icoEl(name, cls) { var s = el('span', 'ico-wrap' + (cls ? ' ' + cls : '')); s.innerHTML = ico(name); return s; }
+      function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+      function smallBtn(text, label, fn, cls) {
+        var b = el('button', cls || '', text);
         b.type = 'button';
-        b.addEventListener('click', callback);
+        b.setAttribute('aria-label', label);
+        b.title = label;
+        b.addEventListener('click', fn);
         return b;
       }
-      function evolution5List(id, items, build, empty) {
-        var ul = $(id); ul.textContent = '';
-        (items || []).slice(-12).reverse().forEach(function (x) {
-          var li = el('li');
-          build(li, x);
+      function xBtn(label, fn) { var b = smallBtn('', label, fn, 'sx-x'); b.innerHTML = ico('cross'); return b; }
+      function emptyLi(ul, text) { ul.appendChild(el('li', 'sx-empty', text)); }
+      function busyIn(node) { var a = document.activeElement; return !!(a && node && node.contains(a) && /INPUT|SELECT|TEXTAREA/.test(a.tagName)); }
+      function soulTone(name) {
+        name = String(name || '').toLowerCase();
+        if (/груст|тоск|печал|скуч|тревож|обид|одинок|винов/.test(name)) return 'sad';
+        if (/сонн|сон\b|уста|дрем|покой|умирот/.test(name)) return 'sleepy';
+        if (/раздум|задум|любопыт|интерес|размышл|сосредоточ/.test(name)) return 'think';
+        if (/рад|счаст|весел|игрив|восторг|довольн|вдохнов|нежн|тепл/.test(name)) return 'joy';
+        return 'calm';
+      }
+      function dayLabel(key) { return String(key).slice(8, 10) + '.' + String(key).slice(5, 7); }
+      function dayMs(key) { var p = String(key).split('-'); return Date.UTC(+p[0], +p[1] - 1, +p[2]); }
+      function chartEmpty(box, text) { box.innerHTML = '<div class="chart-empty">' + esc(text) + '</div>'; }
+      function arc(cx, cy, r, a0, a1) {
+        // Дуга по часовой стрелке от угла a0 до a1 (градусы, 0 — вверх).
+        var p0 = [cx + r * Math.sin(a0 * Math.PI / 180), cy - r * Math.cos(a0 * Math.PI / 180)];
+        var p1 = [cx + r * Math.sin(a1 * Math.PI / 180), cy - r * Math.cos(a1 * Math.PI / 180)];
+        return 'M' + p0[0].toFixed(2) + ' ' + p0[1].toFixed(2) + ' A' + r + ' ' + r + ' 0 ' + (a1 - a0 > 180 ? 1 : 0) + ' 1 ' + p1[0].toFixed(2) + ' ' + p1[1].toFixed(2);
+      }
+      function starPath(x, y, r) {
+        // Четырёхлучевая искра.
+        var k = r * 0.28;
+        return 'M' + x + ' ' + (y - r) + ' Q' + (x + k) + ' ' + (y - k) + ' ' + (x + r) + ' ' + y + ' Q' + (x + k) + ' ' + (y + k) + ' ' + x + ' ' + (y + r) + ' Q' + (x - k) + ' ' + (y + k) + ' ' + (x - r) + ' ' + y + ' Q' + (x - k) + ' ' + (y - k) + ' ' + x + ' ' + (y - r) + 'Z';
+      }
+      function goldDefs(id) {
+        return '<defs><linearGradient id="' + id + 'g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff3c8"/><stop offset=".45" stop-color="#f6c84f"/><stop offset="1" stop-color="#a8701a"/></linearGradient>' +
+          '<radialGradient id="' + id + 'r"><stop offset="0" stop-color="#ffd76a" stop-opacity=".55"/><stop offset=".6" stop-color="#f0a92c" stop-opacity=".12"/><stop offset="1" stop-color="#f0a92c" stop-opacity="0"/></radialGradient>' +
+          '<filter id="' + id + 'f" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>';
+      }
+
+      /* ---------- Вкладки ---------- */
+      function showSoulTab(name, focus) {
+        if (SOUL_TABS.indexOf(name) < 0) name = 'now';
+        soulTab = name;
+        SOUL_TABS.forEach(function (k) {
+          var t = $('stab-' + k);
+          t.setAttribute('aria-selected', k === name ? 'true' : 'false');
+          t.tabIndex = k === name ? 0 : -1;
+          $('sp-' + k).hidden = k !== name;
+          if (k === name && focus) t.focus();
+        });
+        try { localStorage.setItem(SOUL_TAB_KEY, name); } catch (e) { /* без запоминания вкладки */ }
+        renderSoulParts();
+        fitSoulText($('soul-self'));
+        fitSoulText($('soul-portrait'));
+      }
+      each(document.querySelectorAll('.stab'), function (b) {
+        b.addEventListener('click', function () { showSoulTab(b.getAttribute('data-sp')); });
+        b.addEventListener('keydown', function (e) {
+          var i = SOUL_TABS.indexOf(b.getAttribute('data-sp'));
+          if (e.key === 'ArrowRight') { e.preventDefault(); showSoulTab(SOUL_TABS[(i + 1) % SOUL_TABS.length], true); }
+          else if (e.key === 'ArrowLeft') { e.preventDefault(); showSoulTab(SOUL_TABS[(i + SOUL_TABS.length - 1) % SOUL_TABS.length], true); }
+        });
+      });
+      (function () {
+        var saved = 'now';
+        try { saved = localStorage.getItem(SOUL_TAB_KEY) || 'now'; } catch (e) { saved = 'now'; }
+        soulTab = SOUL_TABS.indexOf(saved) < 0 ? 'now' : saved;
+        SOUL_TABS.forEach(function (k) {
+          $('stab-' + k).setAttribute('aria-selected', k === soulTab ? 'true' : 'false');
+          $('stab-' + k).tabIndex = k === soulTab ? 0 : -1;
+          $('sp-' + k).hidden = k !== soulTab;
+        });
+      }());
+
+      /* ---------- Отрисовка ---------- */
+      function renderSoul() {
+        if (!soulData) soulData = soulDefault();
+        if (currentView !== 'soul') return;
+        renderSoulHero();
+        renderSoulParts();
+      }
+      function renderSoulParts() {
+        if (!soulData || currentView !== 'soul') return;
+        var items = inboxItems();
+        var badge = $('sx-inbox-badge');
+        badge.hidden = !items.length;
+        badge.textContent = items.length ? String(items.length) : '';
+        if (soulTab === 'now') renderNow(items);
+        else if (soulTab === 'path') renderPathTab();
+        else if (soulTab === 'memory') renderMemoryTab();
+        else if (soulTab === 'char') renderCharTab();
+        else renderSettingsTab();
+      }
+
+      /* Герой: сигил пути, ступень, настроение, шкалы. */
+      var sigilState = { key: '' };
+      function sigilSvg(d, p) {
+        var s = d.soul, C = 120;
+        var tone = soulTone(s.mood && s.mood.name);
+        var face = 'yaeri/' + TONE_FACE[tone] + '-face.webp';
+        var out = '<svg viewBox="0 0 240 240">' + goldDefs('sg') +
+          '<clipPath id="sgclip"><circle cx="' + C + '" cy="' + C + '" r="62"/></clipPath>' +
+          '<circle class="sg-aura" cx="' + C + '" cy="' + C + '" r="112" fill="url(#sgr)"/>';
+        // Риски, как на циферблате.
+        out += '<g class="sg-ticks">';
+        for (var t = 0; t < 72; t++) {
+          var a = t * 5, long = t % 8 === 0, r0 = long ? 100 : 102.5, r1 = 106;
+          var sa = Math.sin(a * Math.PI / 180), ca = Math.cos(a * Math.PI / 180);
+          out += '<line x1="' + (C + r0 * sa).toFixed(1) + '" y1="' + (C - r0 * ca).toFixed(1) + '" x2="' + (C + r1 * sa).toFixed(1) + '" y2="' + (C - r1 * ca).toFixed(1) + '"' + (long ? ' class="l"' : '') + '/>';
+        }
+        out += '</g>';
+        // Девять сегментов ступеней.
+        for (var i = 0; i < 9; i++) {
+          var a0 = i * 40 + 3, a1 = (i + 1) * 40 - 3;
+          var cls = i + 1 < p.level || p.complete ? 'sg-seg on' : (i + 1 === p.level ? 'sg-seg cur' : 'sg-seg');
+          out += '<path class="sg-base" d="' + arc(C, C, 92, a0, a1) + '"/>';
+          if (i + 1 < p.level || p.complete) out += '<path class="' + cls + '" style="--i:' + i + '" d="' + arc(C, C, 92, a0, a1) + '"/>';
+          else if (i + 1 === p.level) out += '<path class="' + cls + '" d="' + arc(C, C, 92, a0, a0 + Math.max(1, (a1 - a0) * p.frac)) + '"/>';
+          var mid = (a0 + a1) / 2, mx = C + 92 * Math.sin(mid * Math.PI / 180), my = C - 92 * Math.cos(mid * Math.PI / 180);
+          if (i + 1 <= p.level) out += '<circle class="sg-node' + (i + 1 === p.level && !p.complete ? ' cur' : '') + '" cx="' + mx.toFixed(1) + '" cy="' + my.toFixed(1) + '" r="2.4"/>';
+        }
+        // Кольцо прогресса до следующей ступени или звезды.
+        var L = 2 * Math.PI * 76;
+        out += '<circle class="sg-track" cx="' + C + '" cy="' + C + '" r="76"/>' +
+          '<circle class="sg-prog" cx="' + C + '" cy="' + C + '" r="76" stroke="url(#sgg)" stroke-dasharray="' + L.toFixed(1) + '" stroke-dashoffset="' + (L * (1 - p.frac)).toFixed(1) + '" transform="rotate(-90 ' + C + ' ' + C + ')"/>';
+        out += '<circle class="sg-dash" cx="' + C + '" cy="' + C + '" r="84"/>';
+        // После девятой ступени — орбита звёзд текущего созвездия.
+        if (p.complete) {
+          out += '<g class="sg-orbit">';
+          for (var k = 0; k < 9; k++) {
+            var ang = k * 40 + 20, sx = C + 114 * Math.sin(ang * Math.PI / 180), sy = C - 114 * Math.cos(ang * Math.PI / 180);
+            out += '<path class="sg-star' + (k < p.inConstellation ? ' on' : '') + '" d="' + starPath(+sx.toFixed(1), +sy.toFixed(1), k < p.inConstellation ? 6 : 4) + '"/>';
+          }
+          out += '</g>';
+        }
+        out += '<circle cx="' + C + '" cy="' + C + '" r="64" class="sg-ring"/>' +
+          '<image class="sg-face" href="' + face + '" x="' + (C - 62) + '" y="' + (C - 62) + '" width="124" height="124" clip-path="url(#sgclip)" preserveAspectRatio="xMidYMid slice"/>';
+        // Знак ступени внизу.
+        out += '<g class="sg-badge"><path d="M' + C + ' 196 l15 8.5 v17 l-15 8.5 l-15 -8.5 v-17z" fill="url(#sgg)"/><text x="' + C + '" y="218" text-anchor="middle">' + (p.complete ? (p.stars ? '✦' + p.stars : '9') : p.level) + '</text></g>';
+        return out + '</svg>';
+      }
+      function gauge(label, v, cls, note) {
+        v = Math.max(0, Math.min(100, Math.round(v || 0)));
+        var C = 40, L = 2 * Math.PI * 32 * 0.75;
+        var g = el('div', 'sx-gauge ' + cls);
+        g.title = note || label;
+        g.innerHTML = '<svg viewBox="0 0 80 80" aria-hidden="true"><path class="gt" d="' + arc(C, C, 32, -135, 135) + '"/>' +
+          '<path class="gv" d="' + arc(C, C, 32, -135, 135) + '" stroke-dasharray="' + L.toFixed(1) + '" stroke-dashoffset="' + (L * (1 - v / 100)).toFixed(1) + '"/></svg>' +
+          '<b>' + v + '</b><span>' + esc(label) + '</span>';
+        g.setAttribute('role', 'img');
+        g.setAttribute('aria-label', label + ': ' + v + ' из 100');
+        return g;
+      }
+      function renderSoulHero() {
+        var d = soulData, s = d.soul, p = soulPath(s.xp);
+        $('soul-demo').hidden = online;
+        $('soul-hero').setAttribute('data-tone', soulTone(s.mood && s.mood.name));
+        var key = [p.level, p.stars, Math.round(p.frac * 200), soulTone(s.mood && s.mood.name)].join('|');
+        if (sigilState.key !== key) { $('sx-sigil').innerHTML = sigilSvg(d, p); sigilState.key = key; }
+        $('soul-stage').textContent = p.stage;
+        $('sx-kicker').textContent = p.complete
+          ? 'Ступень 9 из 9 · созвездие «' + p.constellationName + '» · ' + p.inConstellation + '/9 ★'
+          : 'Ступень ' + p.level + ' из 9';
+        $('sx-fill').style.width = Math.max(2, p.frac * 100) + '%';
+        $('sx-bar').setAttribute('aria-valuenow', String(Math.round(p.frac * 100)));
+        $('sx-sub').textContent = p.complete
+          ? (p.stars ? 'Зажжено звёзд: ' + p.stars + '. ' : 'Путь ступеней пройден. ') + 'До следующей звезды — ' + p.left + ' опыта'
+          : 'До ступени «' + p.next + '» — ' + p.left + ' опыта';
+        $('soul-mood').textContent = s.mood.name || '—';
+        $('soul-mood-why').textContent = s.mood.why || '';
+        var needs = d.needs || { longing: 0, joy: 55, curiosity: 60 };
+        var gs = $('sx-gauges');
+        gs.textContent = '';
+        gs.appendChild(gauge('близость', s.bond, 'bond', s.bondNote));
+        gs.appendChild(gauge('радость', needs.joy, 'joy'));
+        if ((needs.longing || 0) >= 40) gs.appendChild(gauge('скучает', needs.longing, 'miss', 'Давно не разговаривали'));
+        else gs.appendChild(gauge('любопытство', needs.curiosity, 'cur'));
+        var days = Math.max(1, Math.floor((Date.now() - (s.born || Date.now())) / 864e5) + 1);
+        var st = $('sx-stats');
+        st.textContent = '';
+        [[days, plural(days, 'день вместе', 'дня вместе', 'дней вместе')], [s.exchanges || 0, plural(s.exchanges || 0, 'реплика', 'реплики', 'реплик')], [s.reflections || 0, plural(s.reflections || 0, 'раздумье', 'раздумья', 'раздумий')], [s.xp || 0, 'опыта']].forEach(function (x) {
+          var b = el('div', 'sx-stat');
+          b.appendChild(el('b', '', String(x[0])));
+          b.appendChild(el('span', '', x[1]));
+          st.appendChild(b);
+        });
+      }
+
+      /* ---------- Обзор ---------- */
+      function inboxItems() {
+        var out = [];
+        if (!online) return out;
+        if (depthData) {
+          var n = depthData.nudge;
+          if (n && (n.status === 'new' || n.status === 'shown')) out.push({ kind: 'nudge', id: '', icon: 'cloud', tag: 'Она заметила', text: n.text, yes: 'Спасибо, учту', no: 'Не сейчас' });
+          arr(depthData.skills).forEach(function (sk) {
+            if (sk.status === 'proposed') out.push({ kind: 'skill', id: sk.id, icon: 'tool', tag: 'Новый навык /' + sk.command, text: sk.name + ': ' + sk.instruction, why: sk.why, yes: 'Включить', no: 'Не нужно' });
+          });
+          var PT = { lesson: 'Урок общения', rule: 'Правило стиля', self: 'Как она видит себя', trait: 'Черта характера' };
+          arr(depthData.proposals).forEach(function (pr) {
+            if (pr.status === 'proposed') out.push({ kind: 'proposal', id: pr.id, icon: 'mirror', tag: 'Хочет изменить в себе · ' + (PT[pr.type] || pr.type), text: pr.text, why: pr.why, yes: 'Применить', no: 'Оставить как есть' });
+          });
+        }
+        if (growthData) arr(growthData.insights).forEach(function (x) {
+          if (x.status === 'hypothesis') out.push({ kind: 'insight', id: x.id, icon: 'bulb', tag: 'Догадка о вас', text: x.answer, why: x.question, yes: 'Это так', no: 'Не так' });
+        });
+        if (lifeData) arr((lifeData.tools || {}).tools).forEach(function (t) {
+          if (t.status === 'proposed') out.push({ kind: 'tool', id: t.id, icon: 'tool', tag: 'Инструмент', text: t.name, why: t.why, yes: 'Разрешить', no: 'Нет' });
+        });
+        if (e5Data) {
+          arr(e5Data.goals).forEach(function (g) { if (g.status === 'proposed') out.push({ kind: 'e5goal', id: g.id, icon: 'target', tag: 'Учебная цель', text: g.title, yes: 'Одобрить', no: 'Нет' }); });
+          arr(e5Data.strategies).forEach(function (x) { if (x.status === 'proposed') out.push({ kind: 'strategy', id: x.id, icon: 'compass', tag: 'Метод мышления', text: x.text || x.method, why: 'Тест: ' + x.benchmark + '/10, было ' + x.baseline + '/10', yes: 'Одобрить', no: 'Нет' }); });
+          arr(e5Data.concepts).forEach(function (x) { if (x.status === 'proposed') out.push({ kind: 'concept', id: x.id, icon: 'bulb', tag: 'Новая идея', text: x.title + ' — ' + x.idea, yes: 'Принять', no: 'Нет' }); });
+          arr(e5Data.transfers).forEach(function (x) { if (x.status === 'proposed') out.push({ kind: 'transfer', id: x.id, icon: 'spark', tag: 'Перенос метода', text: x.method + ': ' + x.sourceDomain + ' → ' + x.targetDomain, why: x.example, yes: 'Одобрить', no: 'Нет' }); });
+        }
+        return out;
+      }
+      function renderNow(items) {
+        var card = $('sx-inbox-card'), ul = $('sx-inbox');
+        card.hidden = !items.length;
+        ul.textContent = '';
+        $('sx-inbox-meta').textContent = items.length ? items.length + ' ' + plural(items.length, 'вопрос', 'вопроса', 'вопросов') : '';
+        items.forEach(function (it, i) {
+          var li = el('li', 'sx-ask');
+          li.style.setProperty('--i', String(i));
+          li.appendChild(icoEl(it.icon, 'big'));
+          var body = el('div', 'sx-ask-body');
+          body.appendChild(el('span', 'sx-tag', it.tag));
+          body.appendChild(el('p', '', it.text));
+          if (it.why) body.appendChild(el('small', '', it.why));
+          li.appendChild(body);
+          var act = el('div', 'sx-ask-act');
+          [[true, it.yes, 'mini-btn solid'], [false, it.no, 'mini-btn']].forEach(function (b) {
+            act.appendChild(smallBtn(b[1], b[1], function (ev) {
+              ev.currentTarget.disabled = true;
+              li.classList.add('leaving');
+              soulDecide(it.kind, it.id, b[0]);
+            }, b[2]));
+          });
+          li.appendChild(act);
           ul.appendChild(li);
         });
-        if (!ul.children.length) ul.appendChild(el('li','soul-small',empty));
+        renderThought();
+        renderYou();
+        renderFeed();
       }
-      function evolution5Text(li, value) { li.appendChild(el('span','soul-small',value)); }
-      function evolution5Ask(action, text, payload) {
-        return api('evolution5/' + action, payload).then(loadEvolution5).catch(evolution5Error);
+      function renderThought() {
+        var s = soulData.soul, box = $('sx-thought');
+        box.textContent = '';
+        var q = el('blockquote', 'sx-quote');
+        q.innerHTML = '<svg viewBox="0 0 40 30" aria-hidden="true"><path d="M2 28V17C2 8 7 3 15 2v5c-4 1-6 4-6 8h6v13zM23 28V17c0-9 5-14 13-15v5c-4 1-6 4-6 8h6v13z"/></svg>';
+        q.appendChild(el('p', '', s.thought || s.mood.why || 'Она пока слушает и запоминает.'));
+        box.appendChild(q);
+        var last = s.journal.slice().reverse().filter(function (j) { return j.kind === 'reflection' || j.kind === 'muse' || j.kind === 'dream'; })[0];
+        $('sx-thought-meta').textContent = last ? ago(last.t) : '';
+        var sl = el('p', 'sx-note');
+        sl.innerHTML = ico('moon');
+        sl.appendChild(document.createTextNode(s.lastSleep ? 'Спала ' + ago(s.lastSleep) + ' · всего снов: ' + (s.sleeps || 0) + '. Засыпает сама, когда вы не работаете.' : 'Уснёт сама, когда вы отойдёте от компьютера, и пересоберёт память.'));
+        box.appendChild(sl);
       }
-      function evolution5FillSelect(id, items, label) {
-        var target = $(id); target.textContent = '';
-        (items || []).forEach(function (x) {
-          var opt = el('option','',label(x)); opt.value = x.id; target.appendChild(opt);
+      function renderYou() {
+        var box = $('sx-you'), s = soulData.soul;
+        box.textContent = '';
+        var st = undData && undData.state;
+        var tone = st && st.confidence >= 0.66 ? st.tone : 'neutral';
+        var line = el('p', 'sx-read');
+        line.appendChild(document.createTextNode('Сейчас вы, похоже, '));
+        line.appendChild(el('b', 'tone-' + tone, st && tone !== 'neutral' ? st.label : 'спокойны'));
+        box.appendChild(line);
+        box.appendChild(el('p', 'soul-small', undData ? TONE_HINT[tone] : (online ? 'Загружаю…' : 'После подключения здесь будет видно, как она читает ваши сообщения.')));
+        $('sx-you-meta').textContent = st ? ago(st.t) : '';
+        if ((soulData.sadStreak || 0) >= 2) box.appendChild(el('p', 'soul-small soul-sad', 'Вам грустно уже ' + soulData.sadStreak + ' ' + plural(soulData.sadStreak, 'день', 'дня', 'дней') + ' подряд — она бережёт вас.'));
+        // Настроение за 30 дней: столбики вверх — светлее, вниз — тяжелее.
+        var byDay = {};
+        arr(s.ownerMoods).forEach(function (m) { byDay[m.day] = m; });
+        var W = 300, H = 64, mid = 32, bw = W / 30;
+        var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"><line class="mid" x1="0" x2="' + W + '" y1="' + mid + '" y2="' + mid + '"/>';
+        var now = new Date(), seen = 0;
+        for (var i = 29; i >= 0; i--) {
+          var day = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i), m = byDay[dayKey(day)], x = (29 - i) * bw;
+          if (!m) { svg += '<rect class="none" x="' + (x + 2).toFixed(1) + '" y="' + (mid - 1) + '" width="' + (bw - 4).toFixed(1) + '" height="2" rx="1"/>'; continue; }
+          seen++;
+          var h = Math.max(3, Math.min(2, Math.abs(m.score)) / 2 * (mid - 4));
+          svg += '<rect class="' + (m.score < 0 ? 'neg' : 'pos') + '" style="--i:' + (29 - i) + '" x="' + (x + 2).toFixed(1) + '" y="' + (m.score < 0 ? mid : mid - h).toFixed(1) + '" width="' + (bw - 4).toFixed(1) + '" height="' + h.toFixed(1) + '" rx="2"><title>' + esc(day.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) + ': ' + (m.label || m.score)) + '</title></rect>';
+        }
+        var moodBox = el('div', 'sx-moods');
+        moodBox.appendChild(el('span', 'soul-lbl', 'Ваше настроение · 30 дней'));
+        var chart = el('div', 'sx-moodbars');
+        chart.innerHTML = svg + '</svg>';
+        moodBox.appendChild(chart);
+        if (!seen) moodBox.appendChild(el('p', 'soul-small', 'Яэри отмечает настроение, когда обдумывает разговоры.'));
+        box.appendChild(moodBox);
+        var r = depthData && depthData.rhythm;
+        if (r && depthData.settings.rhythm) {
+          var meters = el('div', 'sx-meters');
+          [['burnout', 'Выгорание'], ['stuck', 'Застревание']].forEach(function (k) {
+            var v = typeof r[k[0]] === 'number' ? r[k[0]] : 0;
+            var row = el('div', 'sx-mrow' + (v >= 60 ? ' hot' : ''));
+            row.appendChild(el('span', '', k[1]));
+            var bar = el('div', 'sx-meter');
+            var f = el('i');
+            f.style.width = Math.max(v ? 3 : 0, v) + '%';
+            bar.appendChild(f);
+            row.appendChild(bar);
+            row.appendChild(el('b', '', String(v)));
+            meters.appendChild(row);
+          });
+          box.appendChild(meters);
+          arr(r.signals).slice(0, 2).forEach(function (x) { box.appendChild(el('p', 'soul-small', '· ' + x)); });
+        }
+      }
+      function feedItems() {
+        var out = [], s = soulData.soul;
+        if (growthData) arr(growthData.feed).forEach(function (x) { out.push({ t: x.t, kind: x.kind, text: x.text }); });
+        s.journal.forEach(function (j) { if (j.kind === 'milestone' || j.kind === 'dream' || j.kind === 'secret' || j.kind === 'birth') out.push({ t: j.t, kind: j.kind, text: j.text }); });
+        if (evoData) arr(evoData.timeline).forEach(function (x) { out.push({ t: x.t, kind: 'change', text: 'Изменилось «' + (x.field || '') + '»: ' + (x.after || '') + (x.reason ? ' — ' + x.reason : '') }); });
+        if (s3Data) arr(s3Data.growth).forEach(function (x) { if (x.t) out.push({ t: x.t, kind: 'bond', text: x.text }); });
+        if (depthData) arr(depthData.charLog).forEach(function (x) { out.push({ t: x.t, kind: 'character', text: x.text }); });
+        var seen = {};
+        return out.filter(function (x) {
+          if (!x.t || !x.text) return false;
+          var k = String(x.text).slice(0, 80);
+          if (seen[k]) return false;
+          seen[k] = 1;
+          return true;
+        }).sort(function (a, b) { return b.t - a.t; }).slice(0, 40);
+      }
+      function renderFeed() {
+        var ul = $('sx-feed'), items = feedItems();
+        ul.textContent = '';
+        $('sx-feed-meta').textContent = items.length ? 'последнее ' + ago(items[0].t) : '';
+        if (!items.length) { emptyLi(ul, 'Пока тихо. Как только Яэри что-то узнает или в чём-то изменится, это появится здесь.'); return; }
+        var lastDay = '';
+        items.forEach(function (it, i) {
+          var dk = dayKey(new Date(it.t));
+          if (dk !== lastDay) {
+            lastDay = dk;
+            var today = dayKey(new Date()), yest = dayKey(new Date(Date.now() - 864e5));
+            ul.appendChild(el('li', 'sx-day', dk === today ? 'Сегодня' : (dk === yest ? 'Вчера' : dmy(it.t))));
+          }
+          var li = el('li', 'sx-ev k-' + it.kind);
+          li.style.setProperty('--i', String(Math.min(i, 12)));
+          li.appendChild(icoEl(FEED_ICON[it.kind] || 'spark'));
+          var b = el('div');
+          b.appendChild(el('p', '', it.text));
+          b.appendChild(el('time', '', hhmm(it.t)));
+          li.appendChild(b);
+          ul.appendChild(li);
         });
       }
-      function loadEvolution5() {
-        if (!online) return Promise.resolve();
-        return api('evolution5').then(function (d) {
-          $('e5-enabled').checked = !!d.enabled;
-          $('e5-periodic').checked = !!d.periodic;
-          $('e5-status').textContent = d.enabled ?
-            'Активно: учебные цели, исследовательские гипотезы и защита от ухудшений. ' +
-              (d.periodic ? 'Локальный дневной цикл включён.' : 'Фоновый дневной цикл выключен.') :
-            'Развитие приостановлено; существующие знания не удалены.';
-          var learning = d.learning || {}, calib = d.calibration || {};
-          $('e5-summary').textContent = 'Цели: ' + (d.goals || []).length + ' · пробелы: ' +
-            (d.gaps || []).length + ' · методов: ' + (d.strategies || []).length +
-            '. Выбранный по проверенным результатам метод: ' + (learning.bestMethod || 'нет достаточных данных') + '.';
-          $('e5-calibration-meta').textContent = 'Проверенных прогнозов: ' + (calib.count || 0) +
-            '; Brier score: ' + (calib.brier == null ? 'ещё не вычисляется' : calib.brier + ' (меньше — лучше)') +
-            '. Исход подтверждается вручную.';
-          evolution5List('e5-goals',(d.rankedGoals || []).slice(0,12).reverse(),function (li,g) {
-            evolution5Text(li,g.title + ' · ' + g.status + ' · приоритет ' + g.priority +
-              ' · продвижение ' + (g.progress || 0) + '% · следующий шаг: ' + (g.next || '—'));
-            if (g.status === 'proposed') li.appendChild(evolution5Button('Одобрить',function () {
-              evolution5Ask('goal/step','',{id:g.id,action:'approve'});
-            }));
-            if (g.status === 'active') {
-              li.appendChild(evolution5Button('Записать шаг',function () {
-                var note = window.prompt('Что действительно было сделано?', '');
-                if (note) evolution5Ask('goal/step','',{id:g.id,action:'step',note:note});
-              }));
-              li.appendChild(evolution5Button('Исследовать с AI (1 запрос)',function () {
-                if (!window.confirm('Использовать один Cloud.ru запрос для одобренной цели?')) return;
-                $('e5-status').textContent = 'Проверяю локальные источники и готовлю гипотезы…';
-                evolution5Ask('research','',{goalId:g.id});
-              }));
-              li.appendChild(evolution5Button('Завершить',function () { evolution5Ask('goal/step','',{id:g.id,action:'complete'}); }));
-              li.appendChild(evolution5Button('Пауза',function () { evolution5Ask('goal/step','',{id:g.id,action:'pause'}); }));
-            }
-            if (g.status === 'paused') li.appendChild(evolution5Button('Возобновить',function () {
-              evolution5Ask('goal/step','',{id:g.id,action:'resume'});
-            }));
-          },'Целей ещё нет. Яэри может предложить их по найденным пробелам.');
-          evolution5List('e5-gaps',d.gaps,function(li,g){
-            evolution5Text(li,g.question+' · '+g.status+' · '+g.domain);
-          },'Не найдено открытых вопросов.');
-          evolution5List('e5-hypotheses',d.hypotheses,function(li,h){
-            evolution5Text(li,'Если '+h.cause+', возможно '+h.effect+'. Статус: '+h.status+'. Это предположение, не факт.');
-          },'Гипотез пока нет.');
-          evolution5FillSelect('e5-experiment-hypothesis',(d.hypotheses||[]).filter(function(h){return h.status !== 'rejected';}),
-            function(h){return (h.cause||'?')+' → '+(h.effect||'?');});
-          evolution5List('e5-experiments',d.experiments,function(li,e){
-            evolution5Text(li,'Предсказание: '+e.prediction+'. Альтернатива: '+e.alternative+
-              '. Проверка: '+e.measure+'. Статус: '+e.status+'.');
-            if (e.status==='proposed') {
-              [['supported','Подтверждено хозяином'],['refuted','Опровергнуто'],['unclear','Неясно']].forEach(function(action){
-                li.appendChild(evolution5Button(action[1],function(){
-                  evolution5Ask('experiment/review','',{id:e.id,result:action[0]});
-                }));
-              });
-            }
-          },'Мысленных экспериментов пока нет.');
-          evolution5List('e5-concepts',d.concepts,function(li,c){
-            evolution5Text(li,c.title+' — '+c.idea+' · '+c.status+' · источников '+(c.sources||[]).length);
-            if (c.status==='proposed') [['approve','Принять как рабочую идею'],['reject','Отклонить']].forEach(function(a){
-              li.appendChild(evolution5Button(a[1],function(){evolution5Ask('concept/decide','',{id:c.id,action:a[0]});}));
-            });
-          },'Новые концепции появятся после исследования источников.');
-          evolution5List('e5-strategies',d.strategies,function(li,s){
-            evolution5Text(li,s.method+' · '+s.status+' · тест правил '+s.benchmark+'/10; до '+s.baseline+'/10'+
-              (s.rollbackReason ? ' · '+s.rollbackReason : '')+'. '+s.text);
-            if(s.status==='proposed') [['approve','Одобрить'],['reject','Отклонить']].forEach(function(a){
-              li.appendChild(evolution5Button(a[1],function(){evolution5Ask('strategy/decide','',{id:s.id,action:a[0]});}));
-            });
-            if(s.status==='active') li.appendChild(evolution5Button('Отключить',function(){
-              evolution5Ask('strategy/decide','',{id:s.id,action:'disable'});
-            }));
-          },'Новые методы не активируются без испытания и одобрения.');
-          evolution5FillSelect('e5-transfer-strategy',(d.strategies||[]).filter(function(s){return s.status==='active';}),
-            function(s){return s.method+' ('+s.domain+')';});
-          evolution5List('e5-transfers',d.transfers,function(li,t){
-            evolution5Text(li,t.method+': '+t.sourceDomain+' → '+t.targetDomain+'. '+t.example+' · '+t.status);
-            if(t.status==='proposed') [['approve','Одобрить'],['reject','Отклонить']].forEach(function(a){
-              li.appendChild(evolution5Button(a[1],function(){evolution5Ask('transfer/decide','',{id:t.id,action:a[0]});}));
-            });
-          },'Переносы методов ещё не проверялись.');
-          evolution5List('e5-calibrations',d.calibrations,function(li,c){
-            evolution5Text(li,c.claim+' · прогноз '+c.probability+'% · '+c.status);
-            if(c.status==='pending') [['yes','Сбылось'],['no','Не сбылось'],['unknown','Не установлено']].forEach(function(a){
-              li.appendChild(evolution5Button(a[1],function(){evolution5Ask('calibration/review','',{id:c.id,outcome:a[0]});}));
-            });
-          },'Нет прогнозов для калибровки.');
-          evolution5List('e5-errors',d.errors,function(li,e){
-            evolution5Text(li,e.category+' · '+(e.note||'Хозяин отметил неудачный ответ')+' · '+e.status);
-          },'Пока не было негативных оценок, зарегистрированных в Evolution 5.0.');
-          evolution5List('e5-logs',d.logs,function(li,x){
-            evolution5Text(li,x.kind+': '+x.text);
-          },'Цикл развития ещё не запускался.');
-        }).catch(evolution5Error);
+
+      /* ---------- Путь ---------- */
+      function renderPathTab() {
+        var d = soulData, p = soulPath(d.soul.xp);
+        $('sx-path-meta').textContent = 'опыт ' + d.soul.xp + (p.complete ? ' · звёзд ' + p.stars : '');
+        renderRoad(p);
+        renderConstellation(p);
+        renderMastery();
+        renderXpChart();
+        renderGoals();
+        renderSkills(p);
       }
-      ['e5-enabled','e5-periodic'].forEach(function(id){
-        $(id).addEventListener('change',function(){
-          evolution5Ask('settings','',{enabled:$('e5-enabled').checked,periodic:$('e5-periodic').checked});
+      function renderRoad(p) {
+        var box = $('sx-road');
+        var W = 900, H = 190, pts = [];
+        for (var i = 0; i < 9; i++) {
+          var x = 50 + i * 92;
+          pts.push([x, 92 - Math.sin(i / 8 * Math.PI * 1.15) * 34 + (i % 2 ? 10 : -6)]);
+        }
+        var dates = {};
+        if (growthData) arr(growthData.stages).forEach(function (st) { dates[st.level] = st.t; });
+        function seg(a, b) { var mx = (a[0] + b[0]) / 2; return ' C' + mx + ' ' + a[1] + ' ' + mx + ' ' + b[1] + ' ' + b[0] + ' ' + b[1]; }
+        var full = 'M' + pts[0][0] + ' ' + pts[0][1];
+        for (var j = 1; j < 9; j++) full += seg(pts[j - 1], pts[j]);
+        var tail = 'M' + pts[8][0] + ' ' + pts[8][1] + ' C' + (pts[8][0] + 30) + ' ' + pts[8][1] + ' 860 40 878 30';
+        var lit = 'M' + pts[0][0] + ' ' + pts[0][1];
+        var upto = p.complete ? 8 : p.level - 1;
+        for (var k = 1; k <= upto; k++) lit += seg(pts[k - 1], pts[k]);
+        if (!p.complete && p.level < 9) {
+          var a = pts[p.level - 1], b = pts[p.level], f = p.frac;
+          lit += ' L' + (a[0] + (b[0] - a[0]) * f).toFixed(1) + ' ' + (a[1] + (b[1] - a[1]) * f).toFixed(1);
+        }
+        var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '">' + goldDefs('rd') +
+          '<path class="rd-base" d="' + full + '"/><path class="rd-tail' + (p.complete ? ' on' : '') + '" d="' + tail + '"/>' +
+          '<path class="rd-lit" d="' + lit + '" stroke="url(#rdg)" filter="url(#rdf)"/>';
+        pts.forEach(function (pt, i) {
+          var n = i + 1, done = n < p.level || p.complete, cur = n === p.level && !p.complete;
+          svg += '<g class="rd-node' + (done ? ' done' : '') + (cur ? ' cur' : '') + '" style="--i:' + i + '">';
+          if (cur) svg += '<circle class="rd-pulse" cx="' + pt[0] + '" cy="' + pt[1] + '" r="16"/>';
+          svg += '<circle class="rd-dot" cx="' + pt[0] + '" cy="' + pt[1] + '" r="' + (cur ? 13 : 11) + '"' + (done || cur ? ' fill="url(#rdg)"' : '') + '/>' +
+            '<text class="rd-n" x="' + pt[0] + '" y="' + (pt[1] + 4) + '" text-anchor="middle">' + n + '</text>' +
+            '<text class="rd-name" x="' + pt[0] + '" y="' + (pt[1] + 34) + '" text-anchor="middle">' + SOUL_STAGES[i] + '</text>' +
+            '<text class="rd-sub" x="' + pt[0] + '" y="' + (pt[1] + 49) + '" text-anchor="middle">' + (done && dates[n] ? esc(dmy(dates[n])) : 'от ' + SOUL_XP[i]) + '</text></g>';
+        });
+        svg += '<path class="rd-end' + (p.complete ? ' on' : '') + '" d="' + starPath(880, 28, 13) + '"/>' +
+          '<text class="rd-name rd-inf" x="880" y="64" text-anchor="middle">∞</text>';
+        box.innerHTML = svg + '</svg>';
+      }
+      // Одно и то же созвездие из девяти звёзд, слегка повёрнутое для каждого следующего.
+      var CONST_PTS = [[40, 120], [78, 92], [118, 104], [150, 70], [196, 62], [226, 96], [212, 136], [170, 150], [254, 40]];
+      function renderConstellation(p) {
+        var box = $('sx-sky');
+        var lit = p.complete ? p.inConstellation : 0;
+        var rot = ((p.constellation - 1) * 23) % 360;
+        var svg = '<svg viewBox="0 0 290 180" aria-hidden="true">' + goldDefs('sk') + '<g transform="rotate(' + rot + ' 145 95)">';
+        for (var i = 1; i < 9; i++) {
+          var a = CONST_PTS[i - 1], b = CONST_PTS[i];
+          svg += '<line class="sk-l' + (i < lit ? ' on' : '') + '" x1="' + a[0] + '" y1="' + a[1] + '" x2="' + b[0] + '" y2="' + b[1] + '"/>';
+        }
+        CONST_PTS.forEach(function (pt, i) {
+          var on = i < lit;
+          svg += '<path class="sk-s' + (on ? ' on' : '') + (i === lit && p.complete ? ' next' : '') + '" style="--i:' + i + '" d="' + starPath(pt[0], pt[1], on ? 9 : 5) + '"' + (on ? ' fill="url(#skg)" filter="url(#skf)"' : '') + '/>';
+        });
+        svg += '</g></svg>';
+        box.innerHTML = svg;
+        var t = el('div', 'sx-sky-t');
+        if (p.complete) {
+          t.appendChild(el('span', 'sx-tag', 'Созвездие ' + p.constellation));
+          t.appendChild(el('b', '', '«' + p.constellationName + '» · ' + p.inConstellation + ' из 9 звёзд'));
+          t.appendChild(el('p', 'soul-small', 'Следующая звезда через ' + p.left + ' опыта. Каждая звезда чуть дороже прошлой; девять звёзд складываются в созвездие, а созвездиям нет конца.'));
+        } else {
+          t.appendChild(el('span', 'sx-tag', 'После девятой ступени'));
+          t.appendChild(el('b', '', 'Путь не заканчивается'));
+          t.appendChild(el('p', 'soul-small', 'Девятая ступень — «Полнота». Дальше начинают загораться звёзды: каждые девять складываются в новое созвездие — «Лиса», «Луна», «Сакура»… Уровни мастерства ниже тоже без потолка.'));
+        }
+        box.appendChild(t);
+      }
+      function renderMastery() {
+        var box = $('sx-mastery');
+        box.textContent = '';
+        soulMastery(soulData).forEach(function (m, i) {
+          var L = 2 * Math.PI * 30;
+          var tile = el('div', 'sx-mtile');
+          tile.style.setProperty('--i', String(i));
+          tile.innerHTML = '<svg viewBox="0 0 72 72" aria-hidden="true">' + goldDefs('ms' + i) +
+            '<polygon class="mt-hex" points="36,3 64.6,19.5 64.6,52.5 36,69 7.4,52.5 7.4,19.5"/>' +
+            '<circle class="mt-tr" cx="36" cy="36" r="30"/><circle class="mt-pr" cx="36" cy="36" r="30" stroke="url(#ms' + i + 'g)" stroke-dasharray="' + L.toFixed(1) + '" stroke-dashoffset="' + (L * (1 - m.frac)).toFixed(1) + '" transform="rotate(-90 36 36)"/>' +
+            '<g transform="translate(24 14)" class="mt-ico"><path d="' + ICONS[MASTERY_ICON[m.id]] + '"/></g>' +
+            '<text x="36" y="54" text-anchor="middle" class="mt-n">' + m.level + '</text></svg>';
+          var t = el('div', 'mt-t');
+          t.appendChild(el('b', '', m.name));
+          t.appendChild(el('span', '', 'до ' + (m.level + 1) + '-го уровня: ' + m.left));
+          t.appendChild(el('small', '', m.hint));
+          tile.appendChild(t);
+          tile.title = m.name + ': ' + m.points + ' очков';
+          box.appendChild(tile);
+        });
+      }
+      function drawLines(box, cfg) {
+        var days = cfg.days, n = days.length;
+        var W = Math.max(300, Math.round(box.clientWidth) || 640), H = 220, L = 40, R = cfg.thresholds && cfg.thresholds.length ? 64 : 14, T = 12, B = 26;
+        var t0 = dayMs(days[0]), t1 = dayMs(days[n - 1]);
+        function X(i) { return n < 2 || t1 === t0 ? (L + W - R) / 2 : L + (dayMs(days[i]) - t0) * (W - L - R) / (t1 - t0); }
+        var lo = cfg.yMin || 0, hi = cfg.yMax;
+        function Y(v) { return T + (hi - v) * (H - T - B) / (hi - lo); }
+        var id = box.id, s = '<svg viewBox="0 0 ' + W + ' ' + H + '"><defs>';
+        cfg.series.forEach(function (sr, k) {
+          s += '<linearGradient id="' + id + '-g' + k + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:' + sr.color + ';stop-opacity:.4"/><stop offset="1" style="stop-color:' + sr.color + ';stop-opacity:0"/></linearGradient>';
+        });
+        s += '</defs>';
+        for (var g = 0; g <= 4; g++) {
+          var v = lo + (hi - lo) * g / 4;
+          s += '<line class="grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '"/><text x="' + (L - 6) + '" y="' + (Y(v) + 3).toFixed(1) + '" text-anchor="end">' + Math.round(v) + '</text>';
+        }
+        var lastLabelY = 1e9;
+        (cfg.thresholds || []).slice().sort(function (a, b) { return b.v - a.v; }).forEach(function (th) {
+          if (th.v <= lo || th.v > hi) return;
+          var ty = Y(th.v);
+          s += '<line class="thr" x1="' + L + '" x2="' + (W - R) + '" y1="' + ty.toFixed(1) + '" y2="' + ty.toFixed(1) + '"/>';
+          if (lastLabelY === 1e9 || ty - lastLabelY >= 13) { s += '<text class="thr-l" x="' + (W - R + 5) + '" y="' + (ty + 3).toFixed(1) + '">' + esc(th.label) + '</text>'; lastLabelY = ty; }
+        });
+        s += '<text x="' + L + '" y="' + (H - 7) + '">' + dayLabel(days[0]) + '</text>';
+        if (n > 1) s += '<text x="' + (W - R) + '" y="' + (H - 7) + '" text-anchor="end">' + dayLabel(days[n - 1]) + '</text>';
+        cfg.series.forEach(function (sr, k) {
+          var d = '';
+          sr.values.forEach(function (v, i) { d += (i ? ' L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); });
+          if (n > 1) s += '<path d="' + d + ' L' + X(n - 1).toFixed(1) + ' ' + Y(lo).toFixed(1) + ' L' + X(0).toFixed(1) + ' ' + Y(lo).toFixed(1) + ' Z" fill="url(#' + id + '-g' + k + ')"/>';
+          if (n > 1) s += '<path class="ln" style="stroke:' + sr.color + '" d="' + d + '"/>';
+          s += '<circle class="pt" style="fill:' + sr.color + '" cx="' + X(n - 1).toFixed(1) + '" cy="' + Y(sr.values[n - 1]).toFixed(1) + '" r="4"/>';
+        });
+        s += '<line class="guide" id="' + id + '-guide" y1="' + T + '" y2="' + (H - B) + '" x1="0" x2="0" style="display:none"/>';
+        s += '<rect id="' + id + '-hit" x="' + L + '" y="0" width="' + (W - L - R) + '" height="' + H + '" fill="transparent" style="touch-action:pan-y"/></svg>';
+        box.innerHTML = s;
+        var svg = box.querySelector('svg'), guide = $(id + '-guide'), hit = $(id + '-hit');
+        var tip = el('div', 'c-tip');
+        tip.hidden = true;
+        box.appendChild(tip);
+        function show(e) {
+          var r = svg.getBoundingClientRect();
+          var sx = (e.clientX - r.left) * W / r.width;
+          var best = 0, bd = 1e9;
+          for (var i = 0; i < n; i++) { var dd = Math.abs(X(i) - sx); if (dd < bd) { bd = dd; best = i; } }
+          guide.setAttribute('x1', X(best)); guide.setAttribute('x2', X(best)); guide.style.display = '';
+          tip.textContent = '';
+          tip.appendChild(el('b', '', days[best].split('-').reverse().join('.')));
+          cfg.series.forEach(function (sr) { tip.appendChild(el('div', '', sr.label + ': ' + sr.values[best])); });
+          tip.hidden = false;
+          tip.style.left = Math.max(60, Math.min(r.width - 60, X(best) * r.width / W)) + 'px';
+          tip.style.top = '30px';
+        }
+        hit.addEventListener('pointermove', show);
+        hit.addEventListener('pointerdown', show);
+        hit.addEventListener('pointerleave', function () { guide.style.display = 'none'; tip.hidden = true; });
+      }
+      function renderXpChart() {
+        var box = $('sx-xp-chart');
+        var ser = growthData ? arr(growthData.series) : [];
+        if (!ser.length) { chartEmpty(box, online ? 'График появится после первого дня: опыт записывается раз в день.' : 'После подключения к Cloud.ru график опыта начнёт строиться сам.'); $('sx-xp-meta').textContent = ''; return; }
+        var xs = ser.map(function (x) { return x.xp; });
+        var mx = Math.max.apply(null, xs), top = 12;
+        var th = [];
+        SOUL_XP.forEach(function (v, i) { if (i) th.push({ v: v, label: 'ступ. ' + (i + 1) }); });
+        var p = soulPath(mx + 1), acc = SOUL_XP[8];
+        for (var k = 1; k <= p.stars + 1; k++) { acc += SOUL_STAR_BASE + SOUL_STAR_STEP * k; th.push({ v: acc, label: '★ ' + k }); }
+        for (var i = 0; i < th.length; i++) { if (th[i].v > mx) { top = th[i].v; break; } }
+        drawLines(box, { days: ser.map(function (x) { return x.day; }), yMax: Math.max(top, 12), series: [{ label: 'Опыт', color: 'var(--a)', values: xs }], thresholds: th });
+        var first = xs[0], last = xs[xs.length - 1];
+        $('sx-xp-meta').textContent = ser.length + ' ' + plural(ser.length, 'день', 'дня', 'дней') + ' · +' + Math.max(0, last - first);
+      }
+      function ringEl(v) {
+        var L = 2 * Math.PI * 15;
+        var r = el('div', 'sx-ring');
+        r.innerHTML = '<svg viewBox="0 0 36 36" aria-hidden="true"><circle class="t" cx="18" cy="18" r="15"/><circle class="v" cx="18" cy="18" r="15" stroke-dasharray="' + L.toFixed(1) + '" stroke-dashoffset="' + (L * (1 - Math.max(0, Math.min(100, v)) / 100)).toFixed(1) + '" transform="rotate(-90 18 18)"/></svg><span>' + Math.round(v) + '</span>';
+        return r;
+      }
+      function renderGoals() {
+        var ul = $('sx-goals'), s = soulData.soul;
+        ul.textContent = '';
+        var items = [];
+        if (growthData) arr(growthData.goals).forEach(function (g) { items.push({ text: g.text, why: g.why, progress: g.progress || 0, done: g.status === 'done', steps: arr(g.steps) }); });
+        if (e5Data) arr(e5Data.goals).forEach(function (g) { if (g.status === 'active') items.push({ text: g.title, why: g.next ? 'Дальше: ' + g.next : '', progress: g.progress || 0 }); });
+        arr(s.aims).forEach(function (a) { items.push({ text: a.text, progress: a.progress || 0, aim: a }); });
+        items.sort(function (a, b) { return (a.done ? 1 : 0) - (b.done ? 1 : 0); });
+        var act = items.filter(function (x) { return !x.done; }).length;
+        $('sx-goals-meta').textContent = items.length ? act + ' в работе' : '';
+        if (!items.length) emptyLi(ul, 'Цели появятся сами, когда она немного узнает вас.');
+        items.forEach(function (g) {
+          var li = el('li', g.done ? 'done' : '');
+          li.appendChild(ringEl(g.progress));
+          var t = el('div', 'sx-goal-t');
+          t.appendChild(el('b', '', g.text));
+          if (g.why || g.done) t.appendChild(el('span', '', (g.done ? 'Достигнуто. ' : '') + (g.why || '')));
+          if (g.steps && g.steps.length) {
+            var st = el('div', 'sx-steps');
+            g.steps.forEach(function (x) { var dot = el('i', x.done ? 'on' : ''); dot.title = x.text; st.appendChild(dot); });
+            t.appendChild(st);
+          }
+          li.appendChild(t);
+          if (g.aim && online) li.appendChild(xBtn('Убрать цель', function () { soulUpdate({ removeAim: g.aim.id }); }));
+          ul.appendChild(li);
+        });
+      }
+      function renderSkills(p) {
+        var ul = $('sx-skills');
+        ul.textContent = '';
+        var open = 0;
+        arr(soulData.skills).forEach(function (k) {
+          if (k.unlocked) open++;
+          var li = el('li', k.unlocked ? 'on' : 'locked');
+          li.appendChild(icoEl(k.unlocked ? 'star' : 'lock'));
+          li.appendChild(el('b', '', k.name));
+          li.appendChild(el('span', '', k.unlocked ? (k.desc || '') : 'ступень ' + k.level));
+          ul.appendChild(li);
+        });
+        if (depthData) arr(depthData.skills).forEach(function (sk) {
+          if (sk.status !== 'active' && sk.status !== 'off') return;
+          var li = el('li', sk.status === 'active' ? 'on own' : 'locked own');
+          li.appendChild(icoEl('tool'));
+          li.appendChild(el('b', '', '/' + sk.command));
+          li.appendChild(el('span', '', sk.name + (sk.uses ? ' · ' + sk.uses + ' р.' : '')));
+          if (online) li.appendChild(smallBtn(sk.status === 'active' ? 'Выкл' : 'Вкл', sk.status === 'active' ? 'Выключить навык' : 'Включить навык', function () {
+            api('soul/depth/skill', { id: sk.id, action: sk.status === 'active' ? 'disable' : 'approve' }).then(setDepth).catch(function (e) { soulMsg(e.message, true); });
+          }, 'mini-btn'));
+          ul.appendChild(li);
+        });
+        $('sx-skills-meta').textContent = open + ' из ' + arr(soulData.skills).length;
+      }
+
+      /* ---------- Память ---------- */
+      var jState = { q: '', day: '', month: null };
+      function renderMemoryTab() {
+        var s = soulData.soul;
+        if (!soulEditing) $('soul-portrait').value = s.owner.portrait || '';
+        $('soul-portrait').readOnly = !online;
+        fitSoulText($('soul-portrait'));
+        renderKnow();
+        renderMoments();
+        renderJournal();
+        renderRules();
+        $('sx-recall').disabled = !online;
+      }
+      function chipSection(title, items, onDel, onAdd) {
+        var sec = el('div', 'sx-sec');
+        sec.appendChild(el('h3', '', title));
+        var ul = el('ul', 'sx-chips');
+        if (!items.length) ul.appendChild(el('li', 'sx-empty', 'пока пусто'));
+        items.forEach(function (it) {
+          var li = el('li', it.held ? 'held' : '');
+          li.appendChild(el('span', '', (it.held ? '🔒 ' : '') + it.text));
+          if (online && onDel) li.appendChild(xBtn('Забыть: ' + it.text, function () { onDel(it); }));
+          ul.appendChild(li);
+        });
+        sec.appendChild(ul);
+        if (online && onAdd) {
+          var inp = el('input', 'field sx-add');
+          inp.type = 'text';
+          inp.maxLength = 220;
+          inp.placeholder = '+ добавить';
+          inp.setAttribute('aria-label', 'Добавить в «' + title + '»');
+          inp.addEventListener('keydown', function (ev) {
+            if (ev.key !== 'Enter' || ev.isComposing || !inp.value.trim()) return;
+            ev.preventDefault();
+            var v = inp.value.trim();
+            inp.value = '';
+            inp.blur();
+            onAdd(v);
+          });
+          sec.appendChild(inp);
+        }
+        return sec;
+      }
+      function undErr(e) { soulMsg(e && e.message ? e.message : 'Не получилось.', true); }
+      function renderKnow() {
+        var box = $('sx-map'), s = soulData.soul;
+        if (busyIn(box)) return;
+        box.textContent = '';
+        var total = 0;
+        [['goals', 'Цели и мечты'], ['likes', 'Что вам нравится'], ['worries', 'Что тревожит']].forEach(function (k) {
+          var list = arr(s.owner[k[0]]);
+          total += list.length;
+          box.appendChild(chipSection(k[1], list.map(function (t, i) { return { text: t, i: i }; }), function (it) {
+            var next = list.slice(); next.splice(it.i, 1); var patch = {}; patch[k[0]] = next; soulUpdate(patch);
+          }, function (v) { var patch = {}; patch[k[0]] = list.concat([v]); soulUpdate(patch); }));
+        });
+        arr(undData && undData.sections).forEach(function (sec) {
+          total += sec.entries.length;
+          box.appendChild(chipSection(sec.name, sec.entries.map(function (e) { return { text: e.text, id: e.id, held: e.hidden }; }), function (it) {
+            api('soul/understanding/map', { action: 'delete', id: it.id }).then(setUnderstanding).catch(undErr);
+          }, function (v) {
+            api('soul/understanding/map', { action: 'add', section: sec.id, text: v }).then(setUnderstanding).catch(undErr);
+          }));
+        });
+        $('sx-know-meta').textContent = total + ' ' + plural(total, 'запись', 'записи', 'записей');
+        var g = $('sx-guesses');
+        g.textContent = '';
+        var conf = growthData ? arr(growthData.insights).filter(function (x) { return x.status === 'confirmed'; }) : [];
+        var qs = growthData ? arr(growthData.questions) : [];
+        if (conf.length) {
+          g.appendChild(el('span', 'soul-lbl soul-gap', 'Подтверждённые догадки'));
+          var ul = el('ul', 'sx-list');
+          conf.slice(-6).reverse().forEach(function (x) { var li = el('li'); li.appendChild(icoEl('check')); li.appendChild(el('span', '', x.answer)); ul.appendChild(li); });
+          g.appendChild(ul);
+        }
+        if (qs.length) {
+          g.appendChild(el('span', 'soul-lbl soul-gap', 'Хочет у вас узнать'));
+          var q = el('ul', 'sx-list');
+          qs.slice(-4).reverse().forEach(function (x) { var li = el('li'); li.appendChild(icoEl('question')); li.appendChild(el('span', '', x.q)); q.appendChild(li); });
+          g.appendChild(q);
+        }
+      }
+      function renderMoments() {
+        var ul = $('sx-moments');
+        ul.textContent = '';
+        var ms = arr(soulData.soul.moments).slice().sort(function (a, b) { return (b.pinned - a.pinned) || (b.strength - a.strength); });
+        $('sx-moments-meta').textContent = ms.length ? String(ms.length) : '';
+        if (!ms.length) emptyLi(ul, 'Здесь будет по-настоящему важное: ваши успехи, решения, первые разы.');
+        ms.forEach(function (mo) {
+          var li = el('li', mo.pinned ? 'pinned' : '');
+          li.style.setProperty('--s', String(0.45 + Math.min(1, mo.strength / 10) * 0.55));
+          var t = el('div');
+          t.appendChild(el('b', '', mo.title));
+          if (mo.text) t.appendChild(el('p', '', mo.text));
+          var bar = el('span', 'sx-str');
+          var f = el('i');
+          f.style.width = Math.round(mo.strength * 10) + '%';
+          bar.appendChild(f);
+          bar.title = 'Сила памяти ' + mo.strength + '/10 · ' + dmy(mo.t);
+          t.appendChild(bar);
+          li.appendChild(t);
+          if (online) {
+            var acts = el('span', 'sx-acts');
+            var pin = smallBtn('', mo.pinned ? 'Можно забыть' : 'Не забывать', function () { soulUpdate({ momentId: mo.id, pinned: !mo.pinned }); }, 'sx-pin' + (mo.pinned ? ' on' : ''));
+            pin.innerHTML = ico('pin');
+            acts.appendChild(pin);
+            acts.appendChild(xBtn('Забыть момент', function () { if (window.confirm('Пусть Яэри забудет «' + mo.title + '»?')) soulUpdate({ momentId: mo.id, remove: true }); }));
+            li.appendChild(acts);
+          }
+          ul.appendChild(li);
+        });
+      }
+      function renderJournal() {
+        var s = soulData.soul, list = $('sx-journal');
+        list.textContent = '';
+        var jq = jState.q.toLowerCase();
+        var shown = s.journal.slice().reverse().filter(function (j) {
+          if (jState.day && dayKey(new Date(j.t || 0)) !== jState.day) return false;
+          return !jq || String(j.text || '').toLowerCase().indexOf(jq) > -1 || String(j.mood || '').toLowerCase().indexOf(jq) > -1;
+        });
+        $('sx-journal-meta').textContent = (shown.length !== s.journal.length ? shown.length + ' из ' : '') + s.journal.length + ' ' + plural(s.journal.length, 'запись', 'записи', 'записей');
+        renderJCal(s.journal);
+        var jf = $('soul-jfilter');
+        jf.hidden = !jState.day && !jq;
+        jf.textContent = '';
+        if (!jf.hidden) {
+          jf.appendChild(el('span', '', (jState.day ? 'За ' + jState.day.split('-').reverse().join('.') : 'Все дни') + (jq ? ' · «' + jState.q + '»' : '')));
+          jf.appendChild(smallBtn('Показать всё', 'Сбросить фильтр дневника', function () { jState.day = ''; jState.q = ''; $('soul-jsearch').value = ''; renderJournal(); }, 'mini-btn'));
+        }
+        shown.slice(0, 60).forEach(function (j) {
+          var li = el('li', 'k-' + (j.kind || 'reflection'));
+          li.appendChild(icoEl(FEED_ICON[j.kind] || 'thought'));
+          var b = el('div');
+          var head = el('div', 'j-head');
+          head.appendChild(el('b', '', SOUL_KINDS[j.kind] || 'запись'));
+          head.appendChild(el('span', '', dmy(j.t) + ' ' + hhmm(j.t)));
+          if (j.mood) head.appendChild(el('span', '', j.mood));
+          b.appendChild(head);
+          b.appendChild(el('p', 'j-text', j.text));
+          li.appendChild(b);
+          if (online) li.appendChild(xBtn('Удалить запись дневника', function () { if (window.confirm('Удалить эту запись из дневника Яэри?')) soulUpdate({ removeJournal: j.id }); }));
+          list.appendChild(li);
+        });
+        if (!s.journal.length) emptyLi(list, 'Дневник пока пуст.');
+        else if (!shown.length) emptyLi(list, 'Ничего не нашлось.');
+      }
+      var JWEEK = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
+      function renderJCal(journal) {
+        var days = {};
+        journal.forEach(function (j) { var k = dayKey(new Date(j.t || 0)); days[k] = (days[k] || 0) + 1; });
+        if (!jState.month) jState.month = new Date();
+        var m = jState.month, cal = $('soul-jcal');
+        cal.textContent = '';
+        var head = el('div', 'cal-head');
+        head.appendChild(smallBtn('‹', 'Предыдущий месяц', function () { jState.month = new Date(m.getFullYear(), m.getMonth() - 1, 1); renderJournal(); }));
+        var title = '';
+        try { title = m.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }); } catch (e) { title = (m.getMonth() + 1) + '.' + m.getFullYear(); }
+        head.appendChild(el('span', '', title));
+        head.appendChild(smallBtn('›', 'Следующий месяц', function () { jState.month = new Date(m.getFullYear(), m.getMonth() + 1, 1); renderJournal(); }));
+        cal.appendChild(head);
+        JWEEK.forEach(function (w) { cal.appendChild(el('span', 'wd', w)); });
+        var lead = (new Date(m.getFullYear(), m.getMonth(), 1).getDay() + 6) % 7;
+        for (var i = 0; i < lead; i++) cal.appendChild(el('span'));
+        var total = new Date(m.getFullYear(), m.getMonth() + 1, 0).getDate(), today = dayKey(new Date());
+        for (var dd = 1; dd <= total; dd++) {
+          (function (key, n) {
+            var cnt = days[key] || 0;
+            var b = el('button', 'd' + (cnt ? ' has' : '') + (key === jState.day ? ' sel' : '') + (key === today ? ' today' : ''), String(n));
+            b.type = 'button';
+            b.disabled = !cnt;
+            b.title = cnt ? cnt + ' ' + plural(cnt, 'запись', 'записи', 'записей') : 'записей нет';
+            b.addEventListener('click', function () { jState.day = jState.day === key ? '' : key; renderJournal(); });
+            cal.appendChild(b);
+          })(dayKey(new Date(m.getFullYear(), m.getMonth(), dd)), dd);
+        }
+      }
+      $('soul-jsearch').addEventListener('input', function () { jState.q = this.value.trim(); renderJournal(); });
+      function renderRules() {
+        var ul = $('sx-rules'), s = soulData.soul;
+        ul.textContent = '';
+        var seen = {}, n = 0;
+        function add(text, icon, del) {
+          var k = String(text).toLowerCase().slice(0, 60);
+          if (!text || seen[k]) return;
+          seen[k] = 1;
+          n++;
+          var li = el('li');
+          li.appendChild(icoEl(icon));
+          li.appendChild(el('span', '', text));
+          if (online && del) li.appendChild(xBtn('Убрать правило', del));
+          ul.appendChild(li);
+        }
+        s.lessons.forEach(function (t, i) { add(t, 'compass', function () { var next = s.lessons.slice(); next.splice(i, 1); soulUpdate({ lessons: next }); }); });
+        if (growthData) arr(growthData.lessons).slice().reverse().forEach(function (x) { add(x.rule, 'compass'); });
+        if (depthData) arr(depthData.rules).forEach(function (r) { add(r.text, 'scroll', function () { api('soul/depth/remove', { list: 'rules', id: r.id }).then(setDepth).catch(undErr); }); });
+        $('sx-rules-meta').textContent = n ? String(n) : '';
+        if (!n) emptyLi(ul, 'Когда вы поправите Яэри или поставите 👎, она сама выведет правило.');
+        $('sx-rule-add').hidden = !online;
+      }
+      $('sx-rule-add').addEventListener('keydown', function (ev) {
+        if (ev.key !== 'Enter' || ev.isComposing || !soulData) return;
+        ev.preventDefault();
+        var t = this.value.trim();
+        if (!t) return;
+        this.value = '';
+        soulUpdate({ lessons: soulData.soul.lessons.concat([t]) });
+      });
+      $('sx-recall-form').addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var q = $('sx-recall').value.trim(), out = $('sx-recall-out');
+        if (!q || !online) return;
+        out.textContent = '';
+        emptyLi(out, 'Ищу в воспоминаниях…');
+        api('vector/search', { query: q }).then(function (d) {
+          out.textContent = '';
+          var res = arr(d.results);
+          if (!res.length) emptyLi(out, 'Ничего не вспомнилось.');
+          res.slice(0, 8).forEach(function (x, i) {
+            var li = el('li', 'sx-hit');
+            li.style.setProperty('--i', String(i));
+            li.appendChild(el('span', 'sx-score', Math.round((x.score || 0) * 100) + '%'));
+            var b = el('div');
+            b.appendChild(el('p', '', x.text));
+            b.appendChild(el('small', '', (x.source || x.space || '') + (x.associated ? ' · связанное' : '')));
+            li.appendChild(b);
+            out.appendChild(li);
+          });
+        }).catch(function (e) { out.textContent = ''; emptyLi(out, e.message); });
+      });
+
+      /* ---------- Характер ---------- */
+      var secretAsked = {};
+      function renderCharTab() {
+        var d = soulData, s = d.soul;
+        if (!soulEditing) $('soul-self').value = s.self || '';
+        $('soul-self').readOnly = !online;
+        fitSoulText($('soul-self'));
+        renderRadar();
+        renderOwn();
+        renderPhil();
+        renderSecrets();
+      }
+      function renderRadar() {
+        var box = $('sx-radar'), traits = arr(soulData.traitList);
+        var hist = arr(soulData.soul.traitHistory);
+        var base = hist.length > 1 ? hist[0].traits : null;
+        var W = 320, H = 260, cx = 160, cy = 130, Rr = 88, n = traits.length;
+        if (!n) { chartEmpty(box, 'Черты появятся позже.'); return; }
+        function pt(i, v) { var a = -Math.PI / 2 + i * 2 * Math.PI / n; return [cx + Math.cos(a) * Rr * v / 100, cy + Math.sin(a) * Rr * v / 100]; }
+        function poly(f) { return traits.map(function (t, i) { var p = pt(i, f(t)); return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' '); }
+        var s = '<svg viewBox="0 0 ' + W + ' ' + H + '">' + goldDefs('rr');
+        [25, 50, 75, 100].forEach(function (r) { s += '<polygon class="rd-g" points="' + poly(function () { return r; }) + '"/>'; });
+        traits.forEach(function (t, i) { var p = pt(i, 100); s += '<line class="rd-g" x1="' + cx + '" y1="' + cy + '" x2="' + p[0].toFixed(1) + '" y2="' + p[1].toFixed(1) + '"/>'; });
+        if (base) s += '<polygon class="rd-old" points="' + poly(function (t) { return typeof base[t.id] === 'number' ? base[t.id] : t.value; }) + '"/>';
+        s += '<polygon class="rd-now" points="' + poly(function (t) { return t.value; }) + '" fill="url(#rrr)" stroke="url(#rrg)"/>';
+        traits.forEach(function (t, i) {
+          var lp = pt(i, 122), vp = pt(i, t.value);
+          var anchor = Math.abs(lp[0] - cx) < 8 ? 'middle' : (lp[0] > cx ? 'start' : 'end');
+          s += '<circle class="rd-pt" cx="' + vp[0].toFixed(1) + '" cy="' + vp[1].toFixed(1) + '" r="3.6"/>';
+          s += '<text x="' + lp[0].toFixed(1) + '" y="' + (lp[1] + 4).toFixed(1) + '" text-anchor="' + anchor + '">' + esc(t.name) + ' <tspan>' + t.value + '</tspan></text>';
+        });
+        box.innerHTML = s + '</svg>';
+        var ul = $('sx-deltas');
+        ul.textContent = '';
+        traits.forEach(function (t, ti) {
+          var pts = hist.map(function (h) { return h.traits && h.traits[t.id]; }).filter(function (v) { return typeof v === 'number'; });
+          pts.push(t.value);
+          var li = el('li');
+          var dot = el('i');
+          dot.style.background = TRAIT_COLORS[ti % TRAIT_COLORS.length];
+          li.appendChild(dot);
+          li.appendChild(el('span', '', t.name));
+          var sp = el('span', 'sx-spark');
+          if (pts.length > 1) {
+            var lo = Math.min.apply(null, pts), hi = Math.max.apply(null, pts), rng = Math.max(4, hi - lo);
+            sp.innerHTML = '<svg viewBox="0 0 60 16" preserveAspectRatio="none"><polyline points="' + pts.slice(-30).map(function (v, i, a) { return (i * 60 / Math.max(1, a.length - 1)).toFixed(1) + ',' + (14 - (v - lo) * 12 / rng).toFixed(1); }).join(' ') + '" style="stroke:' + TRAIT_COLORS[ti % TRAIT_COLORS.length] + '"/></svg>';
+          }
+          li.appendChild(sp);
+          var delta = pts.length > 1 ? t.value - pts[0] : 0;
+          li.appendChild(el('b', delta > 0 ? 'up' : (delta < 0 ? 'down' : ''), (delta > 0 ? '+' : '') + (delta || '·')));
+          ul.appendChild(li);
+        });
+        $('sx-traits-meta').textContent = hist.length > 1 ? 'за ' + hist.length + ' ' + plural(hist.length, 'день', 'дня', 'дней') : 'меняются сами';
+      }
+      function renderOwn() {
+        var box = $('sx-own'), s = soulData.soul;
+        box.textContent = '';
+        var own = depthData ? arr(depthData.own) : [];
+        [['taste', 'Вкусы'], ['habit', 'Привычки'], ['quirk', 'Причуды']].forEach(function (k) {
+          var items = own.filter(function (x) { return x.kind === k[0]; });
+          if (!items.length) return;
+          box.appendChild(chipSection(k[1], items.map(function (x) { return { text: x.text, id: x.id }; }), function (it) {
+            api('soul/depth/remove', { list: 'traitsOwn', id: it.id }).then(setDepth).catch(undErr);
+          }));
+        });
+        var ints = arr(s.interests);
+        box.appendChild(chipSection('Увлечения', ints.map(function (x) { return { text: x.name }; }), function (it) { soulUpdate({ removeInterest: it.text }); }));
+        var ops = arr(s.opinions);
+        if (ops.length) {
+          var sec = el('div', 'sx-sec');
+          sec.appendChild(el('h3', '', 'Мнения'));
+          var ul = el('ul', 'sx-list');
+          ops.forEach(function (o) {
+            var li = el('li');
+            li.appendChild(icoEl('chat'));
+            var t = el('span');
+            t.appendChild(el('b', '', o.topic + ': '));
+            t.appendChild(document.createTextNode(o.view));
+            li.appendChild(t);
+            if (online) li.appendChild(xBtn('Убрать мнение', function () { soulUpdate({ removeOpinion: o.topic }); }));
+            ul.appendChild(li);
+          });
+          sec.appendChild(ul);
+          box.appendChild(sec);
+        }
+      }
+      function renderPhil() {
+        var ul = $('sx-phil');
+        ul.textContent = '';
+        var items = depthData ? arr(depthData.principles) : [];
+        items.forEach(function (p) {
+          var li = el('li');
+          li.appendChild(el('p', '', '«' + p.text + '»'));
+          if (p.origin) li.appendChild(el('small', '', 'Откуда: ' + p.origin));
+          if (online) li.appendChild(xBtn('Убрать принцип', function () { api('soul/depth/remove', { list: 'principles', id: p.id }).then(setDepth).catch(undErr); }));
+          ul.appendChild(li);
+        });
+        arr(s3Data && s3Data.values).forEach(function (v) {
+          var li = el('li', 'value');
+          var parts = String(v).split(':');
+          li.appendChild(el('p', '', parts.length > 1 ? parts.slice(1).join(':').trim() : v));
+          if (parts.length > 1) li.appendChild(el('small', '', parts[0]));
+          ul.appendChild(li);
+        });
+        $('sx-phil-meta').textContent = items.length ? items.length + ' своих' : '';
+        if (!ul.children.length) emptyLi(ul, 'Принципы появятся, когда у неё накопится опыт.');
+      }
+      function renderSecrets() {
+        var ul = $('sx-secrets'), bond = soulData.soul.bond || 0;
+        ul.textContent = '';
+        arr(soulData.secretList).forEach(function (x, i) {
+          // Открытый порог — секрет открывается сам, без кнопки.
+          if (online && x.unlocked && !x.opened && !secretAsked[x.bond]) { secretAsked[x.bond] = 1; soulUpdate({ openSecret: x.bond }).then(function () { flash('happy', 3200); }); }
+          var li = el('li', x.opened ? 'open' : (x.unlocked ? 'ready' : 'locked'));
+          li.style.setProperty('--i', String(i));
+          li.appendChild(icoEl(x.opened ? 'unlock' : 'lock', 'big'));
+          li.appendChild(el('b', '', x.title));
+          if (x.opened) li.appendChild(el('p', '', x.text));
+          else {
+            var bar = el('div', 'sx-meter');
+            var f = el('i');
+            f.style.width = Math.min(100, bond / x.bond * 100) + '%';
+            bar.appendChild(f);
+            li.appendChild(bar);
+            li.appendChild(el('small', '', x.unlocked ? 'открывается…' : 'при близости ' + x.bond + ' · сейчас ' + bond));
+          }
+          ul.appendChild(li);
+        });
+      }
+
+      /* ---------- Настройки ---------- */
+      function toggleRow(name, desc, on, fn) {
+        var lab = el('label', 'toggle');
+        var t = el('span', 't-text');
+        t.appendChild(el('span', 't-name', name));
+        t.appendChild(el('span', 't-desc', desc));
+        lab.appendChild(t);
+        var inp = el('input', 'vh');
+        inp.type = 'checkbox';
+        inp.setAttribute('role', 'switch');
+        inp.checked = !!on;
+        inp.disabled = !online;
+        inp.addEventListener('change', function () { fn(inp.checked); });
+        lab.appendChild(inp);
+        var tr = el('span', 'track');
+        tr.setAttribute('aria-hidden', 'true');
+        lab.appendChild(tr);
+        return lab;
+      }
+      function renderSettingsTab() {
+        var g = growthData;
+        $('sx-evo').checked = !!(evoData && evoData.enabled);
+        $('sx-s-life-meta').textContent = evoData ? (evoData.enabled ? 'активна' : 'на паузе') : '';
+        each(document.querySelectorAll('#g-int button'), function (b) {
+          b.setAttribute('aria-checked', g && b.getAttribute('data-int') === g.intensity ? 'true' : 'false');
+          b.disabled = !online;
+        });
+        $('g-int-note').textContent = g ? INTENSITY_NOTE[g.intensity] || '' : 'Настройки появятся после подключения к Cloud.ru.';
+        var sel = $('g-limit');
+        sel.disabled = !online;
+        if (g) {
+          var v = String(g.dailyLimit);
+          if (!sel.querySelector('option[value="' + v + '"]')) { var o = el('option', '', v); o.value = v; sel.appendChild(o); }
+          sel.value = v;
+          var pct = g.dailyLimit > 0 ? Math.min(100, g.usedToday * 100 / g.dailyLimit) : 0;
+          $('g-usage-bar').style.width = Math.max(g.usedToday ? 3 : 0, pct) + '%';
+          $('g-usage-text').textContent = (g.dailyLimit > 0 ? 'Сегодня ' + g.usedToday + ' из ' + g.dailyLimit + ' запросов' + (g.limitReached ? ' — лимит исчерпан, учёба на паузе до полуночи.' : '.') : 'Сегодня ' + g.usedToday + ' запросов, без лимита.') + (g.lastError ? ' Последняя ошибка: ' + g.lastError : '');
+        }
+        var flags = $('sx-depth-flags');
+        flags.textContent = '';
+        DEPTH_FLAGS.forEach(function (f) {
+          flags.appendChild(toggleRow(f[1], f[2], depthData && depthData.settings[f[0]], function (on) {
+            var o = {}; o[f[0]] = on;
+            api('soul/depth/settings', o).then(setDepth).catch(undErr);
+          }));
+        });
+        $('sx-e5').checked = !!(e5Data && e5Data.enabled);
+        $('sx-s3').checked = !!(s3Data && s3Data.enabled);
+        $('sx-init').checked = !!(s3Data && s3Data.initiative);
+        if (s3Data) $('sx-affection').value = String(s3Data.affection || 0);
+        if (lifeData && !busyIn($('sp-set'))) {
+          $('sx-lang').value = lifeData.language || 'gentle';
+          $('sx-nick').value = lifeData.nickname || '';
+          $('sx-local').value = lifeData.localModel || 'yaeri-local';
+          $('sx-offline').checked = !!lifeData.offline;
+          $('sx-local-status').textContent = lifeData.offline ? 'Автономный режим включён: облачные запросы запрещены.' : 'Cloud.ru разрешён.';
+        }
+        if (vecData) {
+          $('sx-vec').checked = !!vecData.enabled;
+          $('sx-rerank').checked = !!vecData.rerank;
+          $('sx-assoc').checked = !!vecData.associations;
+          var q = vecData.quality || {};
+          $('sx-s-mem-meta').textContent = (q.total || 0) + ' записей';
+        }
+        ['sx-affection', 'sx-lang', 'sx-nick', 'sx-local'].forEach(function (id) { $(id).disabled = !online; });
+        var tb = $('u-topics');
+        if (!busyIn(tb)) {
+          tb.textContent = '';
+          if (!undData) tb.appendChild(el('p', 'soul-small', 'Темы доступны после подключения.'));
+          arr(undData && undData.topics).forEach(function (t) {
+            var row = el('div', 'topic-row');
+            var name = el('span', 'tn');
+            name.appendChild(el('b', '', t.name));
+            name.appendChild(el('small', '', t.count + ' ' + plural(t.count, 'запись', 'записи', 'записей')));
+            row.appendChild(name);
+            var s2 = el('select', 'field');
+            s2.setAttribute('aria-label', 'Режим темы «' + t.name + '»');
+            TOPIC_MODES.forEach(function (m) { var o2 = el('option', '', m[1]); o2.value = m[0]; if (m[0] === t.mode) o2.selected = true; s2.appendChild(o2); });
+            s2.disabled = !online;
+            s2.addEventListener('change', function () { api('soul/understanding/topic', { topic: t.id, mode: s2.value }).then(setUnderstanding).catch(undErr); });
+            row.appendChild(s2);
+            tb.appendChild(row);
+          });
+        }
+      }
+      each(document.querySelectorAll('#g-int button'), function (b) {
+        b.addEventListener('click', function () {
+          if (online) api('soul/growth/settings', { intensity: b.getAttribute('data-int') }).then(setGrowth).catch(undErr);
         });
       });
-      $('e5-refresh').addEventListener('click',loadEvolution5);
-      $('e5-cycle').addEventListener('click',function(){ evolution5Ask('cycle','',{}); });
-      $('e5-goal-form').addEventListener('submit',function(ev){
-        ev.preventDefault();
-        evolution5Ask('goal','',{title:$('e5-goal-title').value,domain:$('e5-goal-domain').value,
-          impact:4,urgency:3,effort:3,ownerApproved:true});
-        $('e5-goal-title').value='';
+      $('g-limit').addEventListener('change', function () { api('soul/growth/settings', { dailyLimit: Number(this.value) }).then(setGrowth).catch(undErr); });
+      $('sx-evo').addEventListener('change', function () { api('soul/evolution', { enabled: this.checked }).then(function (d) { evoData = d; renderSoulParts(); }).catch(undErr); });
+      $('sx-e5').addEventListener('change', function () { api('evolution5/settings', { enabled: this.checked, periodic: this.checked }).then(loadEvolution5).catch(undErr); });
+      function saveS3() {
+        api('soul3/settings', { enabled: $('sx-s3').checked, affection: Number($('sx-affection').value), initiative: $('sx-init').checked }).then(loadSoul3).catch(undErr);
+      }
+      ['sx-s3', 'sx-init', 'sx-affection'].forEach(function (id) { $(id).addEventListener('change', saveS3); });
+      function saveLife() {
+        api('life/settings', { language: $('sx-lang').value, nickname: $('sx-nick').value, localModel: $('sx-local').value }).then(function () { soulMsg('Сохранено.'); return loadLife4(); }).catch(undErr);
+      }
+      $('sx-lang').addEventListener('change', saveLife);
+      $('sx-nick').addEventListener('change', saveLife);
+      $('sx-local').addEventListener('change', saveLife);
+      $('sx-offline').addEventListener('change', function () {
+        api('life/settings', { offline: this.checked, localModel: $('sx-local').value }).then(function () { return api('status'); })
+          .then(applyConfig).then(loadLife4).catch(undErr);
       });
-      $('e5-gap-form').addEventListener('submit',function(ev){
-        ev.preventDefault(); evolution5Ask('gap','',{question:$('e5-gap').value,domain:'research'});$('e5-gap').value='';
+      $('sx-local-test').addEventListener('click', function () {
+        $('sx-local-status').textContent = 'Проверяю локальный сервер…';
+        api('life/local/test', {}).then(function (r) {
+          $('sx-local-status').textContent = r.generative ? 'Локальная модель готова; запросы только на 127.0.0.1.' : 'Работает поиск по памяти без модели. ' + (r.error || '');
+        }).catch(function (e) { $('sx-local-status').textContent = e.message; });
       });
-      $('e5-hypothesis-form').addEventListener('submit',function(ev){
-        ev.preventDefault();
-        evolution5Ask('hypothesis','',{cause:$('e5-cause').value,effect:$('e5-effect').value});
-        $('e5-cause').value='';$('e5-effect').value='';
+      function saveVec() {
+        api('vector/settings', { enabled: $('sx-vec').checked, rerank: $('sx-rerank').checked, associations: $('sx-assoc').checked }).then(loadVector2).catch(undErr);
+      }
+      ['sx-vec', 'sx-rerank', 'sx-assoc'].forEach(function (id) { $(id).addEventListener('change', saveVec); });
+      var CLEAR = {
+        evolution: ['Очистить фоновую память: эпизоды, проверенные знания и историю изменений? Дневник и моменты останутся.', 'soul/evolution/clear', loadEvolution],
+        depth: ['Очистить глубину: её характер, принципы, навыки и предложения? Остальная душа сохранится.', 'soul/depth/clear', loadDepth],
+        soul3: ['Очистить историю отношений: заботу, этапы, планы и обещания? Остальная душа сохранится.', 'soul3/clear', loadSoul3],
+        soul: ['Сбросить душу Яэри целиком? Характер, ступени, мысли о вас и дневник начнутся заново.', 'soul/reset', function (d) { setSoul(d); flash('greet', 3600); }]
+      };
+      each(document.querySelectorAll('[data-clear]'), function (b) {
+        b.addEventListener('click', function () {
+          var c = CLEAR[b.getAttribute('data-clear')];
+          if (!online || !window.confirm(c[0])) return;
+          api(c[1], {}).then(c[2]).then(function () { soulMsg('Готово.'); }).catch(undErr);
+        });
       });
-      $('e5-experiment-form').addEventListener('submit',function(ev){
-        ev.preventDefault();
-        evolution5Ask('experiment','',{hypothesisId:$('e5-experiment-hypothesis').value,
-          alternative:$('e5-alternative').value,prediction:$('e5-prediction').value,measure:$('e5-measure').value});
-      });
-      $('e5-strategy-form').addEventListener('submit',function(ev){
-        ev.preventDefault();
-        evolution5Ask('strategy','',{method:$('e5-method').value,domain:$('e5-strategy-domain').value});
-      });
-      $('e5-transfer-form').addEventListener('submit',function(ev){
-        ev.preventDefault(); evolution5Ask('transfer','',{strategyId:$('e5-transfer-strategy').value,
-          targetDomain:$('e5-transfer-domain').value,example:$('e5-transfer-example').value});
-      });
-      $('e5-calibration-form').addEventListener('submit',function(ev){
-        ev.preventDefault();
-        evolution5Ask('calibration','',{claim:$('e5-calibration-claim').value,percent:Number($('e5-percent').value)});
-        $('e5-calibration-claim').value='';
-      });
+
+      /* Правка текстов: «кем она себя чувствует» и портрет хозяина сохраняются при выходе из поля. */
+      function bindSoulText(id, key) {
+        var field = $(id);
+        field.addEventListener('input', function () { fitSoulText(field); });
+        field.addEventListener('focus', function () { soulEditing = true; });
+        field.addEventListener('blur', function () {
+          soulEditing = false;
+          if (!online || !soulData) return;
+          var cur = key === 'portrait' ? soulData.soul.owner.portrait : soulData.soul[key];
+          if (field.value.trim() === String(cur || '').trim()) return;
+          var patch = {};
+          patch[key] = field.value;
+          soulUpdate(patch);
+        });
+      }
+      bindSoulText('soul-self', 'self');
+      bindSoulText('soul-portrait', 'portrait');
+      (function () {
+        var timer = 0;
+        window.addEventListener('resize', function () {
+          clearTimeout(timer);
+          timer = setTimeout(function () { if (currentView === 'soul' && soulTab === 'path') renderXpChart(); }, 160);
+        });
+      }());
       /* ---------- Дела: дела со сроками и приоритетами, заметки ---------- */
       // С сервером дела лежат в data/tasks.json (Яэри видит их в чате), без сервера — в браузере.
       var TASKS_KEY = 'yaeri_tasks_v1';
