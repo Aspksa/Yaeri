@@ -43,7 +43,7 @@
           $('e5-calibration-meta').textContent = 'Проверенных прогнозов: ' + (calib.count || 0) +
             '; Brier score: ' + (calib.brier == null ? 'ещё не вычисляется' : calib.brier + ' (меньше — лучше)') +
             '. Исход подтверждается вручную.';
-          evolution5List('e5-goals',d.rankedGoals,function (li,g) {
+          evolution5List('e5-goals',(d.rankedGoals || []).slice(0,12).reverse(),function (li,g) {
             evolution5Text(li,g.title + ' · ' + g.status + ' · приоритет ' + g.priority +
               ' · продвижение ' + (g.progress || 0) + '% · следующий шаг: ' + (g.next || '—'));
             if (g.status === 'proposed') li.appendChild(evolution5Button('Одобрить',function () {
