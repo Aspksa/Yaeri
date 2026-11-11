@@ -236,8 +236,16 @@ function Invoke-YE5Research($Req) {
     if (-not (Test-YTopicVisible ([string]$goal.title))) { throw (New-YError 403 'Тема исключена настройками приватности.') }
     $ctx=New-Object System.Collections.Generic.List[string]
     $ids=New-Object System.Collections.Generic.List[string]
-    foreach ($x in @($script:Evo.facts | Where-Object { $_.status -eq 'active' } | Select-Object -Last 12)) {
-        $line=[string]$x.key+': '+[string]$x.value
+    $studySources=@(
+        @($script:Evo.facts | Where-Object { $_.status -eq 'active' } | Select-Object -Last 10) +
+        @($script:Evo.episodes | Where-Object { $_.status -eq 'active' } | Select-Object -Last 10)
+    )
+    foreach ($x in $studySources) {
+        $e=Get-YEvidence $x
+        if (@('user_quote','user_manual') -notcontains [string]$e.origin) { continue }
+        $line=$(if (Test-YKey $x 'key') {
+            [string]$x.key+': '+[string]$x.value
+        } else { [string]$x.title+': '+[string]$x.text })
         if (-not (Test-YTopicVisible $line)) { continue }
         $ids.Add([string]$x.id)
         $ctx.Add('['+[string]$x.id+'] '+(Get-YCleanLine $line 180))
