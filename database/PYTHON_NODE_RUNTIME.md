@@ -31,3 +31,7 @@ When `localSemantic=true`, Yaeri now submits eligible memory candidates to the p
 ## Node API security boundary
 
 Node now validates browser-facing API requests before forwarding them to PowerShell: cross-site fetches are denied, explicit Origin must match the local frontend host and port, and POST requests require JSON content type. The existing PowerShell validation remains active as defense in depth. The read-only `/api/runtime` endpoint is handled natively and does not access user data. Stateful API handlers remain in PowerShell pending a compatible storage migration.
+
+## Private Node-to-PowerShell API channel
+
+On each launch, PowerShell generates a fresh cryptographically random 256-bit token. The Node frontend receives it through its inherited environment and injects it into backend API requests. Node strips any browser-supplied copy of that header. The PowerShell API rejects requests without the correct token, preventing direct access to its separately bound loopback port. The token is not stored in the repository or persisted on disk. This hardens the staged migration; existing stateful routes still execute in PowerShell. This is process-local access control, not isolation against malicious software running as the same OS user.
