@@ -200,24 +200,38 @@ function Get-YE5RankedGoals {
         Sort-Object priority -Descending)
 }
 function Get-YE5LearningReport {
+    # Compare calibrated probability forecasts rather than just how often
+    # the predicted event happened. A method predicting "no" may be right.
     $res=@{}
-    foreach ($name in $script:YE5Methods) { $res[$name]=@{verified=0;success=0;failure=0} }
+    foreach ($name in $script:YE5Methods) {
+        $res[$name]=@{verified=0;success=0;failure=0;brierSum=0.0;brier=$null}
+    }
     foreach ($cal in $script:YE5.calibrations) {
-        if ($cal.status -ne 'verified') { continue }
+        if ([string]$cal.status -ne 'verified') { continue }
         $method=[string]$cal.method
         if (-not $res.ContainsKey($method)) { continue }
         $res[$method].verified++
+        $p=[double]$cal.probability / 100.0
+        $res[$method].brierSum=[double]$res[$method].brierSum +
+            [Math]::Pow($p-[double]$cal.outcome,2)
         if ([int]$cal.outcome -eq 1) { $res[$method].success++ } else { $res[$method].failure++ }
     }
     $best=''
-    $bestRate=-1.0
+    $bestError=[double]::PositiveInfinity
     foreach ($method in $script:YE5Methods) {
         $n=[int]$res[$method].verified
+        if ($n -gt 0) {
+            $res[$method].brier=[Math]::Round([double]$res[$method].brierSum / $n,4)
+        }
         if ($n -lt 3) { continue }
-        $rate = [double]$res[$method].success / $n
-        if ($rate -gt $bestRate) { $bestRate=$rate; $best=$method }
+        if ([double]$res[$method].brier -lt $bestError) {
+            $bestError=[double]$res[$method].brier; $best=$method
+        }
     }
-    return @{ byMethod=$res; bestMethod=$best; evaluated=$bestRate; note='Только исходы, подтверждённые хозяином; это не переобучение модели.' }
+    return @{byMethod=$res;bestMethod=$best
+        evaluated=$(if ($best) {[Math]::Round($bestError,4)} else {$null})
+        metric='Brier score: lower is better'
+        note='Сравнение возможно только после трёх подтверждённых исходов. Не доказывает качество всех типов ответов или причинность.'}
 }
 function Invoke-YE5DetectGaps {
     if (-not $script:YE5.enabled) { return 0 }
