@@ -36,6 +36,9 @@ jobs:
       - name: Browser bundle source parity
         shell: cmd
         run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\\build-site.ps1 -Check
+      - name: Safe startup auto-update guards
+        shell: cmd
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\test-autoupdate.ps1
       - name: Browser JavaScript syntax
         shell: cmd
         run: node tests\check-site.js
