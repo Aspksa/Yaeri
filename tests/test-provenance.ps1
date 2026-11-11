@@ -27,7 +27,7 @@ try {
     [void](Add-Y3Promise @{ text = 'Напомнить обсудить книгу' })
     if ((Get-YEvidence $script:Y3.promises[0]).origin -ne 'user_manual') { throw 'Promise source missing.' }
     $view = Get-YEvidenceView
-    if ($view.total -lt 3 -or $view.counts.user_manual -lt 2) { throw 'Evidence audit incomplete.' }
+    if ($view.total -lt 3 -or $view.counts.user_manual -lt 2) { throw ('Evidence audit incomplete: total=' + $view.total + ' types=' + (ConvertTo-YJson $view.counts)) }
     Save-YEvolution
     Save-YNotes
     Save-Y3
