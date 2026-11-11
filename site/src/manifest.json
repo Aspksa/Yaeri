@@ -1,0 +1,18 @@
+{
+  "output": "site/js/app.js",
+  "sources": [
+    "site/src/core.js",
+    "site/src/settings.js",
+    "site/src/memory.js",
+    "site/src/avatar.js",
+    "site/src/chat.js",
+    "site/src/rag.js",
+    "site/src/soul.js",
+    "site/src/evolution.js",
+    "site/src/soul-visuals.js",
+    "site/src/understanding.js",
+    "site/src/soul3.js",
+    "site/src/depth.js",
+    "site/src/bootstrap.js"
+  ]
+}
