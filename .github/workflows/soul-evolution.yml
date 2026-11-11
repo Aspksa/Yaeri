@@ -45,6 +45,9 @@ jobs:
       - name: Yaeri Life 4.0 world and Ollama-free offline smoke
         shell: cmd
         run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\\test-life4.ps1
+      - name: Evolution 5.0 research and regression
+        shell: cmd
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\\test-evolution5.ps1
       - name: Browser JavaScript syntax
         shell: cmd
         run: node tests\check-site.js
