@@ -8,6 +8,21 @@ try {
     # Кодировка консоли не мешает работе сервера.
 }
 
+# Python and Node.js are mandatory runtimes.
+function Assert-YRuntime([string]$Name, [string[]]$Arguments, [int]$MinimumMajor) {
+    $command = Get-Command $Name -ErrorAction SilentlyContinue
+    if ($null -eq $command) { throw ('Не найден ' + $Name + '. Установите обязательные Python 3 и Node.js и перезапустите Yaeri.') }
+    $versionOutput = & $command.Source @Arguments 2>&1 | Out-String
+    if ($LASTEXITCODE -ne 0 -or $versionOutput -notmatch '(\d+)\.(\d+)') {
+        throw ('Не удалось определить версию ' + $Name + ': ' + $versionOutput.Trim())
+    }
+    if ([int]$Matches[1] -lt $MinimumMajor) {
+        throw ('Для Yaeri требуется ' + $Name + ' версии ' + $MinimumMajor + '+. Найдено: ' + $versionOutput.Trim())
+    }
+}
+Assert-YRuntime 'python' @('--version') 3
+Assert-YRuntime 'node' @('--version') 18
+
 $siteRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\site'))
 $indexFile = Join-Path $siteRoot 'index.html'
 $utf8 = [System.Text.UTF8Encoding]::new($false)
