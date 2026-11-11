@@ -26,3 +26,15 @@ No records are merged, deleted, promoted to verified facts, or changed automatic
 ## Multi-value conflict groups (increment 3)
 
 The Vector quality endpoint additionally exposes `quality.conflictGroups` and `quality.conflictGroupCount`. Each group lists all distinct active normalized values for the same fact key, with the individual record IDs, source IDs, and evidence origins retained. Case/whitespace variants of the same value are not treated as conflicts. Withdrawn and expired records are excluded. Results are capped at 30 groups, sorted by key, and are review-only. The existing `quality.conflicts` field remains available for backward compatibility.
+
+## Offline-only memory search
+
+`POST /api/vector/search` now defaults to `localOnly: true`. The request does **not** generate query embeddings using Cloud.ru or another remote service. Retrieval uses the existing local BM25 token index and stored memories, followed by local evidence/recency reranking and association expansion. No Python, Node, or agent is needed.
+
+Example request: `{"query":"что я говорил о проекте","localOnly":true}`.
+
+To explicitly opt into the previous remote-query-embedding hybrid search, send `{"query":"...","localOnly":false}` with a configured API key. If no key is configured, lexical search still works.
+
+The response includes `localOnly` and `mode` (`local-lexical-bm25` or `hybrid-local-rerank`).
+
+**Scope:** This guarantee covers the memory-search endpoint only. It does not turn chat generation, embedding/index updates, or other Cloud.ru-dependent features into fully offline operations. Local search is lexical rather than semantic when no on-device embedding model is installed.
