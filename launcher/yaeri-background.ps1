@@ -1,10 +1,12 @@
 ﻿#requires -Version 5.1
-# Separate-process background engine. Never writes live JSON from a worker.
-# The main HTTP thread alone applies a validated snapshot (optimistic commit).
+# Long API/model tasks run in a child process against an isolated JSON snapshot.
+# The HTTP thread remains responsive and is the ONLY writer to live JSON files.
+# Optimistic, all-or-nothing conflict checks prevent overwriting newer changes.
 $script:YBgJob = $null
 $script:YBgLastError = ''
 $script:YBgLastRun = 0L
 $script:YBgConflictCount = 0
+$script:YApiJobs = @{}
 
 function Get-YBgHash([string]$Path) {
     if (-not [System.IO.File]::Exists($Path)) { return '<missing>' }
@@ -19,11 +21,20 @@ function Get-YBgFiles([string]$Folder) {
     }
     return $out
 }
-function Start-YBackground {
+function Test-YAsyncApiRoute([string]$Method, [string]$Path) {
+    return @(
+        'POST /api/chat', 'GET /api/models', 'POST /api/models/refresh',
+        'POST /api/config/test', 'POST /api/docs', 'POST /api/reindex',
+        'POST /api/soul/reflect', 'POST /api/soul/sleep',
+        'POST /api/soul/care', 'POST /api/soul/share',
+        'POST /api/soul3/plans', 'POST /api/soul/growth/run',
+        'POST /api/soul/depth/run', 'POST /api/soul/depth/skill/test'
+    ) -contains ($Method + ' ' + $Path)
+}
+function Start-YBackground([string]$Method = '', [string]$Path = '', [string]$Body = '') {
     if ($null -ne $script:YBgJob) { return $false }
-    # No model calls are made if Cloud.ru is not configured, except local
-    # commitment reminders when explicitly opted in.
-    if (-not (Test-YConfigured) -and -not [bool]$script:Y3.initiative) { return $false }
+    $isApi = [bool]$Method
+    if (-not $isApi -and -not (Test-YConfigured) -and -not [bool]$script:Y3.initiative) { return $false }
     $base = Join-Path $script:DataDir ('.bg-work-' + [guid]::NewGuid().ToString('N'))
     $snapshot = Join-Path $base 'snapshot'
     [void][System.IO.Directory]::CreateDirectory($snapshot)
@@ -36,14 +47,51 @@ function Start-YBackground {
         $stdout = Join-Path $base 'stdout.log'
         $stderr = Join-Path $base 'stderr.log'
         $args = '-NoLogo -NoProfile -ExecutionPolicy Bypass -File "' + $worker + '" -SnapshotDir "' + $snapshot + '"'
+        $id = ''
+        $resultFile = ''
+        if ($isApi) {
+            $id = [guid]::NewGuid().ToString('N')
+            $requestFile = Join-Path $base 'request.json'
+            $resultFile = Join-Path $base 'result.json'
+            [System.IO.File]::WriteAllText($requestFile, (ConvertTo-YJson @{ method = $Method; path = $Path; body = $Body }), $script:Utf8)
+            $args += ' -RequestFile "' + $requestFile + '" -ResultFile "' + $resultFile + '"'
+        }
         $process = Start-Process -FilePath (Join-Path $PSHOME 'powershell.exe') -ArgumentList $args -PassThru -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr
-        $script:YBgJob = @{ process = $process; base = $base; snapshot = $snapshot; original = $original }
+        $script:YBgJob = @{
+            process = $process; base = $base; snapshot = $snapshot
+            original = $original; kind = $(if ($isApi) { 'api' } else { 'tick' })
+            id = $id; resultFile = $resultFile
+        }
         $script:YBgLastRun = Get-YNow
+        if ($isApi) {
+            $script:YApiJobs[$id] = @{ status = 'pending'; t = (Get-YNow) }
+            return @{ pending = $true; jobId = $id }
+        }
         return $true
     } catch {
         $script:YBgLastError = $_.Exception.Message
         if (Test-Path -LiteralPath $base) { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue }
+        if ($isApi) { throw (New-YError 503 ('Не удалось запустить AI-задачу: ' + $script:YBgLastError)) }
         return $false
+    }
+}
+function Start-YApiTask([string]$Method, [string]$Path, [string]$Body) {
+    if (-not (Test-YAsyncApiRoute $Method $Path)) { throw (New-YError 404 'Неизвестная AI-задача.') }
+    if ($null -ne $script:YBgJob) {
+        # User requests take precedence; an uncommitted background snapshot is
+        # safe to discard because it has never touched live files.
+        if ([string](Get-YValue $script:YBgJob 'kind' 'tick') -eq 'tick') { Stop-YBackground }
+        else { throw (New-YError 409 'Другая длительная AI-задача ещё выполняется.') }
+    }
+    return Start-YBackground $Method $Path $Body
+}
+function Get-YApiTask([string]$Id) {
+    if (-not $script:YApiJobs.ContainsKey($Id)) { throw (New-YError 404 'AI-задача не найдена или срок хранения истёк.') }
+    $job = $script:YApiJobs[$Id]
+    switch ([string]$job.status) {
+        'done' { return @{ ready = $true; result = $job.result } }
+        'error' { throw (New-YError 502 ([string]$job.error)) }
+        default { return @{ pending = $true; jobId = $Id } }
     }
 }
 function Complete-YBackground {
@@ -53,7 +101,16 @@ function Complete-YBackground {
     $proc.Refresh()
     if (-not $proc.HasExited) { return $false }
     $script:YBgJob = $null
+    $kind = [string](Get-YValue $job 'kind' 'tick')
     try {
+        $packet = $null
+        if ($kind -eq 'api') {
+            $packet = Read-YJsonFile ([string]$job.resultFile)
+            if ($null -eq $packet -or -not [bool](Get-YValue $packet 'ok' $false)) {
+                $message = [string](Get-YValue $packet 'error' 'Длительная AI-задача завершилась без результата.')
+                throw $message
+            }
+        }
         if ($proc.ExitCode -ne 0) {
             $errPath = Join-Path $job.base 'stderr.log'
             $detail = if (Test-Path -LiteralPath $errPath) { [System.IO.File]::ReadAllText($errPath) } else { '' }
@@ -61,15 +118,14 @@ function Complete-YBackground {
         }
         $produced = Get-YBgFiles $job.snapshot
         $changed = New-Object System.Collections.Generic.List[string]
-        # Both changed files AND their original versions are checked before
-        # committing anything; a concurrent chat cannot be overwritten.
+        # Check EVERY changed file before writing ANY of them.
         foreach ($name in @($produced.Keys)) {
             $before = if ($job.original.ContainsKey($name)) { $job.original[$name] } else { '<missing>' }
             if ($produced[$name] -eq $before) { continue }
             $livePath = Join-Path $script:DataDir $name
             if ((Get-YBgHash $livePath) -ne $before) {
                 $script:YBgConflictCount++
-                throw ('Background snapshot conflict in ' + $name + '; will retry from fresh data.')
+                throw ('Память изменилась во время AI-задачи (' + $name + '). Повторите запрос.')
             }
             $changed.Add($name)
         }
@@ -85,10 +141,14 @@ function Complete-YBackground {
             }
         }
         if ($changed.Count -gt 0) { Import-YStore }
+        if ($kind -eq 'api') { $script:YApiJobs[[string]$job.id] = @{ status = 'done'; t = (Get-YNow); result = (Get-YValue $packet 'response' @{}) } }
         $script:YBgLastError = ''
         return $true
     } catch {
         $script:YBgLastError = $_.Exception.Message
+        if ($kind -eq 'api') {
+            $script:YApiJobs[[string]$job.id] = @{ status = 'error'; t = (Get-YNow); error = $script:YBgLastError }
+        }
         Write-Host ('Фоновая задача: ' + $script:YBgLastError) -ForegroundColor Yellow
         return $false
     } finally {
@@ -110,6 +170,9 @@ function Stop-YBackground {
 function Clear-YBackgroundOrphans {
     if (-not (Test-Path -LiteralPath $script:DataDir)) { return }
     foreach ($dir in (Get-ChildItem -LiteralPath $script:DataDir -Directory -Filter '.bg-work-*')) {
-        Remove-Item -LiteralPath $dir.FullName -Recurse -Force -ErrorAction SilentlyContinue
+        # Do not remove a worker belonging to another instance still running.
+        if ($dir.LastWriteTime -lt [datetime]::Now.AddDays(-1)) {
+            Remove-Item -LiteralPath $dir.FullName -Recurse -Force -ErrorAction SilentlyContinue
+        }
     }
 }
