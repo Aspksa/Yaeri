@@ -36,6 +36,9 @@ jobs:
       - name: Vector 2.0 hybrid retrieval and incremental index
         shell: cmd
         run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\test-vector2.ps1
+      - name: Tasks module (Дела) storage and chat tags
+        shell: cmd
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\test-tasks.ps1
       - name: Browser bundle source parity
         shell: cmd
         run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\\build-site.ps1 -Check

@@ -119,7 +119,7 @@
             <div class="pc-stats" id="pc-stats"></div>
             <div class="pc-next" id="pc-next-box"></div>
             <div class="pc-legend" aria-hidden="true">
-              <span><i class="lg-work"></i>рабочий</span><span><i class="lg-short"></i>−1 час</span><span><i class="lg-off"></i>выходной</span><span><i class="lg-hol"></i>праздник</span><span><i class="lg-move"></i>перенос</span>
+              <span><i class="lg-work"></i>рабочий</span><span><i class="lg-short"></i>−1 час</span><span><i class="lg-off"></i>выходной</span><span><i class="lg-hol"></i>праздник</span><span><i class="lg-move"></i>перенос</span><span><i class="lg-task"></i>дела</span>
             </div>
           </div>
           <div class="card-foot"><span id="pc-foot">Постановление № 1466</span><button type="button" class="mini-btn" id="pc-open">Весь год</button></div>
@@ -169,7 +169,52 @@
           </div>
           <p class="soul-mini-thought" id="soul-mini-thought" hidden></p>
         </section>
-        <section class="card grow brain-mini-card" aria-labelledby="mini-title">
+        <section class="card grow tasks-card" id="tasks-card" aria-labelledby="tasks-title">
+          <div class="card-head">
+            <h2 id="tasks-title">Дела</h2>
+            <span class="card-meta" id="tasks-meta"></span>
+          </div>
+          <div class="tasks-tabs" role="tablist" aria-label="Какие дела показать">
+            <button type="button" role="tab" data-tf="all">Все<i></i></button>
+            <button type="button" role="tab" data-tf="today">Сегодня<i></i></button>
+            <button type="button" role="tab" data-tf="week">Неделя<i></i></button>
+            <button type="button" role="tab" data-tf="notes">Заметки<i></i></button>
+            <button type="button" role="tab" data-tf="done">Готово<i></i></button>
+          </div>
+          <div class="tasks-day" id="tasks-day" hidden>
+            <span id="tasks-day-text"></span>
+            <button type="button" class="mini-btn" id="tasks-day-clear" aria-label="Показать все дела">все дела ×</button>
+          </div>
+          <form class="tasks-add" id="tasks-form" autocomplete="off">
+            <input class="field" id="tasks-text" type="text" maxlength="300" placeholder="Новое дело…" aria-label="Текст дела">
+            <div class="tasks-row">
+              <input class="field" id="tasks-due" type="date" min="2000-01-01" max="2100-12-31" aria-label="Срок">
+              <input class="field task-only" id="tasks-time" type="time" aria-label="Время">
+              <select class="field task-only" id="tasks-prio" aria-label="Приоритет">
+                <option value="high">Важно</option>
+                <option value="normal" selected>Обычно</option>
+                <option value="low">Не срочно</option>
+              </select>
+            </div>
+            <div class="tasks-row">
+              <button type="button" class="mini-btn" id="tasks-workday" title="Ближайший рабочий день по производственному календарю. Нажмите ещё раз — следующий рабочий.">Ближ. рабочий день</button>
+              <span class="tasks-hint" id="tasks-hint" aria-live="polite"></span>
+              <button type="button" class="mini-btn" id="tasks-cancel" hidden>Отмена</button>
+              <button type="submit" class="mini-btn solid" id="tasks-submit">Добавить</button>
+            </div>
+          </form>
+          <div class="card-body grow tasks-body">
+            <ul class="tasks-list" id="tasks-list" aria-live="polite"></ul>
+          </div>
+          <div class="card-foot">
+            <span id="tasks-foot-text"></span>
+            <span class="tasks-foot-acts">
+              <button type="button" class="mini-btn" id="tasks-bell" title="Показывать напоминания Windows, когда вкладка свёрнута" hidden>🔔</button>
+              <button type="button" class="mini-btn" id="tasks-ask">Спросить Яэри</button>
+            </span>
+          </div>
+        </section>
+        <section class="card brain-mini-card" aria-labelledby="mini-title">
           <div class="card-head">
             <h2 id="mini-title">Второй мозг</h2>
             <span class="card-meta" id="mini-meta"></span>

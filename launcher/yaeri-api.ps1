@@ -31,6 +31,7 @@ $script:Utf8 = [System.Text.UTF8Encoding]::new($false)
 . (Join-Path $PSScriptRoot 'yaeri-local.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-evolution5.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-evolution5-eval.ps1')
+. (Join-Path $PSScriptRoot 'yaeri-tasks.ps1')
 
 # ---------- Вспомогательный код на C# (компилируется встроенным .NET, установка не нужна) ----------
 if (-not ('YaeriVec' -as [type])) {
@@ -340,6 +341,9 @@ function Import-YStore {
     $n = Read-YJsonFile $script:NotesFile
     $script:Notes = New-Object System.Collections.ArrayList
     foreach ($m in @(Get-YValue $n 'items' @())) { [void]$script:Notes.Add($m) }
+
+    # Модуль «Дела»: дела со сроками и заметки хозяина.
+    Import-YTasks
 
     $script:VecCache = @{}
 
@@ -1071,6 +1075,12 @@ function Invoke-YChat($Req) {
     if ($notesText) {
         $system += "`n`nРабочая память (то, что ты уже знаешь о пользователе и его делах; учитывай это в ответах):`n" + $notesText
     }
+    $useTasks = [bool](Get-YValue $Req 'tasks' $true)
+    if ($useTasks) {
+        $tasksText = ''
+        try { $tasksText = Get-YTasksPrompt (Get-YValue $Req 'days' @()) } catch { $tasksText = '' }
+        if ($tasksText) { $system += "`n`nДела хозяина (модуль «Дела» в командном центре):`n" + $tasksText + "`n" + (Get-YTasksRules) }
+    }
     if ($autoNotes) {
         $system += "`n`nЕсли пользователь сообщает устойчивый факт, который пригодится позже (о себе, планах, задачах, людях, проектах, предпочтениях), " +
             'в самом конце ответа добавь тег <память раздел="Раздел">короткий факт одной фразой</память>, по одному тегу на факт. ' +
@@ -1144,6 +1154,18 @@ function Invoke-YChat($Req) {
     if ($newNotes.Count -gt 0) { Save-YNotes }
     $content = ([regex]::Replace($content, $script:NoteTag, '')).Trim()
     if (-not $content -and $newNotes.Count -gt 0) { $content = 'Запомнила.' }
+    # Теги <дело>/<заметка>: Яэри меняет дела хозяина по его просьбе.
+    $taskActs = @()
+    if ($useTasks) {
+        try {
+            $tr = Invoke-YTaskTags $content
+            $content = [string]$tr.content
+            $taskActs = @($tr.acts)
+        } catch { }
+    } else {
+        $content = ([regex]::Replace(([regex]::Replace($content, $script:TaskTag, '')), $script:TaskNoteTag, '')).Trim()
+    }
+    if (-not $content -and $taskActs.Count -gt 0) { $content = 'Готово.' }
     if (-not $content) { throw (New-YError 502 'Модель вернула пустой ответ.') }
 
     # Самопроверка: не противоречит ли ответ тому, что Яэри знает о хозяине.
@@ -1168,6 +1190,7 @@ function Invoke-YChat($Req) {
     if ($depthSkills.Count -gt 0) { $answer['skills'] = $depthSkills }
     if ($proposedTools.Count -gt 0) { $answer['proposedTools'] = $proposedTools.ToArray() }
     if ($newNotes.Count -gt 0) { $answer['remembered'] = @($newNotes | ForEach-Object { [string]$_['text'] }) }
+    if ($taskActs.Count -gt 0) { $answer['tasks'] = $taskActs }
     [void]$script:History.Add($answer)
     Save-YHistory
     if ($null -ne $futures) { try { Add-YLifeForecast $answer $futures } catch { } }
@@ -1275,6 +1298,9 @@ function Invoke-YApi([string]$Method, [string]$Path, [string]$BodyText) {
         'POST /api/notes'          { return Add-YNote $req }
         'POST /api/notes/update'   { return Update-YNote $req }
         'POST /api/notes/delete'   { return Remove-YNote $req }
+        'GET /api/tasks'           { return Get-YTasksList }
+        'POST /api/tasks/save'     { return Save-YTask $req }
+        'POST /api/tasks/delete'   { return Remove-YTask $req }
         'POST /api/memory/delete'  { return Remove-YMemoryItem $req }
         'GET /api/brain'            { return Get-YBrain }
         'GET /api/evidence'         { return Get-YEvidenceView }
