@@ -597,6 +597,28 @@
                     </form>
                     <ul class="journal" id="soul3-promises"></ul>
                     <button type="button" class="mini-btn server-only" id="soul3-clear">Очистить данные Soul 3.0</button>
+                    <span class="soul-lbl soul-gap">Vector 2.0 · живая память</span>
+                    <label class="toggle server-only">
+                      <span class="t-text"><span class="t-name">Гибридная память</span><span class="t-desc">Точный поиск + векторы, даты, источники и значимые совместные события</span></span>
+                      <input class="vh" type="checkbox" role="switch" id="vec2-enabled"><span class="track" aria-hidden="true"></span>
+                    </label>
+                    <label class="toggle server-only">
+                      <span class="t-text"><span class="t-name">Ранжирование по контексту</span><span class="t-desc">Учитывать актуальность, достоверность и оценки хозяина</span></span>
+                      <input class="vh" type="checkbox" role="switch" id="vec2-rerank"><span class="track" aria-hidden="true"></span>
+                    </label>
+                    <label class="toggle server-only">
+                      <span class="t-text"><span class="t-name">Ассоциативные цепочки</span><span class="t-desc">Связи между воспоминаниями, без превращения догадок в факты</span></span>
+                      <input class="vh" type="checkbox" role="switch" id="vec2-associations"><span class="track" aria-hidden="true"></span>
+                    </label>
+                    <p class="soul-small" id="vec2-status" role="status">Загружаю качество памяти…</p>
+                    <form id="vec2-search-form">
+                      <label class="lbl" for="vec2-search">Поиск в воспоминаниях</label>
+                      <input class="field" type="search" maxlength="500" id="vec2-search" placeholder="Что мы обсуждали о нашем проекте?">
+                      <button type="submit" class="mini-btn">Найти воспоминания</button>
+                    </form>
+                    <ul class="journal" id="vec2-results"></ul>
+                    <span class="soul-lbl soul-gap">Дубликаты и противоречия</span>
+                    <ul class="journal" id="vec2-quality"></ul>
                     <span class="soul-lbl soul-gap">Происхождение памяти</span>
                     <p class="soul-small" id="evidence-summary">Загружаю источники воспоминаний…</p>
                     <ul class="journal" id="evidence-list"></ul>

@@ -25,6 +25,8 @@ $script:Utf8 = [System.Text.UTF8Encoding]::new($false)
 . (Join-Path $PSScriptRoot 'yaeri-bond.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-reason.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-relationship.ps1')
+. (Join-Path $PSScriptRoot 'yaeri-vector.ps1')
+. (Join-Path $PSScriptRoot 'yaeri-vector-index.ps1')
 
 # ---------- Вспомогательный код на C# (компилируется встроенным .NET, установка не нужна) ----------
 if (-not ('YaeriVec' -as [type])) {
@@ -344,6 +346,7 @@ function Import-YStore {
     Import-YCuriosity
     Import-YUnderstanding
     Import-YDepth
+    Import-YVector
 }
 
 function Save-YHistory { Write-YJsonFile $script:HistoryFile @{ version = 1; messages = $script:History.ToArray() } }
@@ -621,11 +624,11 @@ function Add-YDoc($Req) {
 
     $parts = Split-YText $text
     if ($parts.Count -eq 0) { throw (New-YError 400 'В документе нет текста.') }
-    $vectors = Get-YEmbeddings $parts
+    $vectors = Get-YVectorCachedEmbeddings $parts
 
     $doc = @{ id = (New-YId); name = $name; added = (Get-YNow); chars = $text.Length; chunks = $parts.Count }
     for ($i = 0; $i -lt $parts.Count; $i++) {
-        [void]$script:Chunks.Add(@{ id = (New-YId); docId = $doc.id; docName = $name; n = $i + 1; text = $parts[$i]; vec = $vectors[$i]; evidence = (New-YEvidence 'document' $doc.id '' 0) })
+        [void]$script:Chunks.Add(@{ id = (New-YId); docId = $doc.id; docName = $name; n = $i + 1; text = $parts[$i]; vec = $vectors[$i]; vecHash = (Get-YVectorFingerprint $parts[$i]); t = (Get-YNow); evidence = (New-YEvidence 'document' $doc.id '' 0) })
     }
     [void]$script:Docs.Add($doc)
     $script:DocsModel = [string]$script:Config.embeddingModel
@@ -647,24 +650,7 @@ function Remove-YDoc($Req) {
     return @{ ok = $true }
 }
 
-function Update-YIndex {
-    # Пересчитать эмбеддинги документов и памяти после смены модели эмбеддингов.
-    $model = [string]$script:Config.embeddingModel
-    if ($script:Chunks.Count -gt 0) {
-        $vectors = Get-YEmbeddings @($script:Chunks | ForEach-Object { [string]$_['text'] })
-        for ($i = 0; $i -lt $script:Chunks.Count; $i++) { $script:Chunks[$i]['vec'] = $vectors[$i] }
-    }
-    $script:DocsModel = $model
-    Save-YDocs
-    if ($script:Memory.Count -gt 0) {
-        $vectors = Get-YEmbeddings @($script:Memory | ForEach-Object { [string]$_['text'] })
-        for ($i = 0; $i -lt $script:Memory.Count; $i++) { $script:Memory[$i]['vec'] = $vectors[$i] }
-    }
-    $script:MemoryModel = $model
-    Save-YMemory
-    $script:VecCache = @{}
-    return @{ ok = $true; chunks = $script:Chunks.Count; memory = $script:Memory.Count }
-}
+function Update-YIndex { return Update-YVectorIndex }
 
 function Clear-YHistory {
     $script:History.Clear()
@@ -918,7 +904,50 @@ function Invoke-YChat($Req) {
     $queryVec = $null
     $soulVecCount = 0
     if ($useSoul -and $null -ne $script:SoulVecs) { $soulVecCount = $script:SoulVecs.Count }
-    if ($useRag -and ($script:Chunks.Count -gt 0 -or $script:Memory.Count -gt 0 -or $soulVecCount -gt 0)) {
+    if ($useRag -and $script:YVector.enabled) {
+        try {
+            # The retrieval engine also supports lexical-only sources when no
+            # vector has been indexed yet. Only the current query is embedded.
+            $poolCount = $script:Chunks.Count + $script:Memory.Count + $script:Evo.facts.Count +
+                $script:Evo.episodes.Count + $script:Notes.Count + $script:Y3.moments.Count + $script:Und.map.Count
+            if ($poolCount -gt 0 -or $soulVecCount -gt 0) {
+                try { $queryVec = [YaeriVec]::Decode((Get-YEmbeddings @($text))[0]) } catch {
+                    $ragNote = 'Векторный запрос недоступен, использую точный поиск по словам.'
+                }
+                $ranked = @(Find-YVectorMatches $text $queryVec ([Math]::Max(5, [int]$script:Config.ragTopK + [int]$script:Config.memoryTopK)) $recentFrom)
+                foreach ($hit in $ranked) {
+                    $c = $hit.Item
+                    $space = [string]$c.space
+                    $n = $contextLines.Count + 1
+                    $sourceLabel = Get-YEvidenceLabel $c.ref
+                    $when = $(if ([long]$c.t -gt 0) { [DateTimeOffset]::FromUnixTimeMilliseconds([long]$c.t).ToLocalTime().ToString('dd.MM.yyyy') } else { 'дата неизвестна' })
+                    $ctx = [string]$c.text
+                    if ($ctx.Length -gt 1200) { $ctx = $ctx.Substring(0, 1200) }
+                    $contextLines.Add('[' + $n + '] ' + $space + ' (' + $when + '; ' + $sourceLabel + '; близость ' + $hit.Semantic + '):' + "`n" + $ctx)
+                    $kind = switch ($space) { 'document' { 'doc' } 'conversation' { 'memory' } default { 'soul' } }
+                    $nodeId = switch ($space) {
+                        'document' { 'd:' + [string](Get-YValue $c.ref 'docId' '') }
+                        'conversation' { 'm:' + [string]$c.id }
+                        default { 's:' + [string]$c.id }
+                    }
+                    $sources.Add(@{
+                        kind = $kind; id = $nodeId
+                        vectorKey = $space + ':' + [string]$c.id
+                        label = $space + ', ' + $when + ' · ' + $sourceLabel
+                        score = [Math]::Round([double]$hit.Score, 3)
+                        semantic = [double]$hit.Semantic; lexical = [double]$hit.Lexical
+                        associated = [bool]$hit.Associated
+                    })
+                }
+                $script:YVector.searches = [long]$script:YVector.searches + 1
+                $script:YVector.lastSearch = Get-YNow
+                Save-YVector
+            }
+        } catch {
+            $ragNote = 'Vector 2.0: ' + $_.Exception.Message
+        }
+    }
+    if ($useRag -and -not $script:YVector.enabled -and ($script:Chunks.Count -gt 0 -or $script:Memory.Count -gt 0 -or $soulVecCount -gt 0)) {
         try {
             $queryVec = [YaeriVec]::Decode((Get-YEmbeddings @($text))[0])
             $minScore = [double]$script:Config.minScore
@@ -947,7 +976,7 @@ function Invoke-YChat($Req) {
     }
     # Свои воспоминания (моменты и дневник), найденные по смыслу.
     $soulRecall = New-Object System.Collections.Generic.List[string]
-    if ($useSoul -and $null -ne $queryVec) {
+    if ($useSoul -and -not $script:YVector.enabled -and $null -ne $queryVec) {
         try {
             foreach ($hit in (Find-YSoulRecall $queryVec 3 ([double]$script:Config.minScore + 0.05))) {
                 $soulRecall.Add('- [' + (Get-YEvidenceLabel $hit.Item.ref) + '] ' + [string]$hit.Item.text)
@@ -1092,7 +1121,7 @@ function Invoke-YChat($Req) {
                 if ($script:Memory.Count -eq 0) { $script:MemoryModel = [string]$script:Config.embeddingModel }
             }
             if ($script:MemoryModel -eq [string]$script:Config.embeddingModel) {
-                [void]$script:Memory.Add(@{ id = (New-YId); t = [long]$userMsg.t; text = $memText; vec = $vec; evidence = (New-YEvidence 'conversation' ([string]$userMsg.id) '' 0) })
+                [void]$script:Memory.Add(@{ id = (New-YId); t = [long]$userMsg.t; text = $memText; vec = $vec; vecHash = (Get-YVectorFingerprint $memText); evidence = (New-YEvidence 'conversation' ([string]$userMsg.id) '' 0) })
                 Save-YMemory
             }
         } catch {
@@ -1177,6 +1206,9 @@ function Invoke-YApi([string]$Method, [string]$Path, [string]$BodyText) {
         'POST /api/memory/delete'  { return Remove-YMemoryItem $req }
         'GET /api/brain'            { return Get-YBrain }
         'GET /api/evidence'         { return Get-YEvidenceView }
+        'GET /api/vector'           { return Get-YVectorView }
+        'POST /api/vector/settings' { return Set-YVector $req }
+        'POST /api/vector/search'   { return Search-YVector $req }
         'POST /api/config'         { return Set-YConfig $req }
         'POST /api/config/test'    { return Test-YConnection }
         'GET /api/soul'            { return Get-YSoulView }
