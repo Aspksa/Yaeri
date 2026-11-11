@@ -25,4 +25,15 @@ $script:Evo = @{ facts = @(
 $conflicts = @(Get-YVectorConflicts)
 Assert-Y ($conflicts.Count -eq 1) 'Expected exactly one active conflict'
 Assert-Y ($conflicts[0].status -eq 'needs-review') 'Conflict must require review'
+$candidates = @(
+    @{ id='one'; space='fact'; text='  ЯЭРИ   помнит  '; evidence=@{origin='user_manual';sourceId='a'} },
+    @{ id='two'; space='conversation'; text='яэри помнит'; evidence=@{origin='conversation';sourceId='b'} },
+    @{ id='three'; space='document'; text='другой текст'; evidence=@{origin='document';sourceId='c'} }
+)
+$review = @(Get-YMemory3ConsolidationReview $candidates)
+Assert-Y ($review.Count -eq 1) 'Expected one consolidation group'
+Assert-Y ($review[0].count -eq 2) 'Duplicate group must contain both records'
+Assert-Y ($review[0].distinctOrigins.Count -eq 2) 'Provenance must be retained'
+Assert-Y ($review[0].action -eq 'review-only') 'Consolidation must not auto-delete'
+Assert-Y ($candidates.Count -eq 3) 'Original records must remain intact'
 Write-Host 'Memory 3 smoke tests passed.' -ForegroundColor Green
