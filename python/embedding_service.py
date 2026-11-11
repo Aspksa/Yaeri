@@ -96,8 +96,8 @@ class Handler(socketserver.StreamRequestHandler):
     def handle(self):
         self.request.settimeout(120)
         try:
-            raw = self.rfile.readline(65537)
-            if len(raw) > 65536:
+            raw = self.rfile.readline(1048577)
+            if len(raw) > 1048576:
                 raise ValueError("request too large")
             req = json.loads(raw.decode("utf-8"))
             action = req.get("action", "embed")
