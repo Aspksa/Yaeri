@@ -27,3 +27,7 @@ When `localSemantic=true`, Yaeri now submits eligible memory candidates to the p
 ## Native Node API migration checkpoint
 
 `GET /api/runtime` (and `HEAD /api/runtime`) now executes directly in Node.js and reports only non-sensitive component roles and Node major version. All existing stateful API routes, including `/api/status`, continue to use the PowerShell backend unchanged. This endpoint is a migration/diagnostic checkpoint, **not** evidence that the rest of the API has been ported. Native static assets are already served by Node.js.
+
+## Node API security boundary
+
+Node now validates browser-facing API requests before forwarding them to PowerShell: cross-site fetches are denied, explicit Origin must match the local frontend host and port, and POST requests require JSON content type. The existing PowerShell validation remains active as defense in depth. The read-only `/api/runtime` endpoint is handled natively and does not access user data. Stateful API handlers remain in PowerShell pending a compatible storage migration.

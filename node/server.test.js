@@ -11,7 +11,7 @@ function close(server) { return new Promise(resolve => server.close(resolve)); }
 function request(port, path, method = "GET", body = "", host = null) {
   return new Promise((resolve, reject) => {
     const req = http.request({ hostname: "127.0.0.1", port, path, method,
-      headers: { host: host || "127.0.0.1:" + port, "content-length": Buffer.byteLength(body) } },
+      headers: { host: host || "127.0.0.1:" + port, "content-length": Buffer.byteLength(body), "content-type": "application/json" } },
     res => {
       let data = "";
       res.setEncoding("utf8");
@@ -83,6 +83,33 @@ test("native Node runtime API responds without PowerShell and preserves proxy ro
     assert.equal(backendRequests, 0);
     assert.deepEqual(JSON.parse((await request(port, "/api/status")).body), { legacy: true });
     assert.equal(backendRequests, 1);
+  } finally {
+    await close(frontend);
+    await close(backend);
+  }
+});
+
+test("Node API rejects cross-site, forged origins and non-JSON POST", async () => {
+  const backend = http.createServer((req, res) => res.end("backend"));
+  const backendPort = await listen(backend);
+  const frontend = createServer(backendPort);
+  const port = await listen(frontend);
+  function send(headers, method = "GET") {
+    return new Promise((resolve, reject) => {
+      const req = http.request({ hostname: "127.0.0.1", port, path: "/api/status",
+        method, headers: { host: "127.0.0.1:" + port, ...headers } }, res => {
+        res.resume(); res.on("end", () => resolve(res.statusCode));
+      });
+      req.on("error", reject); req.end();
+    });
+  }
+  try {
+    assert.equal(await send({ "sec-fetch-site": "cross-site" }), 403);
+    assert.equal(await send({ origin: "http://evil.example" }), 403);
+    assert.equal(await send({ origin: "http://127.0.0.1:9999" }), 403);
+    assert.equal(await send({ "content-type": "text/plain" }, "POST"), 403);
+    assert.equal(await send({ origin: "http://127.0.0.1:" + port }), 200);
+    assert.equal(await send({ "content-type": "application/json" }, "POST"), 200);
   } finally {
     await close(frontend);
     await close(backend);
