@@ -22,6 +22,8 @@ function Assert-YRuntime([string]$Name, [string[]]$Arguments, [int]$MinimumMajor
 }
 Assert-YRuntime 'python' @('--version') 3
 Assert-YRuntime 'node' @('--version') 18
+& node (Join-Path $PSScriptRoot '..\node\runtime-check.js')
+if ($LASTEXITCODE -ne 0) { throw 'Node.js runtime self-check failed.' }
 
 $siteRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\site'))
 $indexFile = Join-Path $siteRoot 'index.html'
