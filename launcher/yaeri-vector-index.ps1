@@ -132,6 +132,43 @@ function Get-YVectorConflicts {
     }
     return $conflicts.ToArray()
 }
+function Get-YMemory3ConsolidationReview($Candidates, [int]$Limit = 30) {
+    # Non-destructive: preserve every original record and its provenance.
+    $groups = @{}
+    foreach ($item in @($Candidates)) {
+        $normalized = ([regex]::Replace(([string]$item.text).Trim().ToLowerInvariant(), '\s+', ' '))
+        if (-not $normalized) { continue }
+        $hash = Get-YVectorFingerprint $normalized
+        if (-not $groups.ContainsKey($hash)) {
+            $groups[$hash] = New-Object System.Collections.Generic.List[object]
+        }
+        $groups[$hash].Add($item)
+    }
+    $out = New-Object System.Collections.Generic.List[object]
+    foreach ($hash in @($groups.Keys | Sort-Object)) {
+        $group = $groups[$hash]
+        if ($group.Count -lt 2) { continue }
+        $members = New-Object System.Collections.Generic.List[object]
+        $sources = @{}
+        foreach ($item in $group) {
+            $origin = [string]$item.evidence.origin
+            $sources[$origin] = $true
+            $members.Add(@{
+                id = [string]$item.id; space = [string]$item.space
+                origin = $origin
+                sourceId = [string](Get-YValue $item.evidence 'sourceId' '')
+            })
+        }
+        $out.Add(@{
+            fingerprint = $hash; count = $group.Count
+            distinctOrigins = @($sources.Keys | Sort-Object)
+            members = $members.ToArray()
+            action = 'review-only'
+        })
+        if ($out.Count -ge $Limit) { break }
+    }
+    return $out.ToArray()
+}
 function Get-YVectorQuality {
     $items = @(Get-YVectorCandidates)
     $bySpace = @{}
@@ -188,6 +225,7 @@ function Get-YVectorQuality {
         }
     }
     $conflicts = @(Get-YVectorConflicts)
+    $consolidation = @(Get-YMemory3ConsolidationReview $items)
     return @{
         total = $items.Count; vectorized = $vectorized
         lexicalOnly = $items.Count - $vectorized
@@ -195,6 +233,7 @@ function Get-YVectorQuality {
         duplicates = $clusters.ToArray(); duplicateCount = $clusters.Count
         nearDuplicates = $near.ToArray(); nearDuplicateCount = $near.Count
         conflicts = $conflicts; conflictCount = $conflicts.Count
+        consolidation = $consolidation; consolidationCount = $consolidation.Count
         old = $stale; status = 'informational-no-automatic-deletion'; memoryVersion = 3
         savedEmbeddings = [long]$script:YVector.reused
         newEmbeddings = [long]$script:YVector.embedded
