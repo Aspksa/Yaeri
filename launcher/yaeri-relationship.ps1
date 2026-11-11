@@ -13,7 +13,7 @@ function Add-Y3Promise($Req) {
     }
     [void]$script:Y3.promises.Add(@{
         id = (New-YId); t = (Get-YNow); text = $text
-        due = $due; status = 'active'; lastReminded = 0L
+        due = $due; status = 'active'; lastReminded = 0L; evidence = (New-YEvidence 'user_manual' 'user' '' 1)
     })
     Add-Y3Growth 'promise' ('Добавлена явная договорённость: ' + $text) ''
     Save-Y3
