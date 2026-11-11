@@ -128,7 +128,7 @@ function Add-YEvolutionFact([string]$Key, [string]$Value, [string]$Quote, [strin
         confidence = [Math]::Round($confidence, 2)
         status = $(if ($confidence -ge 0.75) { 'active' } else { 'unverified' })
         created = $now; updated = $now; lastSeen = $now
-        importance = 1.0; vec = ''; vecModel = ''
+        importance = 1.0; vec = ''; vecModel = ''; evidence = (New-YEvidence 'user_quote' $Source $Quote $confidence)
     })
     Add-YEvolutionEvent 'knowledge' ('Записано знание: ' + $key) $Source
 }
@@ -145,7 +145,7 @@ function Add-YEvolutionEpisode([string]$Title, [string]$Summary, [string]$Quote,
         quote = (Get-YEvoText $Quote 300); source = $Source
         importance = [Math]::Round((Limit-YNum $Importance 0.2 1), 2)
         created = (Get-YNow); status = 'active'; lastSeen = (Get-YNow)
-        vec = ''; vecModel = ''
+        vec = ''; vecModel = ''; evidence = (New-YEvidence 'user_quote' $Source $Quote 0)
     })
     Add-YEvolutionEvent 'episode' ('Важный момент: ' + $title) $Source
 }
@@ -158,7 +158,7 @@ function Add-YEvolutionCorrection([string]$Mistake, [string]$Correction, [string
     [void]$script:Evo.corrections.Add(@{
         id = (New-YId); wrong = (Get-YEvoText $Mistake 300)
         correct = $fix; quote = (Get-YEvoText $Quote 300)
-        source = $Source; t = (Get-YNow)
+        source = $Source; t = (Get-YNow); evidence = (New-YEvidence 'user_quote' $Source $Quote 0)
     })
     Add-YEvolutionEvent 'lesson' ('Исправление: ' + $fix) $Source
 }
@@ -331,10 +331,10 @@ function Invoke-YEvolutionOpinions {
 }
 function Get-YEvolutionView {
     $facts = @($script:Evo.facts | Select-Object -Last 40 | ForEach-Object {
-        @{ id = $_.id; key = $_.key; value = $_.value; confidence = $_.confidence; status = $_.status; source = $_.source }
+        @{ id = $_.id; key = $_.key; value = $_.value; confidence = $_.confidence; status = $_.status; source = $_.source; evidence = (Get-YEvidence $_) }
     })
     $episodes = @($script:Evo.episodes | Select-Object -Last 40 | ForEach-Object {
-        @{ id = $_.id; title = $_.title; text = $_.text; importance = $_.importance; status = $_.status; source = $_.source }
+        @{ id = $_.id; title = $_.title; text = $_.text; importance = $_.importance; status = $_.status; source = $_.source; evidence = (Get-YEvidence $_) }
     })
     return @{
         enabled = $script:Evo.enabled; queued = $script:Evo.queue.Count
