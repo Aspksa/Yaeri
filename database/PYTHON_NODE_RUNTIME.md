@@ -23,3 +23,7 @@ No Ollama, external embedding API, or agents are involved in the local semantic 
 ## Incremental corpus-wide semantic index
 
 When `localSemantic=true`, Yaeri now submits eligible memory candidates to the persistent Python service in batches. The service indexes passage embeddings asynchronously in SQLite (`semantic_index` table) and searches across all **already indexed** records by cosine similarity. This can retrieve items with no shared query terms. A BM25 shortlist remains as a fallback while indexing catches up. On the first launch, indexing is progressive; complete semantic coverage is not immediate. The PowerShell side filters returned IDs against currently eligible memory candidates so deleted/retracted items are not exposed by stale index entries. The service uses a content hash to skip unchanged indexed passages.
+
+## Native Node API migration checkpoint
+
+`GET /api/runtime` (and `HEAD /api/runtime`) now executes directly in Node.js and reports only non-sensitive component roles and Node major version. All existing stateful API routes, including `/api/status`, continue to use the PowerShell backend unchanged. This endpoint is a migration/diagnostic checkpoint, **not** evidence that the rest of the API has been ported. Native static assets are already served by Node.js.
