@@ -194,6 +194,16 @@ try {
     # responsive. The main loop alone commits validated JSON snapshots.
     $lastEvolutionPoll = 0L
     while ($true) {
+        if ($pythonService.HasExited) {
+            Write-Host 'Перезапускаю Python embeddings service...' -ForegroundColor Yellow
+            $pythonService = Start-Process -FilePath (Get-Command python).Source -ArgumentList @(
+                ('"' + (Join-Path $PSScriptRoot '..\python\embedding_service.py') + '"'),
+                '--port', [string]$script:YEmbeddingPort
+            ) -PassThru -WindowStyle Hidden
+            Start-Sleep -Milliseconds 500
+            if ($pythonService.HasExited) { throw 'Python embedding service restart failed.' }
+        }
+        if ($nodeService.HasExited) { throw 'Node.js HTTP frontend stopped unexpectedly.' }
         if ($null -ne $script:YBgJob) { [void](Complete-YBackground) }
         if (-not $listener.Pending()) {
             $clock = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
