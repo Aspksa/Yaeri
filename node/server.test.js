@@ -41,3 +41,24 @@ test("Node frontend proxies GET and POST and rejects invalid hosts/methods", asy
     await close(backend);
   }
 });
+
+test("Node serves static UI directly and does not proxy it", async () => {
+  let backendRequests = 0;
+  const backend = http.createServer((req, res) => { backendRequests++; res.end("backend"); });
+  const backendPort = await listen(backend);
+  const frontend = createServer(backendPort);
+  const port = await listen(frontend);
+  try {
+    const page = await request(port, "/");
+    assert.equal(page.status, 200);
+    assert.match(page.body, /html/i);
+    assert.equal((await request(port, "/index.html", "HEAD")).status, 200);
+    assert.equal((await request(port, "/index.html", "POST")).status, 405);
+    assert.equal((await request(port, "/nonexistent-yaeri-asset.js")).status, 404);
+    assert.equal((await request(port, "/%2e%2e/%2e%2e/config/yaeri.config.json")).status !== 200, true);
+    assert.equal(backendRequests, 0);
+  } finally {
+    await close(frontend);
+    await close(backend);
+  }
+});
