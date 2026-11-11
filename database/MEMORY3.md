@@ -48,3 +48,11 @@ Install [Ollama](https://ollama.com/) on Windows and pull a local embedding mode
 **Performance:** query and candidate embeddings are cached in process by model and text fingerprint (up to 512 entries, then cleared). The candidate shortlist is bounded to 32 and the output to 12. Cache is not persisted, and a server restart warms it again.
 
 **Limitations:** This is local semantic **reranking**, not a full vector ANN index; candidates absent from the lexical shortlist cannot be recovered. Ollama is an optional separately installed runtime, not bundled with Yaeri. If Ollama/model is unavailable the endpoint returns a 503 rather than silently calling a cloud provider. Chat generation and indexing are unchanged. No agents are introduced.
+
+## Python local embeddings (migration increment)
+
+Ollama integration was removed from the PowerShell vector search module. The previous PR left malformed PowerShell source; this increment replaces that entire section with valid functions.
+
+Install Python dependencies: `python -m pip install sentence-transformers`. Download `intfloat/multilingual-e5-small` into the local Hugging Face cache once while online (for example, using `huggingface_hub.snapshot_download`). Runtime inference uses `local_files_only=True` and offline environment flags. Request `POST /api/vector/search` with `{"query":"что я люблю","localOnly":true,"localSemantic":true,"localModel":"intfloat/multilingual-e5-small"}`.
+
+Python computes normalized CPU embeddings; PowerShell reranks up to 32 BM25 candidates and caches 512 vectors in memory. **Current limitation:** each uncached vector launches a Python process and loads the model, so first searches may be slow. This is not a full semantic index and the main HTTP API still runs in PowerShell. Node.js is required and executes a startup self-check, but it is not yet the HTTP server. No agents.
