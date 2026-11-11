@@ -10,7 +10,7 @@ function Add-Y3Cause([string]$Cause, [string]$Effect, [string]$Quote, [string]$O
     }
     [void]$script:Y3.causes.Add(@{
         id = (New-YId); t = (Get-YNow); cause = $cause; effect = $effect
-        quote = (Get-YCleanLine $Quote 320); source = $Source; status = 'user-claimed'
+        quote = (Get-YCleanLine $Quote 320); source = $Source; status = 'user-claimed'; evidence = (New-YEvidence 'user_quote' $Source $Quote 0)
     })
     Add-Y3Growth 'causal' ('Записана заявленная связь: ' + $cause + ' → ' + $effect) $Source
 }
@@ -51,7 +51,7 @@ function Add-Y3Plan($Req) {
         }
     }
     if ($steps.Count -eq 0) { throw (New-YError 400 'Добавьте шаги или включите автоматическое планирование.') }
-    $p = @{ id = (New-YId); t = (Get-YNow); goal = $goal; steps = $steps.ToArray(); status = 'active' }
+    $p = @{ id = (New-YId); t = (Get-YNow); goal = $goal; steps = $steps.ToArray(); status = 'active'; evidence = (New-YEvidence 'user_manual' 'user' '' 1) }
     [void]$script:Y3.plans.Add($p)
     Add-Y3Growth 'plan' ('Создан план по выбранной хозяином цели: ' + $goal) ''
     Save-Y3
