@@ -21,16 +21,16 @@ if (-not (Test-YExecutable 'python' '--version' 3)) { $missing += @{ name='Pytho
 if (-not (Test-YExecutable 'node' '--version' 18)) { $missing += @{ name='Node.js'; id='OpenJS.NodeJS.LTS' } }
 if ($missing.Count -eq 0) { exit 0 }
 if (-not (Get-Command winget.exe -ErrorAction SilentlyContinue)) {
-    Write-Error 'Для автоматической установки Python и Node.js требуется winget (Windows App Installer).'
+    Write-Error 'Automatic installation of Python and Node.js requires winget (Windows App Installer).'
     exit 1
 }
 foreach ($item in $missing) {
-    Write-Host ('Устанавливаю ' + $item.name + ' через winget...')
+    Write-Host ('Installing ' + $item.name + ' using winget...')
     & winget.exe install --exact --id $item.id --accept-package-agreements --accept-source-agreements --disable-interactivity
-    if ($LASTEXITCODE -ne 0) { throw ('Не удалось установить ' + $item.name + ' через winget.') }
+    if ($LASTEXITCODE -ne 0) { throw ('Failed to install ' + $item.name + ' using winget.') }
 }
 Refresh-YPath
 if (-not (Test-YExecutable 'python' '--version' 3) -or -not (Test-YExecutable 'node' '--version' 18)) {
-    throw 'Рантаймы установлены, но команды пока недоступны. Перезапустите Yaeri.bat.'
+    throw 'Runtimes installed but not available on PATH. Restart Yaeri.bat.'
 }
 exit 0
