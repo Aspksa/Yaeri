@@ -16,3 +16,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tests/memory3-smoke.ps1
 ```
 
 **Note:** This is a scoped Memory 3.0 increment, not a full new graph engine or normalized SQL migration. The existing SQLite integration continues to persist the application's JSON snapshots. Windows execution was not available in the authoring environment.
+
+## Consolidation review (increment 2)
+
+The existing Vector quality endpoint now exposes `quality.consolidation` and `quality.consolidationCount`. Groups are exact duplicates after case/whitespace normalization; each group retains the IDs, memory spaces, evidence origins, and source IDs of all originals. All groups are marked `review-only`.
+
+No records are merged, deleted, promoted to verified facts, or changed automatically. Near-duplicates and contradictions remain separate review signals. This is an inspection capability, **not** automatic semantic consolidation.
