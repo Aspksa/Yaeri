@@ -27,6 +27,7 @@ try {
     [void]$script:Notes.Add(@{ id = 'note1'; cat = 'Проекты'; text = 'Яэри — любимый проект'; t = $now
         evidence = (New-YEvidence 'user_manual' 'user' '' 1) })
 
+    Write-Host 'Life4 test stage: world graph'
     $world = Get-YLifeWorld
     if ($world.nodeCount -lt 4 -or $world.edgeCount -lt 2) { throw 'Grounded world nodes/edges missing.' }
     if (@($world.edges | Where-Object { $_.kind -eq 'claimed-cause' -and $_.evidence -eq 'user-statement-not-proof' }).Count -ne 1) {
@@ -34,6 +35,7 @@ try {
     }
     if (-not (Get-YLifeWorldPrompt)) { throw 'World context prompt missing.' }
 
+    Write-Host 'Life4 test stage: settings and privacy'
     [void](Set-YLifeSettings @{ language = 'playful'; nickname = 'Солнышко'; offline = $true; localModel = 'yaeri-local' })
     if (-not $script:YLife.offline -or $script:YLife.language -ne 'playful') { throw 'Offline/affection settings not saved.' }
     $script:Y3.enabled = $true; $script:Y3.affection = 1
@@ -52,6 +54,7 @@ try {
     # Simulate GGUF server not running; the built-in memory engine must
     # still work, and must not attempt to contact Cloud.ru.
     function Test-YLocalEngine { return @{ ok = $true; generative = $false; backend = 'memory-only' } }
+    Write-Host 'Life4 test stage: offline chat'
     $answer = Invoke-YApi 'POST' '/api/chat' (ConvertTo-YJson @{
         text = 'Какие у нас планы?'; rag = $false; remember = $false
         soul = $false; autoNotes = $false; innerVoice = $false; selfCheck = $false
@@ -62,6 +65,7 @@ try {
     $offlineMemory = Get-YOfflineReply 'Яэри проект'
     if ($offlineMemory -notmatch 'памят') { throw 'Lexical recall without embeddings failed.' }
 
+    Write-Host 'Life4 test stage: approved tools'
     $tool = Add-YLifeToolProposal 'notes-list' 'Показать мои заметки' 'Посмотреть локально'
     if (-not $tool -or $tool.status -ne 'proposed') { throw 'Read-only tool proposal failed.' }
     try {
@@ -82,6 +86,7 @@ try {
         if ($_.Exception.Message -notmatch 'Недопустимый тип') { throw }
     }
 
+    Write-Host 'Life4 test stage: outcome feedback'
     Add-YLifeForecast @{ id = 'reply1' } @{
         question = 'Что изменится?'; options = @(@{ path = 'A'; outcome = 'B' })
     }
@@ -101,6 +106,7 @@ try {
         if ($Endpoint -ne 'chat') { throw 'Unexpected local endpoint.' }
         return @{ choices = @(@{ message = @{ content = 'Локальный GGUF-ответ' } }) }
     }
+    Write-Host 'Life4 test stage: optional GGUF'
     $generated = Invoke-YLocalChat @(@{ role = 'user'; content = 'Привет' })
     if ($generated.choices[0].message.content -ne 'Локальный GGUF-ответ' -or
         $script:YLocalLastBackend -ne 'llama.cpp') { throw 'Optional GGUF backend integration failed.' }
