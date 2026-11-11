@@ -42,7 +42,7 @@ function Get-YVectorTokens([string]$Text) {
         $words.Add([string]$m.Value)
         if ($words.Count -ge 180) { break }
     }
-    return ,$words.ToArray()
+    return $words.ToArray()
 }
 function Get-YVectorDate($Item) {
     foreach ($key in @('t','created','updated')) {
@@ -100,7 +100,7 @@ function Get-YVectorCandidates {
         if ($null -ne $c) { $out.Add($c) }
     }
     if ($null -ne $script:SoulVecs) {
-        foreach ($m in @(Get-YSoulMemories | Select-Object -Last 250)) {
+        foreach ($m in (Get-YSoulMemories)) {
             $vec = $(if ($script:SoulVecModel -eq [string]$script:Config.embeddingModel -and $script:SoulVecs.ContainsKey([string]$m.id)) { [string]$script:SoulVecs[[string]$m.id] } else { '' })
             $importance = $(if ($m.kind -eq 'moment') { 0.85 } else { 0.35 })
             $stamp = $(if ((Get-YVectorDate $m.ref) -gt 0) { Get-YVectorDate $m.ref } else { [long](Get-YNum (Get-YValue $m 't' 0) 0) })
@@ -122,7 +122,7 @@ function Get-YVectorCandidates {
             if ($null -ne $c) { $out.Add($c) }
         }
     }
-    return ,$out.ToArray()
+    return $out.ToArray()
 }
 function Get-YVectorEvidenceScore($Evidence) {
     switch ([string]$Evidence.origin) {
@@ -159,7 +159,7 @@ function Get-YVectorBM25([string[]]$QueryTerms, [string[]]$Terms, $DocumentFrequ
 }
 function Find-YVectorMatches([string]$Query, $QueryVec, [int]$Top = 10, [long]$Before = [long]::MaxValue) {
     $pool = @(Get-YVectorCandidates)
-    if ($pool.Count -eq 0) { return ,@() }
+    if ($pool.Count -eq 0) { return @() }
     $queryTerms = @(Get-YVectorTokens $Query)
     $df = @{}
     $tokensById = @{}
@@ -271,7 +271,7 @@ function Find-YVectorMatches([string]$Query, $QueryVec, [int]$Top = 10, [long]$B
         $spaces[$space] = [int]$spaces[$space] + 1
         if ($chosen.Count -ge $Top) { break }
     }
-    return ,$chosen.ToArray()
+    return $chosen.ToArray()
 }
 function Add-YVectorFeedback([string]$ReplyId, [int]$Score, $Sources) {
     if (-not $script:YVector.enabled -or -not $ReplyId) { return }
