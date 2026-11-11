@@ -1143,7 +1143,8 @@ function Set-YConfig($Req) {
     }
     Import-YConfig
     $script:ModelsCache = $null
-    if ((Test-YKey $Req 'apiKey') -and (Test-YConfigured)) { $check = Test-YConnection }
+    # Connection tests call Cloud.ru and must not block the HTTP server.
+    # The browser requests /api/config/test after this fast, atomic save.
     $result = Get-YStatus
     $result['check'] = $check
     return $result
