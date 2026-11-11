@@ -24,7 +24,7 @@ if ($RequestFile) {
     }
 } else {
     Invoke-Y3Tick
-    Invoke-YEvolutionTick
+    if (-not [bool]$script:YLife.offline -and (Test-YConfigured)) { Invoke-YEvolutionTick }
     if ($script:YE5.enabled -and $script:YE5.periodic) { [void](Invoke-YE5Cycle) }
     if ($ResultFile) { Write-YJsonFile $ResultFile @{ ok = $true } }
 }
