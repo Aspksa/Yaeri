@@ -290,7 +290,7 @@ function Search-YVector($Req) {
     if (-not $script:YVector.enabled) { throw (New-YError 409 'Vector 2.0 отключён.') }
     # localOnly is an explicit privacy guarantee: never call the cloud embedding API.
     # Without a local embedding model, use the existing BM25 lexical retrieval.
-    $localOnly = [bool](Get-YValue $Req 'localOnly' $false)
+    $localOnly = [bool](Get-YValue $Req 'localOnly' $true)
     $vec = $null
     if (-not $localOnly -and (Test-YConfigured)) {
         try { $vec = [YaeriVec]::Decode((Get-YEmbeddings @($text))[0]) } catch { }
