@@ -3,6 +3,7 @@ const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
 const { rejectApiRequest } = require("./api-security");
+const { inspectStore } = require("./storage");
 
 const SITE_ROOT = fs.realpathSync(path.join(__dirname, "..", "site"));
 const MIME = Object.freeze({
@@ -98,6 +99,22 @@ function createServer(backendPort, options = {}) {
     }
     if (!backendToken && require.main === module) {
       res.writeHead(503); res.end("Private API channel not initialized"); return;
+    }
+    if (req.url === "/api/storage/health") {
+      if (req.method !== "GET" && req.method !== "HEAD") {
+        res.writeHead(405, { allow: "GET, HEAD" }); res.end(); return;
+      }
+      inspectStore(options.dataDir).then(result => {
+        if (res.destroyed) return;
+        const body = Buffer.from(JSON.stringify(result));
+        res.writeHead(200, { "content-type": "application/json; charset=utf-8",
+          "content-length": body.length, "cache-control": "no-store",
+          "x-content-type-options": "nosniff" });
+        res.end(req.method === "HEAD" ? undefined : body);
+      }).catch(() => {
+        if (!res.destroyed) { res.writeHead(503); res.end("Storage inspection unavailable"); }
+      });
+      return;
     }
     let received = 0;
     let failed = false;

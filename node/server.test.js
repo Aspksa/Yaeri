@@ -140,3 +140,32 @@ test("Node authenticates private PowerShell API channel and ignores spoofed toke
     await close(backend);
   }
 });
+
+test("Node inspects JSON storage without returning private records", async () => {
+  const fs = require("node:fs/promises");
+  const os = require("node:os");
+  const path = require("node:path");
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "yaeri-store-"));
+  const backend = http.createServer((req, res) => res.end("legacy"));
+  const backendPort = await listen(backend);
+  const frontend = createServer(backendPort, { dataDir: dir });
+  const port = await listen(frontend);
+  try {
+    await fs.writeFile(path.join(dir, "notes.json"),
+      JSON.stringify({ version: 1, items: [{ text: "PRIVATE_CONTENT" }] }));
+    await fs.writeFile(path.join(dir, "history.json"), "{bad json");
+    const result = await request(port, "/api/storage/health");
+    assert.equal(result.status, 200);
+    assert.equal(result.body.includes("PRIVATE_CONTENT"), false);
+    const parsed = JSON.parse(result.body);
+    assert.deepEqual(parsed.stores.notes, { status: "ok", count: 1, version: 1 });
+    assert.equal(parsed.stores.history.status, "unavailable");
+    assert.equal(parsed.stores.memory.status, "missing");
+    assert.equal((await request(port, "/api/storage/health", "HEAD")).status, 200);
+    assert.equal((await request(port, "/api/storage/health", "POST", "{}")).status, 405);
+  } finally {
+    await close(frontend);
+    await close(backend);
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
