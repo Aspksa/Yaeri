@@ -1,0 +1,28 @@
+name: Runtime smoke
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Node syntax
+        run: |
+          node --check node/server.js
+          node --check node/runtime-check.js
+          node node/runtime-check.js
+      - name: Check Python syntax and bootstrap unit tests
+        run: |
+          python -m compileall -q python
+          python -m unittest discover -s python -p "test_*.py"
+      - name: Parse PowerShell scripts
+        shell: powershell
+        run: |
+          $files = @('launcher/start.ps1','launcher/bootstrap-runtimes.ps1','launcher/yaeri-vector-index.ps1')
+          foreach ($file in $files) {
+            $tokens = $null; $errors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file),[ref]$tokens,[ref]$errors)
+            if ($errors.Count) { $errors | ForEach-Object { Write-Error "$file : $_" }; exit 1 }
+          }
