@@ -62,6 +62,7 @@ function Get-YEvidenceView {
         @{ category = 'Эпизоды'; items = @($script:Evo.episodes) }
         @{ category = 'Исправления'; items = @($script:Evo.corrections) }
         @{ category = 'Отношения'; items = @($script:Y3.moments) + @($script:Y3.preferences) + @($script:Y3.repairs) }
+        @{ category = 'Планы и обещания'; items = @($script:Y3.plans) + @($script:Y3.promises) }
         @{ category = 'Карта хозяина'; items = @($script:Und.map) }
         @{ category = 'Рабочая память'; items = @($script:Notes) }
         @{ category = 'Душа'; items = @($script:Soul.moments) + @($script:Soul.journal) }
