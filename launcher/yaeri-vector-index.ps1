@@ -117,6 +117,15 @@ function Get-YVectorConflicts {
         } elseif (-not $known.ContainsKey($key)) { $known[$key] = $fact }
         if ($conflicts.Count -ge 30) { break }
     }
+    # Previous corrections/conflicts are surfaced as review tasks, not
+    # automatically settled by the ranking model.
+    foreach ($e in @($script:Evo.events | Select-Object -Last 100)) {
+        if ([string]$e.kind -ne 'conflict' -or $conflicts.Count -ge 30) { continue }
+        $conflicts.Add(@{
+            key = [string]$e.text; a = ''; b = ''
+            first = [string]$e.source; second = ''; status = 'needs-review'
+        })
+    }
     return ,$conflicts.ToArray()
 }
 function Get-YVectorQuality {
@@ -127,13 +136,20 @@ function Get-YVectorQuality {
     $clusters = New-Object System.Collections.Generic.List[object]
     $stale = 0
     $vectorized = 0
+    $near = New-Object System.Collections.Generic.List[object]
+    $vecGroups = @{}
     $now = Get-YNow
     foreach ($item in $items) {
         $space = [string]$item.space
         $bySpace[$space] = [int]$bySpace[$space] + 1
         $origin = [string]$item.evidence.origin
         $byEvidence[$origin] = [int]$byEvidence[$origin] + 1
-        if ($item.vec) { $vectorized++ }
+        if ($item.vec) {
+            $vectorized++
+            $space = [string]$item.space
+            if (-not $vecGroups.ContainsKey($space)) { $vecGroups[$space] = New-Object System.Collections.Generic.List[object] }
+            if ($vecGroups[$space].Count -lt 90) { $vecGroups[$space].Add($item) }
+        }
         if ([long]$item.t -gt 0 -and $now - [long]$item.t -gt 365 * 86400000L) { $stale++ }
         $norm = (Get-YVectorFingerprint ([string]$item.text))
         if ($dupes.ContainsKey($norm)) {
@@ -143,12 +159,37 @@ function Get-YVectorQuality {
             }
         } else { $dupes[$norm] = $item }
     }
+    # Near-duplicates are *suggestions*, never auto-merged. Semantic
+    # similarity alone is insufficient, so compare size and shared terms.
+    foreach ($space in @($vecGroups.Keys)) {
+        $group = $vecGroups[$space]
+        for ($i = 0; $i -lt $group.Count -and $near.Count -lt 20; $i++) {
+            for ($j = $i + 1; $j -lt $group.Count -and $near.Count -lt 20; $j++) {
+                $a = $group[$i]; $b = $group[$j]
+                if ([string]$a.text -eq [string]$b.text) { continue }
+                $size = [Math]::Min($a.text.Length, $b.text.Length) / [Math]::Max(1.0, [Math]::Max($a.text.Length, $b.text.Length))
+                if ($size -lt 0.7) { continue }
+                try { $similarity = [YaeriVec]::Dot([YaeriVec]::Decode([string]$a.vec), [YaeriVec]::Decode([string]$b.vec)) } catch { continue }
+                if ($similarity -lt 0.975) { continue }
+                $termsA = @(Get-YVectorTokens ([string]$a.text) | Select-Object -Unique)
+                $termsB = @(Get-YVectorTokens ([string]$b.text) | Select-Object -Unique)
+                if ($termsA.Count -eq 0 -or $termsB.Count -eq 0) { continue }
+                $common = @($termsA | Where-Object { $termsB -contains $_ }).Count
+                if ($common / [Math]::Max(1.0, [Math]::Min($termsA.Count, $termsB.Count)) -lt 0.55) { continue }
+                $near.Add(@{
+                    first = $space + ':' + [string]$a.id; second = $space + ':' + [string]$b.id
+                    similarity = [Math]::Round($similarity, 3); action = 'review-only'
+                })
+            }
+        }
+    }
     $conflicts = @(Get-YVectorConflicts)
     return @{
         total = $items.Count; vectorized = $vectorized
         lexicalOnly = $items.Count - $vectorized
         bySpace = $bySpace; byEvidence = $byEvidence
         duplicates = $clusters.ToArray(); duplicateCount = $clusters.Count
+        nearDuplicates = $near.ToArray(); nearDuplicateCount = $near.Count
         conflicts = $conflicts; conflictCount = $conflicts.Count
         old = $stale; status = 'informational-no-automatic-deletion'
         savedEmbeddings = [long]$script:YVector.reused
