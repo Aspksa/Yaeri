@@ -1,6 +1,7 @@
 """Loopback-only, persistent CPU embedding service. One JSON line in, one JSON line out."""
 import argparse
 import base64
+from contextlib import closing
 import hashlib
 import json
 import os
@@ -34,13 +35,14 @@ def embedding(text):
     key = hashlib.sha256((MODEL_ID + "\0" + text).encode("utf-8")).hexdigest()
     with _lock:
         DB.parent.mkdir(parents=True, exist_ok=True)
-        with sqlite3.connect(str(DB), timeout=10) as db:
+        with closing(sqlite3.connect(str(DB), timeout=10)) as db:
             db.execute("CREATE TABLE IF NOT EXISTS embeddings (key TEXT PRIMARY KEY, model TEXT NOT NULL, vector TEXT NOT NULL)")
             row = db.execute("SELECT vector FROM embeddings WHERE key=?", (key,)).fetchone()
             if row:
                 return row[0]
             result = vector(text)
             db.execute("INSERT OR REPLACE INTO embeddings(key,model,vector) VALUES (?,?,?)", (key, MODEL_ID, result))
+            db.commit()
             return result
 
 
