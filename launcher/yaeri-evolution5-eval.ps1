@@ -279,17 +279,17 @@ function Invoke-YE5Research($Req) {
 function Get-YE5View {
     return @{version=1;enabled=[bool]$script:YE5.enabled;periodic=[bool]$script:YE5.periodic
         lastCycle=[long]$script:YE5.lastCycle;lastResearch=[long]$script:YE5.lastResearch
-        goals=@($script:YE5.goals | Select-Object -Last 30)
+        goals=@(Get-YE5Visible 'goals' 30)
         rankedGoals=@(Get-YE5RankedGoals)
-        gaps=@($script:YE5.gaps | Select-Object -Last 35)
-        hypotheses=@($script:YE5.hypotheses | Select-Object -Last 25)
-        experiments=@($script:YE5.experiments | Select-Object -Last 25)
-        concepts=@($script:YE5.concepts | Select-Object -Last 25)
-        strategies=@($script:YE5.strategies | Select-Object -Last 25)
-        errors=@($script:YE5.errors | Select-Object -Last 12)
-        transfers=@($script:YE5.transfers | Select-Object -Last 12)
-        calibrations=@($script:YE5.calibrations | Select-Object -Last 20)
+        gaps=@(Get-YE5Visible 'gaps' 35)
+        hypotheses=@(Get-YE5Visible 'hypotheses' 25)
+        experiments=@(Get-YE5Visible 'experiments' 25)
+        concepts=@(Get-YE5Visible 'concepts' 25)
+        strategies=@(Get-YE5Visible 'strategies' 25)
+        errors=@(Get-YE5Visible 'errors' 12)
+        transfers=@(Get-YE5Visible 'transfers' 12)
+        calibrations=@(Get-YE5Visible 'calibrations' 20)
         calibration=(Get-YE5CalibrationReport);learning=(Get-YE5LearningReport)
-        logs=@($script:YE5.logs | Select-Object -Last 25)
+        logs=@(Get-YE5Visible 'logs' 25)
         limitation='Тест покрытия правил не доказывает качество ответа; обучение меняет стратегию и память, не веса модели.'}
 }
