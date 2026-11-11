@@ -88,3 +88,30 @@ test("native Node runtime API responds without PowerShell and preserves proxy ro
     await close(backend);
   }
 });
+
+test("Node API rejects cross-site, forged origins and non-JSON POST", async () => {
+  const backend = http.createServer((req, res) => res.end("backend"));
+  const backendPort = await listen(backend);
+  const frontend = createServer(backendPort);
+  const port = await listen(frontend);
+  function send(headers, method = "GET") {
+    return new Promise((resolve, reject) => {
+      const req = http.request({ hostname: "127.0.0.1", port, path: "/api/status",
+        method, headers: { host: "127.0.0.1:" + port, ...headers } }, res => {
+        res.resume(); res.on("end", () => resolve(res.statusCode));
+      });
+      req.on("error", reject); req.end();
+    });
+  }
+  try {
+    assert.equal(await send({ "sec-fetch-site": "cross-site" }), 403);
+    assert.equal(await send({ origin: "http://evil.example" }), 403);
+    assert.equal(await send({ origin: "http://127.0.0.1:9999" }), 403);
+    assert.equal(await send({ "content-type": "text/plain" }, "POST"), 403);
+    assert.equal(await send({ origin: "http://127.0.0.1:" + port }), 200);
+    assert.equal(await send({ "content-type": "application/json" }, "POST"), 200);
+  } finally {
+    await close(frontend);
+    await close(backend);
+  }
+});
