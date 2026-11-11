@@ -42,6 +42,9 @@ jobs:
       - name: Safe startup auto-update guards
         shell: cmd
         run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\test-autoupdate.ps1
+      - name: Yaeri Life 4.0 world and Ollama-free offline smoke
+        shell: cmd
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\\test-life4.ps1
       - name: Browser JavaScript syntax
         shell: cmd
         run: node tests\check-site.js
