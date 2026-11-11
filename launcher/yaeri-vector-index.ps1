@@ -126,7 +126,7 @@ function Get-YVectorConflicts {
             first = [string]$e.source; second = ''; status = 'needs-review'
         })
     }
-    return ,$conflicts.ToArray()
+    return $conflicts.ToArray()
 }
 function Get-YVectorQuality {
     $items = @(Get-YVectorCandidates)
