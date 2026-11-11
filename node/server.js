@@ -3,6 +3,53 @@ const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
 
+const SITE_ROOT = fs.realpathSync(path.join(__dirname, "..", "site"));
+const MIME = Object.freeze({
+  ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8",
+  ".js": "application/javascript; charset=utf-8", ".json": "application/json; charset=utf-8",
+  ".svg": "image/svg+xml", ".png": "image/png", ".webp": "image/webp",
+  ".ico": "image/x-icon"
+});
+
+function serveStatic(req, res) {
+  if (req.method === "POST") {
+    res.writeHead(405); res.end("Method not allowed"); return;
+  }
+  let decoded;
+  try {
+    const pathname = new URL(req.url, "http://localhost").pathname;
+    decoded = decodeURIComponent(pathname);
+    if (decoded.includes("\\") || decoded.includes("\0") || decoded.split("/").includes("..")) {
+      throw new Error("invalid path");
+    }
+  } catch {
+    res.writeHead(400); res.end("Invalid path"); return;
+  }
+  const relative = decoded === "/" ? "index.html" : decoded.replace(/^\/+/, "");
+  const candidate = path.resolve(SITE_ROOT, relative);
+  if (!candidate.startsWith(SITE_ROOT + path.sep)) {
+    res.writeHead(403); res.end("Forbidden"); return;
+  }
+  fs.realpath(candidate, (error, resolved) => {
+    if (error) { res.writeHead(404); res.end("Not found"); return; }
+    if (!resolved.startsWith(SITE_ROOT + path.sep)) {
+      res.writeHead(403); res.end("Forbidden"); return;
+    }
+    fs.stat(resolved, (statError, stat) => {
+      if (statError || !stat.isFile()) { res.writeHead(404); res.end("Not found"); return; }
+      res.writeHead(200, {
+        "content-type": MIME[path.extname(resolved).toLowerCase()] || "application/octet-stream",
+        "content-length": stat.size, "cache-control": "no-store",
+        "x-content-type-options": "nosniff"
+      });
+      if (req.method === "HEAD") { res.end(); return; }
+      const file = fs.createReadStream(resolved);
+      file.on("error", () => res.destroy());
+      file.pipe(res);
+    });
+  });
+}
+
 function createServer(backendPort, options = {}) {
   if (!Number.isInteger(backendPort) || backendPort < 1 || backendPort > 65535) {
     throw new Error("Invalid backend port");
@@ -21,6 +68,7 @@ function createServer(backendPort, options = {}) {
          Number(req.headers["content-length"]) > maxBody))) {
       res.writeHead(413); res.end("Unsupported or oversized request body"); return;
     }
+    if (!req.url.startsWith('/api/')) { serveStatic(req, res); return; }
     let received = 0;
     let failed = false;
     const upstream = http.request({
