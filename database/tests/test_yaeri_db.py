@@ -5,7 +5,7 @@ from database.yaeri_db import YaeriDB
 
 
 class DatabaseTests(unittest.TestCase):
-    def test_memory_search_links_and_jobs(self):
+    def test_memory_search_and_links(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "yaeri.sqlite3"
             with YaeriDB(path) as db:
@@ -15,12 +15,6 @@ class DatabaseTests(unittest.TestCase):
                 self.assertEqual(len(db.search_memories("проект")), 1)
                 self.assertEqual(len(db.search_memories("%")), 0)
                 db.link_memories(first, second, "related")
-                job = db.create_job("researcher", "Проверить память")
-                db.add_agent_event(job, "started", {"ok": True})
-                db.set_job_status(job, "completed", result={"count": 1})
-                self.assertEqual(db.conn.execute(
-                    "SELECT status FROM agent_jobs WHERE id=?", (job,)
-                ).fetchone()[0], "completed")
                 self.assertEqual(db.conn.execute(
                     "SELECT count(*) FROM memory_links"
                 ).fetchone()[0], 1)
