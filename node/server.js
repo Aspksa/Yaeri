@@ -69,6 +69,24 @@ function createServer(backendPort, options = {}) {
       res.writeHead(413); res.end("Unsupported or oversized request body"); return;
     }
     if (!req.url.startsWith('/api/')) { serveStatic(req, res); return; }
+    // Native Node diagnostics: no access to user data, secrets, or PowerShell state.
+    // Preserve legacy API handling for all other routes.
+    if (req.url === "/api/runtime") {
+      if (req.method !== "GET" && req.method !== "HEAD") {
+        res.writeHead(405, { allow: "GET, HEAD" }); res.end(); return;
+      }
+      const body = Buffer.from(JSON.stringify({
+        ok: true, frontend: "node", nodeMajor: Number(process.versions.node.split(".")[0]),
+        apiBackend: "powershell", embeddingBackend: "python"
+      }));
+      res.writeHead(200, {
+        "content-type": "application/json; charset=utf-8",
+        "content-length": body.length, "cache-control": "no-store",
+        "x-content-type-options": "nosniff"
+      });
+      res.end(req.method === "HEAD" ? undefined : body);
+      return;
+    }
     let received = 0;
     let failed = false;
     const upstream = http.request({
