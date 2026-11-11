@@ -13,6 +13,7 @@ $script:DataDir = if ($script:YaeriDataOverride) {
     [System.IO.Path]::GetFullPath([string]$script:YaeriDataOverride)
 } else { Join-Path $script:ProjectRoot 'data' }
 $script:Utf8 = [System.Text.UTF8Encoding]::new($false)
+. (Join-Path $PSScriptRoot 'yaeri-sqlite.ps1')
 
 # Душа Яэри (характер, настроение, мысли о хозяине) — в отдельном файле.
 . (Join-Path $PSScriptRoot 'yaeri-provenance.ps1')
@@ -202,18 +203,28 @@ function ConvertTo-YPlain($Value) {
 }
 
 function Read-YJsonFile([string]$Path) {
+    if (Test-YSqliteDataPath $Path) {
+        # SQLite is authoritative after first migration; existing JSON is imported once.
+        $stored = Read-YSqliteSnapshot $Path
+        if ($null -ne $stored) { return , (ConvertFrom-YJson $stored) }
+    }
     if (-not [System.IO.File]::Exists($Path)) { return $null }
     $text = [System.IO.File]::ReadAllText($Path, $script:Utf8)
-    return , (ConvertFrom-YJson $text)
+    $value = ConvertFrom-YJson $text
+    if (Test-YSqliteDataPath $Path) {
+        # A failed migration must not silently discard the legacy JSON data.
+        Write-YSqliteSnapshot $Path $text
+    }
+    return , $value
 }
 
 function Write-YJsonFile([string]$Path, $Value) {
-    # Сначала временный файл, затем замена: при сбое старые данные не портятся.
+    $text = ConvertTo-YJson $Value
+    # Commit to SQLite first; JSON is a compatibility snapshot/backup.
+    if (Test-YSqliteDataPath $Path) { Write-YSqliteSnapshot $Path $text }
     $tmp = $Path + '.tmp'
-    [System.IO.File]::WriteAllText($tmp, (ConvertTo-YJson $Value), $script:Utf8)
+    [System.IO.File]::WriteAllText($tmp, $text, $script:Utf8)
     if ([System.IO.File]::Exists($Path)) {
-        # PowerShell превращает $null в пустую строку для строковых параметров .NET,
-        # а File.Replace на пустом пути резервной копии падает. NullString передаёт настоящий null.
         [System.IO.File]::Replace($tmp, $Path, [System.Management.Automation.Language.NullString]::Value)
     } else {
         [System.IO.File]::Move($tmp, $Path)
