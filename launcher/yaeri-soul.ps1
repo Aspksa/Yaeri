@@ -73,7 +73,8 @@ function Get-YStrList($Value, [int]$Max, [int]$Len) {
 }
 
 function New-YSoulEntry([string]$Kind, [string]$Text, [string]$Mood) {
-    return @{ id = (New-YId); t = (Get-YNow); kind = $Kind; text = $Text; mood = $Mood }
+    $origin = $(if (@('dream','birth','muse') -contains $Kind) { 'creative' } else { 'assistant_generated' })
+    return @{ id = (New-YId); t = (Get-YNow); kind = $Kind; text = $Text; mood = $Mood; evidence = (New-YEvidence $origin '' '' 0) }
 }
 
 function Get-YDayKey([int]$Offset = 0) { return [DateTime]::Now.Date.AddDays($Offset).ToString('yyyy-MM-dd') }
@@ -93,7 +94,7 @@ function ConvertTo-YMoment($x) {
     return @{
         id = [string](Get-YValue $x 'id' (New-YId)); t = [long](Get-YNum (Get-YValue $x 't' (Get-YNow)) 0)
         title = $title; text = $text; strength = [Math]::Round((Limit-YNum (Get-YNum (Get-YValue $x 'strength' 5) 5) 0 10), 2)
-        pinned = [bool](Get-YValue $x 'pinned' $false); recalled = [long](Get-YNum (Get-YValue $x 'recalled' 0) 0)
+        pinned = [bool](Get-YValue $x 'pinned' $false); recalled = [long](Get-YNum (Get-YValue $x 'recalled' 0) 0); evidence = (Get-YEvidence $x)
     }
 }
 
@@ -233,7 +234,7 @@ function ConvertTo-YSoul($Raw) {
             if (-not $text) { continue }
             [void]$journal.Add(@{
                 id = [string](Get-YValue $e 'id' (New-YId)); t = [long](Get-YNum (Get-YValue $e 't' 0) 0)
-                kind = [string](Get-YValue $e 'kind' 'reflection'); text = $text; mood = [string](Get-YValue $e 'mood' '')
+                kind = [string](Get-YValue $e 'kind' 'reflection'); text = $text; mood = [string](Get-YValue $e 'mood' ''); evidence = (Get-YEvidence $e)
             })
         }
         $s.journal = $journal
@@ -740,7 +741,7 @@ function Update-YSoulGrowth($r, [string]$Kind) {
     }
     $mom = Get-YValue $r 'moment' $null
     if ($mom -is [System.Collections.IDictionary]) {
-        $new = ConvertTo-YMoment @{ title = (Get-YValue $mom 'title' ''); text = (Get-YValue $mom 'text' ''); strength = 6; t = $now }
+        $new = ConvertTo-YMoment @{ title = (Get-YValue $mom 'title' ''); text = (Get-YValue $mom 'text' ''); strength = 6; t = $now; evidence = (New-YEvidence 'assistant_hypothesis' '' '' 0) }
         if ($null -ne $new) {
             $dup = $false
             foreach ($mo in @($s.moments)) { if ([string]::Equals([string]$mo.title, $new.title, [System.StringComparison]::OrdinalIgnoreCase)) { $dup = $true; $mo.strength = [Math]::Min(10, [double]$mo.strength + 1.5) } }
@@ -886,7 +887,7 @@ function Invoke-YSoulSleep($Req) {
                 if ($parts.Count -lt 2) { continue }
                 $best = 0.0; $pin = $false; $first = [long]::MaxValue
                 foreach ($pm in $parts) { $best = [Math]::Max($best, [double]$pm.strength); if ($pm.pinned) { $pin = $true }; $first = [Math]::Min($first, [long]$pm.t) }
-                $merged = ConvertTo-YMoment @{ title = (Get-YValue $g 'title' $parts[0].title); text = (Get-YValue $g 'text' $parts[0].text); strength = [Math]::Min(10, $best + 1); pinned = $pin; t = $first }
+                $merged = ConvertTo-YMoment @{ title = (Get-YValue $g 'title' $parts[0].title); text = (Get-YValue $g 'text' $parts[0].text); strength = [Math]::Min(10, $best + 1); pinned = $pin; t = $first; evidence = (New-YEvidence 'assistant_generated' '' '' 0) }
                 if ($null -eq $merged) { continue }
                 $rest = New-Object System.Collections.Generic.List[object]
                 foreach ($mo in @($s.moments)) { if (-not ($ids -contains [string]$mo.id)) { $rest.Add($mo) } }
