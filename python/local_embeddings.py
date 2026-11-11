@@ -14,7 +14,11 @@ def embed(text, model_name=DEFAULT_MODEL):
     # Offline after the model has been downloaded; no implicit network requests.
     os.environ["HF_HUB_OFFLINE"] = "1"
     os.environ["TRANSFORMERS_OFFLINE"] = "1"
-    model = SentenceTransformer(model_name, local_files_only=True, device="cpu")
+    if model_name != DEFAULT_MODEL:
+        raise ValueError("Only the bundled local model is supported")
+    if not os.path.isfile(os.path.join(LOCAL_MODEL, "config.json")):
+        raise RuntimeError("Local model is missing; run python/bootstrap.py")
+    model = SentenceTransformer(LOCAL_MODEL, local_files_only=True, device="cpu")
     values = model.encode([text], normalize_embeddings=True)[0].tolist()
     return base64.b64encode(struct.pack("<" + "f" * len(values), *values)).decode("ascii")
 
