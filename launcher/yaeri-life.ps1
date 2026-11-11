@@ -21,11 +21,11 @@ function Import-YLife {
 function Save-YLife {
     while ($script:YLife.forecasts.Count -gt 120) { $script:YLife.forecasts.RemoveAt(0) }
     while ($script:YLife.tools.Count -gt 80) { $script:YLife.tools.RemoveAt(0) }
-    Write-YJsonFile $script:YLifeFile @{
+    Write-YJsonFile $script:YLifeFile (ConvertTo-YPlain @{
         version = 1; offline = $script:YLife.offline; localModel = $script:YLife.localModel
         language = $script:YLife.language; nickname = $script:YLife.nickname
         forecasts = $script:YLife.forecasts.ToArray(); tools = $script:YLife.tools.ToArray()
-    }
+    })
 }
 function Set-YLifeSettings($Req) {
     if (Test-YKey $Req 'offline') { $script:YLife.offline = [bool]$Req.offline }
