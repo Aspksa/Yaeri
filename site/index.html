@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru" data-accent="forest" data-size="md" data-motion="on" data-time="on">
+<html lang="ru" data-accent="gold" data-size="lg" data-density="normal" data-motion="on" data-time="on">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -166,6 +166,14 @@
             <button type="button" role="tab" data-tf="notes">Заметки<i></i></button>
             <button type="button" role="tab" data-tf="done">Готово<i></i></button>
           </div>
+          <div class="tasks-week" aria-label="Неделя">
+            <div class="tasks-week-head">
+              <button type="button" class="pc-arrow" id="tasks-week-prev" aria-label="Предыдущая неделя">‹</button>
+              <button type="button" class="tasks-week-title" id="tasks-week-title" title="К текущей неделе"></button>
+              <button type="button" class="pc-arrow" id="tasks-week-next" aria-label="Следующая неделя">›</button>
+            </div>
+            <div class="tasks-week-days" id="tasks-week-days"></div>
+          </div>
           <div class="tasks-day" id="tasks-day" hidden>
             <span id="tasks-day-text"></span>
             <button type="button" class="mini-btn" id="tasks-day-clear" aria-label="Показать все дела">все дела ×</button>
@@ -188,6 +196,10 @@
               <button type="submit" class="mini-btn solid" id="tasks-submit">Добавить</button>
             </div>
           </form>
+          <div class="tasks-search">
+            <input class="field" id="tasks-search" type="search" placeholder="Поиск по делам и заметкам" aria-label="Поиск по делам и заметкам">
+            <span id="tasks-found" aria-live="polite"></span>
+          </div>
           <div class="card-body grow tasks-body">
             <ul class="tasks-list" id="tasks-list" aria-live="polite"></ul>
           </div>
@@ -195,6 +207,7 @@
             <span id="tasks-foot-text"></span>
             <span class="tasks-foot-acts">
               <button type="button" class="mini-btn" id="tasks-bell" title="Показывать напоминания Windows, когда вкладка свёрнута" hidden>🔔</button>
+              <button type="button" class="mini-btn solid" id="tasks-plan" title="Яэри разложит сегодняшние дела по времени">План дня</button>
               <button type="button" class="mini-btn" id="tasks-ask">Спросить Яэри</button>
             </span>
           </div>
@@ -962,6 +975,7 @@
       <fieldset class="group">
         <legend>Цвет оформления</legend>
         <div class="swatches">
+          <label class="swatch" style="--sw:43"><input class="vh" type="radio" name="accent" value="gold"><span class="chip"></span><span class="sw-name">Чёрный с золотом</span></label>
           <label class="swatch" style="--sw:168"><input class="vh" type="radio" name="accent" value="forest"><span class="chip"></span><span class="sw-name">Бирюза</span></label>
           <label class="swatch" style="--sw:262"><input class="vh" type="radio" name="accent" value="moon"><span class="chip"></span><span class="sw-name">Лунный</span></label>
           <label class="swatch" style="--sw:24"><input class="vh" type="radio" name="accent" value="fire"><span class="chip"></span><span class="sw-name">Лисий огонь</span></label>
@@ -972,10 +986,20 @@
 
       <fieldset class="group">
         <legend>Размер текста</legend>
-        <div class="segmented">
+        <div class="segmented four">
           <label><input class="vh" type="radio" name="size" value="sm"><span>Мелкий</span></label>
           <label><input class="vh" type="radio" name="size" value="md"><span>Обычный</span></label>
           <label><input class="vh" type="radio" name="size" value="lg"><span>Крупный</span></label>
+          <label><input class="vh" type="radio" name="size" value="xl"><span>Очень крупный</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset class="group">
+        <legend>Плотность</legend>
+        <div class="segmented">
+          <label><input class="vh" type="radio" name="density" value="tight"><span>Плотно</span></label>
+          <label><input class="vh" type="radio" name="density" value="normal"><span>Обычно</span></label>
+          <label><input class="vh" type="radio" name="density" value="roomy"><span>Просторно</span></label>
         </div>
       </fieldset>
 

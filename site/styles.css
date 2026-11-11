@@ -30,9 +30,32 @@
     html[data-accent="sakura"] { --h: 338; }
     html[data-accent="forest"] { --h: 168; }
     html[data-accent="sky"]    { --h: 208; }
+    /* Чёрный с золотом: почти чёрные нейтральные поверхности и золотой акцент. */
+    html[data-accent="gold"] {
+      --h: 42;
+      --bg: hsl(36 10% 3%);
+      --bg-2: hsl(36 9% 5.5%);
+      --surface: hsl(36 9% 6.5% / .9);
+      --surface-solid: hsl(36 9% 6.5%);
+      --surface-2: hsl(38 10% 9.5%);
+      --line: hsl(40 22% 15%);
+      --line-2: hsl(40 30% 22%);
+      --ink: hsl(44 30% 92%);
+      --ink-dark: hsl(36 40% 7%);
+      --muted: hsl(40 12% 64%);
+      --faint: hsl(40 10% 44%);
+      --a: hsl(43 92% 60%);
+      --a-strong: hsl(38 90% 52%);
+      --a-deep: hsl(32 70% 28%);
+      --a-glow: hsl(48 100% 82%);
+      --a-soft: hsl(43 90% 55% / .14);
+      --on-a: hsl(30 60% 7%);
+      --warn: hsl(186 90% 62%);
+    }
     html[data-size="sm"] { font-size: 14px; }
     html[data-size="md"] { font-size: 15px; }
     html[data-size="lg"] { font-size: 17px; }
+    html[data-size="xl"] { font-size: 19px; }
 
     * { box-sizing: border-box; }
     html, body { height: 100%; }
@@ -670,6 +693,7 @@
     .swatch input:checked + .chip { outline-color: var(--ink); }
     .swatch input:checked ~ .sw-name { color: var(--ink); }
     .swatch input:focus-visible + .chip { outline-color: var(--a); }
+    .segmented.four { grid-template-columns: repeat(4, 1fr); }
     .segmented { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
     .segmented label { position: relative; cursor: pointer; }
     .segmented span { display: block; padding: 8px 6px; text-align: center; font-size: .84rem; color: var(--muted); transition: background-color .2s, color .2s; }
@@ -1198,6 +1222,66 @@
     .pc-day-tasks li.done { color: var(--faint); text-decoration: line-through; }
     .pc-day-tasks li.more { color: var(--faint); }
     .pc-day-tasks .mini-btn { align-self: flex-start; }
+
+    /* Неделя, поиск */
+    .tasks-week { flex: none; padding: 8px 12px 0; }
+    .tasks-week-head { display: grid; grid-template-columns: 30px 1fr 30px; align-items: center; gap: 6px; margin-bottom: 6px; }
+    .tasks-week-head .pc-arrow { height: 28px; font-size: 1.05rem; }
+    .tasks-week-title { border: 0; background: none; color: var(--a-glow); font: 700 .78rem/1.2 var(--mono); letter-spacing: .12em; text-transform: uppercase; cursor: pointer; }
+    .tasks-week-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+    .wk-day {
+      position: relative; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 5px 2px 6px;
+      border: 1px solid var(--line); border-radius: 9px; background: var(--bg-2); color: var(--ink); cursor: pointer;
+      transition: transform .15s, border-color .15s, box-shadow .2s;
+    }
+    .wk-day:hover { transform: translateY(-1px); border-color: var(--a); }
+    .wk-day.off, .wk-day.hol, .wk-day.move { color: hsl(350 70% 74%); border-color: hsl(350 45% 40% / .4); }
+    .wk-day.hol { background: hsl(350 60% 30% / .25); }
+    .wk-day.past { opacity: .55; }
+    .wk-day.today { border-color: var(--a); box-shadow: 0 0 0 1px var(--a), 0 0 14px hsl(43 95% 55% / .35); opacity: 1; }
+    .wk-day.sel { background: var(--a-soft); border-color: var(--a-glow); }
+    .wk-wd { color: var(--faint); font: 600 .56rem/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .wk-n { font: 700 1.02rem/1.1 var(--mono); }
+    .wk-times { display: flex; flex-direction: column; align-items: center; gap: 1px; min-height: 1.6em; }
+    .wk-times i { font: 600 .56rem/1.2 var(--mono); font-style: normal; color: hsl(186 85% 66%); white-space: nowrap; }
+    .wk-times i.hi { color: hsl(350 95% 70%); }
+    .wk-times i.more { color: var(--muted); }
+    .wk-times i.ok { color: hsl(140 60% 58%); }
+    .tasks-search { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 12px 0; }
+    .tasks-search .field { flex: 1; min-width: 0; padding: 6px 10px; font-size: .84rem; }
+    #tasks-found { color: var(--faint); font: 500 .64rem/1.2 var(--mono); white-space: nowrap; }
+    #tasks-found:empty { display: none; }
+
+    /* Плотность */
+    html[data-density="tight"] .deck { gap: 6px; padding: 6px; }
+    html[data-density="tight"] .col { gap: 6px; }
+    html[data-density="tight"] .card-head { padding: 7px 10px 6px; }
+    html[data-density="tight"] .card-body { padding: 7px 9px; }
+    html[data-density="tight"] .task { padding: 5px 4px 5px 9px; }
+    html[data-density="tight"] .tasks-list { gap: 2px; }
+    html[data-density="roomy"] .deck { gap: 16px; padding: 16px; }
+    html[data-density="roomy"] .col { gap: 16px; }
+    html[data-density="roomy"] .card-head { padding: 14px 18px 12px; }
+    html[data-density="roomy"] .card-body { padding: 14px 18px; }
+    html[data-density="roomy"] .task { padding: 11px 8px 11px 14px; }
+    html[data-density="roomy"] .tasks-list { gap: 7px; }
+    html[data-density="roomy"] .tasks-add, html[data-density="roomy"] .tasks-tabs,
+    html[data-density="roomy"] .tasks-week, html[data-density="roomy"] .tasks-search { padding-left: 18px; padding-right: 18px; }
+
+    /* Анимации дел */
+    html[data-motion="on"] .task.fresh.added { animation: task-in .45s cubic-bezier(.2, .8, .25, 1) both; }
+    html[data-motion="on"] .task.fresh.moved { animation: task-moved .9s ease-out both; }
+    html[data-motion="on"] .task.completing .t-check { animation: check-pop .35s cubic-bezier(.2, 1.6, .4, 1) both; }
+    html[data-motion="on"] .task.completing .t-text { color: var(--faint); background: linear-gradient(currentColor, currentColor) no-repeat 0 55% / 0 1.5px; animation: strike .4s ease-out forwards; }
+    html[data-motion="on"] .task.completing { animation: task-out .3s ease-in .3s forwards; }
+    html[data-motion="on"] .pc-d.has-high:not(.past):not(.today) { animation: day-glow 2.6s ease-in-out infinite; }
+    html[data-motion="on"] .tasks-list .task { transition: background-color .25s, border-color .25s; }
+    @keyframes task-in { from { opacity: 0; transform: translateY(-8px) scale(.98); box-shadow: 0 0 0 1px var(--a); } to { opacity: 1; transform: none; box-shadow: 0 0 0 0 transparent; } }
+    @keyframes task-moved { 0% { box-shadow: 0 0 0 1px var(--a), 0 0 18px hsl(43 95% 55% / .45); transform: translateX(6px); } 100% { box-shadow: none; transform: none; } }
+    @keyframes check-pop { 0% { transform: scale(.6); } 100% { transform: scale(1); } }
+    @keyframes strike { to { background-size: 100% 1.5px; } }
+    @keyframes task-out { to { opacity: .35; transform: translateX(10px); } }
+    @keyframes day-glow { 0%, 100% { box-shadow: 0 0 0 0 hsl(350 90% 60% / 0); } 50% { box-shadow: 0 0 12px 1px hsl(350 90% 60% / .45); } }
 
     /* ---------- Узкие экраны ---------- */
     @media (max-width: 1180px) {
