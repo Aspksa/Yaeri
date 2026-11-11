@@ -8,7 +8,10 @@ $script:ProjectRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..
 $script:ConfigDir = Join-Path $script:ProjectRoot 'config'
 $script:ConfigFile = Join-Path $script:ConfigDir 'yaeri.config.json'
 $script:ConfigExample = Join-Path $script:ConfigDir 'yaeri.config.example.json'
-$script:DataDir = Join-Path $script:ProjectRoot 'data'
+# Worker may operate on a private snapshot; never on the live files.
+$script:DataDir = if ($script:YaeriDataOverride) {
+    [System.IO.Path]::GetFullPath([string]$script:YaeriDataOverride)
+} else { Join-Path $script:ProjectRoot 'data' }
 $script:Utf8 = [System.Text.UTF8Encoding]::new($false)
 
 # Душа Яэри (характер, настроение, мысли о хозяине) — в отдельном файле.
