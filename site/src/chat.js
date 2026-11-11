@@ -15,13 +15,32 @@
       function toBottom() {
         chat.scrollTo({ top: chat.scrollHeight, behavior: settings.motion ? 'smooth' : 'auto' });
       }
+      var GIFT_KIND = { poem: 'стихотворение', story: 'история', drawing: 'рисунок', find: 'находка в памяти' };
+      var WILL_TAG = { decline: '✋ мягко отказалась', disagree: '⚖ не согласна', hurt: '☁ обиделась', forgive: '♡ простила' };
+      // Рисунок Яэри — SVG, уже очищенный сервером; через <img> скрипты в нём не исполняются никогда.
+      function giftArt(svg, title) {
+        var fig = el('figure', 'gift-art');
+        var img = el('img');
+        img.alt = title ? 'Рисунок Яэри: ' + title : 'Рисунок Яэри';
+        img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(String(svg));
+        fig.appendChild(img);
+        return fig;
+      }
       function bubble(m, animate) {
         var row = el('div', 'msg ' + (m.role === 'user' ? 'user' : 'assistant') + (m.error ? ' error' : '') + (animate ? ' enter' : ''));
         row.appendChild(el('div', 'who', m.role === 'user' ? settings.name : 'Яэри'));
         if (m.kind === 'thought') { row.classList.add('thought'); row.appendChild(el('div', 'thought-tag', '✦ думала о вас')); }
         if (m.kind === 'remind') { row.classList.add('thought', 'remind'); row.appendChild(el('div', 'thought-tag', '⏰ напоминание о делах')); }
         if (m.kind === 'care') { row.classList.add('thought'); row.appendChild(el('div', 'thought-tag', m.dream ? '☾ мой сон' : (m.slot === 'evening' ? '☾ вечер' : '☀ утро'))); }
+        if (m.kind === 'gift') { row.classList.add('thought', 'gift'); row.appendChild(el('div', 'thought-tag', '🎁 подарок · ' + (GIFT_KIND[m.gift && m.gift.kind] || 'от скуки'))); }
         row.appendChild(el('div', 'text', m.text));
+        if (m.kind === 'gift' && m.gift && m.gift.svg) row.appendChild(giftArt(m.gift.svg, m.gift.title));
+        if (m.will && m.will.reason) {
+          var wl = el('div', 'will-chip w-' + (m.will.type || 'x'));
+          wl.appendChild(el('b', '', WILL_TAG[m.will.type] || 'её воля'));
+          wl.appendChild(document.createTextNode(m.will.reason));
+          row.appendChild(wl);
+        }
         if (Array.isArray(m.remembered) && m.remembered.length) {
           row.appendChild(el('div', 'remembered', '✦ Записала в память: ' + m.remembered.join('; ')));
         }

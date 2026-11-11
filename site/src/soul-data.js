@@ -8,7 +8,7 @@
       var SOUL_STAR_BASE = 120, SOUL_STAR_STEP = 20;
       var SOUL_CONST = ['Лиса', 'Луна', 'Сакура', 'Ветер', 'Река', 'Гора', 'Пламя', 'Небо', 'Вечность'];
       var SOUL_KINDS = { reflection: 'раздумье', muse: 'думала о вас', milestone: 'веха пути', birth: 'пробуждение', moment: 'важный момент', dream: 'сон', secret: 'секрет' };
-      var soulData = null, growthData = null, undData = null, depthData = null, evoData = null, s3Data = null, lifeData = null, e5Data = null, vecData = null;
+      var soulData = null, growthData = null, undData = null, depthData = null, evoData = null, s3Data = null, lifeData = null, e5Data = null, vecData = null, freeData = null;
       var undRated = {};
       var soulTimer = 0, soulBusy = false, soulEditing = false;
 
@@ -139,10 +139,12 @@
       function loadLife4() { return online ? quiet(api('life').then(function (d) { lifeData = d; renderSoulParts(); })) : Promise.resolve(); }
       function loadEvolution5() { return online ? quiet(api('evolution5').then(function (d) { e5Data = d; renderSoulParts(); })) : Promise.resolve(); }
       function loadVector2() { return online ? quiet(api('vector').then(function (d) { vecData = d; renderSoulParts(); })) : Promise.resolve(); }
+      function setFree(d) { if (d && d.settings) { freeData = d; renderSoulParts(); } }
+      function loadFree() { return online ? quiet(api('soul/free').then(setFree)) : Promise.resolve(); }
       function loadSoulExtras() {
         // Сервер однопоточный: запросы по очереди, чтобы не мешать чату.
         return loadGrowth().then(loadUnderstanding).then(loadDepth).then(loadEvolution).then(loadSoul3)
-          .then(loadLife4).then(loadEvolution5).then(loadVector2);
+          .then(loadLife4).then(loadEvolution5).then(loadVector2).then(loadFree);
       }
       function loadSoul() {
         return api('soul').then(function (data) { setSoul(data); return loadSoulExtras(); });
@@ -241,6 +243,30 @@
         if (soulData.sleepDue && idle > IDLE_SLEEP) soulSleep('auto');
         else if (idle < 5 * 60000 && !document.hidden) careCheck();
       }, 60000);
+      /* Подарки: пока хозяина не было, Яэри от скуки что-то сочинила или нарисовала. Отдаёт, когда он вернулся. */
+      var giftBusy = false;
+      function giftCheck() {
+        if (!online || !settings.soul || pending || giftBusy || document.hidden) return Promise.resolve();
+        if (Date.now() - lastActive > 120000) return Promise.resolve();
+        giftBusy = true;
+        return api('soul/free').then(function (d) {
+          setFree(d);
+          if (!d || !d.undelivered || pending) return null;
+          return api('soul/free/deliver', {}).then(function (r) {
+            var list = arr(r && r.messages);
+            list.forEach(function (m) { history.push(m); bubble(m, true); });
+            if (list.length) {
+              flash('happy', 4600);
+              document.body.classList.add('has-gift');
+            }
+            return api('soul/free').then(setFree);
+          });
+        }).catch(function () { /* Подарок подождёт до следующей проверки. */ })
+          .then(function () { giftBusy = false; });
+      }
+      setInterval(giftCheck, 60000);
+      if ($('yaeri-fab')) $('yaeri-fab').addEventListener('click', function () { document.body.classList.remove('has-gift'); });
+      document.addEventListener('pointerdown', function (e) { if (e.target && e.target.closest && e.target.closest('#chat-card')) document.body.classList.remove('has-gift'); }, true);
       function shareThought() {
         // Мысль, которую Яэри придумала, пока размышляла, она говорит первой.
         if (!online || !settings.soul || !soulData || !soulData.soul.thoughtNew) return Promise.resolve();
@@ -293,13 +319,14 @@
               // Если не спала больше полутора суток (компьютер был выключен), поспит сейчас.
               if (soulData && soulData.sleepDue && Date.now() - (soulData.soul.lastSleep || 0) > 36 * 3600000) return soulSleep('auto');
             })
-            .then(careCheck);
+            .then(careCheck)
+            .then(giftCheck);
         }).catch(function () { renderSoul(); });
       }
       function soulDemo() {
         clearTimeout(soulTimer);
         soulData = soulDefault();
-        growthData = undData = depthData = evoData = s3Data = lifeData = e5Data = vecData = null;
+        growthData = undData = depthData = evoData = s3Data = lifeData = e5Data = vecData = freeData = null;
         renderSoul();
       }
       // Кнопка в настройках подключения: включить автономный режим без Cloud.ru.

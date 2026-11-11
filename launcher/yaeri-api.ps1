@@ -22,6 +22,7 @@ $script:Utf8 = [System.Text.UTF8Encoding]::new($false)
 . (Join-Path $PSScriptRoot 'yaeri-curiosity.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-understanding.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-depth.ps1')
+. (Join-Path $PSScriptRoot 'yaeri-free.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-bond.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-reason.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-relationship.ps1')
@@ -354,6 +355,7 @@ function Import-YStore {
     Import-YCuriosity
     Import-YUnderstanding
     Import-YDepth
+    Import-YFree
     Import-YVector
     Import-YLife
     Import-YE5
@@ -1063,6 +1065,12 @@ function Invoke-YChat($Req) {
             if ($smartModel -and $autoModel -and $model -ne $smartModel) { $model = $smartModel; $route = 'smart' }
         }
     }
+    # Свободная воля: может мягко отказаться от прихоти, не согласиться, обидеться и простить — с видимой причиной.
+    if ($useSoul) {
+        $freePrompt = ''
+        try { $freePrompt = Get-YFreePrompt $text } catch { $freePrompt = '' }
+        if ($freePrompt) { $system += [Environment]::NewLine + [Environment]::NewLine + $freePrompt }
+    }
     if ($useSoul -and $script:YE5.enabled) {
         $e5Prompt=Get-YE5StrategyPrompt $text
         if ($e5Prompt) { $system += [Environment]::NewLine + [Environment]::NewLine + $e5Prompt }
@@ -1143,6 +1151,14 @@ function Invoke-YChat($Req) {
     # Strip malformed proposals instead of displaying control markup as prose.
     $content = ([regex]::Replace($content, '(?is)<tool-proposal\b[^>]*>.*?(?:</tool-proposal>|$)', '')).Trim()
 
+    # Тег <воля>: отказ, несогласие, обида или прощение — причина видна хозяину под ответом.
+    $will = $null
+    try {
+        $wr = Invoke-YFreeWillTag $content $text
+        $content = [string]$wr.content
+        if ($useSoul) { $will = $wr.will }
+    } catch { $content = ([regex]::Replace($content, $script:FreeWillTag, '')).Trim() }
+
     # Теги <память> модель ставит в конце ответа: забираем факты в рабочую память и убираем теги из текста.
     $newNotes = New-Object System.Collections.Generic.List[object]
     foreach ($tag in [regex]::Matches($content, $script:NoteTag)) {
@@ -1191,6 +1207,7 @@ function Invoke-YChat($Req) {
     if ($proposedTools.Count -gt 0) { $answer['proposedTools'] = $proposedTools.ToArray() }
     if ($newNotes.Count -gt 0) { $answer['remembered'] = @($newNotes | ForEach-Object { [string]$_['text'] }) }
     if ($taskActs.Count -gt 0) { $answer['tasks'] = $taskActs }
+    if ($null -ne $will) { $answer['will'] = $will }
     [void]$script:History.Add($answer)
     Save-YHistory
     if ($null -ne $futures) { try { Add-YLifeForecast $answer $futures } catch { } }
@@ -1365,6 +1382,13 @@ function Invoke-YApi([string]$Method, [string]$Path, [string]$BodyText) {
         'POST /api/soul/depth/remove'          { return Remove-YDepthItem $req }
         'POST /api/soul/depth/run'             { return Invoke-YDepthRun $req }
         'POST /api/soul/depth/clear'           { return Clear-YDepth }
+        'GET /api/soul/free'                   { return Get-YFreeView }
+        'POST /api/soul/free/settings'         { return Set-YFreeSettings $req }
+        'POST /api/soul/free/deliver'          { return Invoke-YFreeDeliver }
+        'POST /api/soul/free/creation'         { return Set-YFreeCreation $req }
+        'POST /api/soul/free/makeup'           { return Invoke-YFreeMakeUp }
+        'POST /api/soul/free/run'              { return Invoke-YFreeRun }
+        'POST /api/soul/free/clear'            { return Clear-YFree }
         'POST /api/soul/evolution' { return Set-YEvolution $req }
         'POST /api/soul/evolution/clear' { return Clear-YEvolution }
         'POST /api/soul/reflect'   { return Invoke-YEvolutionReflect $req }

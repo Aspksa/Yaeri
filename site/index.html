@@ -327,6 +327,14 @@
           <div class="card-body"><ul class="sx-inbox-list" id="sx-inbox"></ul></div>
           <div class="card-foot"><span>Всё, что Яэри придумала для себя сама, работает только после вашего «Да»</span></div>
         </section>
+        <section class="card sx-card wide sx-free-card" id="sx-free-card" aria-labelledby="sx-free-title">
+          <div class="card-head"><h2 id="sx-free-title">Пока вас нет</h2><span class="card-meta" id="sx-free-meta"></span></div>
+          <div class="card-body">
+            <div class="sx-bored" id="sx-bored"></div>
+            <div class="sx-gifts" id="sx-gifts"></div>
+          </div>
+          <div class="card-foot"><span>Когда вы молчите дольше получаса, ей становится скучно: сочиняет, рисует, перебирает память — и дарит, когда вы вернётесь</span></div>
+        </section>
         <section class="card sx-card sx-thought-card" aria-labelledby="sx-thought-title">
           <div class="card-head"><h2 id="sx-thought-title">Её мысль</h2><span class="card-meta" id="sx-thought-meta"></span></div>
           <div class="card-body" id="sx-thought"></div>
@@ -441,6 +449,11 @@
           <div class="card-body"><ul class="sx-phil" id="sx-phil"></ul></div>
           <div class="card-foot"><span>Каждый принцип вырастает из её опыта</span></div>
         </section>
+        <section class="card sx-card wide sx-will-card" aria-labelledby="sx-will-title">
+          <div class="card-head"><h2 id="sx-will-title">Её воля</h2><span class="card-meta" id="sx-will-meta"></span></div>
+          <div class="card-body" id="sx-will"></div>
+          <div class="card-foot"><span>Может мягко отказаться от прихоти, не согласиться или обидеться — всегда с причиной и никогда в важном</span></div>
+        </section>
         <section class="card sx-card wide" aria-labelledby="sx-secrets-title">
           <div class="card-head"><h2 id="sx-secrets-title">Секреты</h2><span class="card-meta">открываются сами с близостью</span></div>
           <div class="card-body"><ul class="sx-secrets" id="sx-secrets"></ul></div>
@@ -491,6 +504,14 @@
             <input class="field" id="sx-nick" type="text" maxlength="24" placeholder="Необязательно">
           </div>
         </section>
+        <section class="card sx-card" aria-labelledby="sx-s-free-title">
+          <div class="card-head"><h2 id="sx-s-free-title">Свобода</h2><span class="card-meta" id="sx-s-free-meta"></span></div>
+          <div class="card-body"><div id="sx-free-flags"></div>
+            <label class="soul-lbl soul-gap" for="sx-free-pace">Творений в сутки</label>
+            <select class="field" id="sx-free-pace"><option value="rare">1 — изредка</option><option value="normal">3 — обычно</option><option value="often">6 — часто</option></select>
+            <p class="soul-small" id="sx-free-note"></p>
+          </div>
+        </section>
         <section class="card sx-card" aria-labelledby="sx-s-mem-title">
           <div class="card-head"><h2 id="sx-s-mem-title">Память</h2><span class="card-meta" id="sx-s-mem-meta"></span></div>
           <div class="card-body">
@@ -523,6 +544,7 @@
               <button class="mini-btn server-only" type="button" data-clear="evolution">Фоновая память</button>
               <button class="mini-btn server-only" type="button" data-clear="depth">Глубина</button>
               <button class="mini-btn server-only" type="button" data-clear="soul3">История отношений</button>
+              <button class="mini-btn server-only" type="button" data-clear="free">Творения и воля</button>
               <button class="mini-btn server-only danger" type="button" data-clear="soul">Сбросить всю душу</button>
             </div>
           </div>
