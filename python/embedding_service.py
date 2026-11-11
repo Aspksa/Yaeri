@@ -54,10 +54,14 @@ def _index_worker():
         item = _index_queue.get()
         try:
             item_id, text = item
-            encoded = embedding("passage: " + text)
             digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
             with closing(sqlite3.connect(str(DB), timeout=20)) as db:
                 db.execute("CREATE TABLE IF NOT EXISTS semantic_index (id TEXT PRIMARY KEY, text_hash TEXT NOT NULL, vector TEXT NOT NULL)")
+                existing = db.execute("SELECT text_hash FROM semantic_index WHERE id=?", (item_id,)).fetchone()
+                if existing and existing[0] == digest:
+                    continue
+            encoded = embedding("passage: " + text)
+            with closing(sqlite3.connect(str(DB), timeout=20)) as db:
                 db.execute("INSERT OR REPLACE INTO semantic_index(id,text_hash,vector) VALUES (?,?,?)",
                            (item_id, digest, encoded))
                 db.commit()
