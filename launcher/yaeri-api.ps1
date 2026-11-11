@@ -17,6 +17,7 @@ $script:Utf8 = [System.Text.UTF8Encoding]::new($false)
 . (Join-Path $PSScriptRoot 'yaeri-growth.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-curiosity.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-understanding.ps1')
+. (Join-Path $PSScriptRoot 'yaeri-depth.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-bond.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-reason.ps1')
 . (Join-Path $PSScriptRoot 'yaeri-relationship.ps1')
@@ -338,6 +339,7 @@ function Import-YStore {
     Import-Y3
     Import-YCuriosity
     Import-YUnderstanding
+    Import-YDepth
 }
 
 function Save-YHistory { Write-YJsonFile $script:HistoryFile @{ version = 1; messages = $script:History.ToArray() } }
@@ -898,6 +900,8 @@ function Invoke-YChat($Req) {
     Save-YHistory
     # Состояние хозяина и темы, которые он сам упомянул в этой реплике (для приватности и подстройки тона).
     try { Update-YUndTurn $text } catch { }
+    # Предчувствие: ритм хозяина пересчитывается локально, без запросов к модели.
+    if ($useSoul) { try { Update-YDepthRhythm } catch { } }
 
     # Поиск по документам и памяти.
     $sources = New-Object System.Collections.Generic.List[object]
@@ -971,6 +975,23 @@ function Invoke-YChat($Req) {
         try { $understanding = Get-YUnderstandingPrompt $text } catch { $understanding = '' }
         if ($understanding) { $system += [Environment]::NewLine + [Environment]::NewLine + 'Понимание хозяина:' + [Environment]::NewLine + $understanding }
     }
+    # Глубина души: свой характер, принципы, одобренные правила и навыки, предчувствие.
+    $depthSkills = @()
+    $futures = $null
+    if ($useSoul) {
+        $depth = $null
+        try { $depth = Get-YDepthPrompt $text } catch { $depth = $null }
+        if ($null -ne $depth) {
+            if ($depth.text) { $system += [Environment]::NewLine + [Environment]::NewLine + 'Твоя глубина:' + [Environment]::NewLine + [string]$depth.text }
+            $depthSkills = @($depth.skills)
+        }
+        # Симуляция будущего: перед советом прогоняем варианты развития «умной» моделью.
+        try { $futures = Invoke-YDepthForesight $text } catch { $futures = $null }
+        if ($null -ne $futures) {
+            $system += [Environment]::NewLine + [Environment]::NewLine + (Get-YForesightPrompt $futures)
+            if ($smartModel -and $autoModel -and $model -ne $smartModel) { $model = $smartModel; $route = 'smart' }
+        }
+    }
     if ($innerVoice) {
         $system += "`n`nПеред ответом коротко подумай про себя в теге <мысли>…</мысли> (2–4 фразы): что хозяин сейчас чувствует и чего хочет, " +
             'что ты о нём помнишь, что подсказывают твоя душа и память, нет ли противоречий. Затем дай сам ответ. Хозяин твои мысли не видит, не упоминай их.'
@@ -1043,6 +1064,8 @@ function Invoke-YChat($Req) {
     $answer = @{ id = (New-YId); role = 'assistant'; text = $content; t = (Get-YNow); model = $model; sources = $sources.ToArray(); route = $route }
     if ($inner) { $answer['inner'] = $(if ($inner.Length -gt 1500) { $inner.Substring(0, 1500) + '…' } else { $inner }) }
     if ($checked) { $answer['checked'] = $checked }
+    if ($null -ne $futures) { $answer['futures'] = @{ question = $futures.question; options = $futures.options; lean = $futures.lean } }
+    if ($depthSkills.Count -gt 0) { $answer['skills'] = $depthSkills }
     if ($newNotes.Count -gt 0) { $answer['remembered'] = @($newNotes | ForEach-Object { [string]$_['text'] }) }
     [void]$script:History.Add($answer)
     Save-YHistory
@@ -1166,6 +1189,15 @@ function Invoke-YApi([string]$Method, [string]$Path, [string]$BodyText) {
         'POST /api/soul/understanding/gap'     { return Set-YUndGap $req }
         'POST /api/soul/understanding/clear'   { return Clear-YUnderstanding }
         'POST /api/soul/rate'                  { return Add-YRating $req }
+        'GET /api/soul/depth'                  { return Get-YDepthView }
+        'POST /api/soul/depth/settings'        { return Set-YDepthSettings $req }
+        'POST /api/soul/depth/nudge'           { return Set-YDepthNudge $req }
+        'POST /api/soul/depth/skill'           { return Set-YDepthSkill $req }
+        'POST /api/soul/depth/skill/test'      { return Invoke-YDepthSkillTest $req }
+        'POST /api/soul/depth/proposal'        { return Set-YDepthProposal $req }
+        'POST /api/soul/depth/remove'          { return Remove-YDepthItem $req }
+        'POST /api/soul/depth/run'             { return Invoke-YDepthRun $req }
+        'POST /api/soul/depth/clear'           { return Clear-YDepth }
         'POST /api/soul/evolution' { return Set-YEvolution $req }
         'POST /api/soul/evolution/clear' { return Clear-YEvolution }
         'POST /api/soul/reflect'   { return Invoke-YEvolutionReflect $req }

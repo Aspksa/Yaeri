@@ -815,6 +815,29 @@
     .badge { padding: 2px 8px; border: 1px solid var(--line-2); border-radius: 999px; color: var(--muted); font: 600 .58rem/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
     .badge.ok { border-color: var(--a); color: var(--a); }
 
+    /* Глубина души */
+    .meter { display: grid; grid-template-columns: 110px minmax(0, 1fr) 34px; align-items: center; gap: 8px; margin: 6px 0; font-size: .8rem; }
+    .meter .soul-bond { height: 7px; }
+    .meter b { font: 600 .7rem/1 var(--mono); text-align: right; color: var(--muted); }
+    .meter.hot b { color: var(--warn); }
+    .nudge { margin: 10px 0 4px; padding: 10px 12px; border: 1px solid var(--warn); border-radius: 10px; background: var(--surface-2); }
+    .nudge p { margin: 0 0 8px; font-size: .88rem; line-height: 1.45; }
+    .nudge .ia, .d-acts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .fut { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; }
+    .fut li { padding: 7px 10px; border-left: 2px solid var(--a); border-radius: 0 8px 8px 0; background: var(--surface-2); font-size: .82rem; line-height: 1.45; }
+    .fut li b { display: block; }
+    .fut li small { display: block; color: var(--muted); }
+    .fut-lean { margin: 6px 0 0; font-size: .82rem; color: var(--a-glow); }
+    .msg details.futures { margin-top: 6px; font-size: .82rem; }
+    .msg details.futures summary { cursor: pointer; color: var(--a); font: 600 .58rem/1.4 var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+    .own-group + .own-group { margin-top: 10px; }
+    .own-dots { color: var(--a); letter-spacing: 1px; font-size: .7rem; margin-left: 4px; }
+    .d-src { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+    .d-test { display: grid; gap: 6px; margin-top: 8px; }
+    .d-test pre { margin: 0; white-space: pre-wrap; font: inherit; font-size: .82rem; padding: 8px 10px; border-radius: 8px; background: var(--surface); border: 1px dashed var(--line-2); max-height: 260px; overflow: auto; }
+    .d-diff { font-size: .8rem; color: var(--muted); margin: 0 0 6px; }
+    .d-diff s { color: var(--faint); }
+
     /* Лента */
     .feed { list-style: none; margin: 0; padding: 0; }
     .feed li { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
@@ -1198,6 +1221,7 @@
         <button type="button" class="stab" role="tab" id="stab-memory" aria-controls="sp-memory" aria-selected="false" data-sp="memory">Память</button>
         <button type="button" class="stab" role="tab" id="stab-world" aria-controls="sp-world" aria-selected="false" data-sp="world">Мир</button>
         <button type="button" class="stab" role="tab" id="stab-char" aria-controls="sp-char" aria-selected="false" data-sp="char">Характер</button>
+        <button type="button" class="stab" role="tab" id="stab-depth" aria-controls="sp-depth" aria-selected="false" data-sp="depth">Глубина</button>
       </div>
 
       <div class="sp-grid" id="sp-now" role="tabpanel" aria-labelledby="stab-now">
@@ -1491,6 +1515,79 @@
                   </div>
                   <div class="card-foot"><span>Планы выполняются только после подтверждения хозяином. Романтический стиль и инициативу можно отключить.</span></div>
                 </section>
+      </div>
+      <div class="sp-grid" id="sp-depth" role="tabpanel" aria-labelledby="stab-depth" hidden>
+        <section class="card" aria-labelledby="d-rhythm-title">
+          <div class="card-head"><h2 id="d-rhythm-title">Предчувствие</h2><span class="card-meta" id="d-rhythm-meta"></span></div>
+          <div class="card-body">
+            <div id="d-meters"></div>
+            <ul class="soul-simple" id="d-signals"></ul>
+            <div class="nudge" id="d-nudge" hidden>
+              <p id="d-nudge-text"></p>
+              <div class="ia">
+                <button type="button" class="mini-btn solid" data-nudge="ok">Спасибо, учту</button>
+                <button type="button" class="mini-btn" data-nudge="later">Не сейчас</button>
+                <button type="button" class="mini-btn" data-nudge="off">Не замечать такое</button>
+              </div>
+            </div>
+          </div>
+          <div class="card-foot"><span>Считается на вашем компьютере по ритму сообщений, без запросов к модели. Яэри вмешивается мягко и не чаще раза в двое суток</span></div>
+        </section>
+        <section class="card" aria-labelledby="d-sims-title">
+          <div class="card-head"><h2 id="d-sims-title">Варианты будущего</h2><span class="card-meta" id="d-sims-meta"></span></div>
+          <div class="card-body"><ul class="insights" id="d-sims"></ul></div>
+          <div class="card-foot"><span>Когда вы просите совета, Яэри сначала прогоняет 2–3 варианта развития. Это прогноз, а не гарантия</span></div>
+        </section>
+        <section class="card" aria-labelledby="d-own-title">
+          <div class="card-head"><h2 id="d-own-title">Её собственный характер</h2><span class="card-meta" id="d-own-meta"></span></div>
+          <div class="card-body">
+            <div id="d-own"></div>
+            <span class="soul-lbl soul-gap">Как она менялась</span>
+            <ul class="soul-simple" id="d-charlog"></ul>
+          </div>
+          <div class="card-foot"><span>Свои вкусы, привычки и причуды, а не ваши. Растут понемногу в фоне</span></div>
+        </section>
+        <section class="card" aria-labelledby="d-phil-title">
+          <div class="card-head"><h2 id="d-phil-title">Её философия</h2><span class="card-meta" id="d-phil-meta"></span></div>
+          <div class="card-body"><ul class="insights" id="d-phil"></ul></div>
+          <div class="card-foot"><span>Каждый принцип вырастает из её опыта; видно, откуда он взялся</span></div>
+        </section>
+        <section class="card wide" aria-labelledby="d-skills-title">
+          <div class="card-head"><h2 id="d-skills-title">Самописные навыки</h2><span class="card-meta" id="d-skills-meta"></span></div>
+          <div class="card-body"><ul class="insights" id="d-skills"></ul></div>
+          <div class="card-foot"><span>Навык — только текстовый сценарий: без программ, файлов и сети. Работает лишь после вашего одобрения; до этого его можно проверить в песочнице</span></div>
+        </section>
+        <section class="card wide" aria-labelledby="d-review-title">
+          <div class="card-head"><h2 id="d-review-title">Самоулучшение</h2><span class="card-meta" id="d-review-meta"></span></div>
+          <div class="card-body">
+            <div class="chart" id="d-eval-chart" role="img" aria-label="Средняя самооценка ответов по дням"></div>
+            <span class="soul-lbl soul-gap">Предлагает изменить в себе</span>
+            <ul class="insights" id="d-props"></ul>
+            <span class="soul-lbl soul-gap">Одобренные правила стиля</span>
+            <ul class="soul-simple" id="d-rules"></ul>
+            <span class="soul-lbl soul-gap">Последние самооценки</span>
+            <ul class="soul-simple" id="d-evals"></ul>
+          </div>
+          <div class="card-foot"><span>В фоне перечитывает свои ответы и предлагает правки души. Ничего не меняется без вашего «Применить»</span></div>
+        </section>
+        <section class="card" aria-labelledby="d-ctl-title">
+          <div class="card-head"><h2 id="d-ctl-title">Настройки глубины</h2></div>
+          <div class="card-body">
+            <div id="d-flags"></div>
+            <span class="soul-lbl soul-gap">Подумать сейчас</span>
+            <div class="d-acts server-only" hidden>
+              <button type="button" class="mini-btn" data-drun="review">Оценить ответы</button>
+              <button type="button" class="mini-btn" data-drun="character">Характер</button>
+              <button type="button" class="mini-btn" data-drun="principles">Принципы</button>
+              <button type="button" class="mini-btn" data-drun="skills">Навык</button>
+              <button type="button" class="mini-btn" data-drun="rhythm">Ритм</button>
+            </div>
+            <p class="soul-small" id="d-ctl-note"></p>
+            <p class="soul-small" id="d-ctl-status" role="status"></p>
+            <button type="button" class="mini-btn server-only" id="d-clear" hidden>Очистить глубину</button>
+          </div>
+          <div class="card-foot"><span>Фоновые размышления идут, только когда вас нет рядом, «умной» моделью и в общем дневном лимите запросов</span></div>
+        </section>
       </div>
     </main>
 
@@ -1833,7 +1930,7 @@
           if (location.hash !== hash) history_.replaceState(null, '', hash || location.pathname + location.search);
         }
         if (window.YBrain) YBrain.onShow(name);
-        if (name === 'soul') { renderSoul(); if (online) { loadEvolution(); loadGrowth(); loadUnderstanding(); } }
+        if (name === 'soul') { renderSoul(); if (online) { loadEvolution(); loadGrowth(); loadUnderstanding(); loadDepth(); } }
         syncFab();
         if (!fromHash && window.scrollY) window.scrollTo(0, 0);
       }
@@ -2454,8 +2551,15 @@
           det.appendChild(el('p', '', m.inner));
           row.appendChild(det);
         }
+        if (m.futures && Array.isArray(m.futures.options) && m.futures.options.length) {
+          var fd = el('details', 'futures');
+          fd.appendChild(el('summary', '', '⟡ прогнала варианты будущего: ' + m.futures.options.length));
+          fd.appendChild(futList(m.futures));
+          row.appendChild(fd);
+        }
         var parts = [];
         if (m.model) parts.push(shortModel(m.model) + (m.route === 'smart' ? ' (умная)' : ''));
+        if (Array.isArray(m.skills) && m.skills.length) parts.push('навык: ' + m.skills.join(', '));
         if (m.checked === 'fixed') parts.push('✓ перечитала и поправила себя');
         if (Array.isArray(m.sources) && m.sources.length) {
           parts.push('источники: ' + m.sources.map(function (x) { return x && x.label; }).filter(Boolean).join(', '));
@@ -3404,12 +3508,12 @@
 
       /* ---------- Душа: подвкладки, рост и графики ---------- */
       var growthData = null;
-      var SOUL_TABS = ['now', 'growth', 'memory', 'world', 'char'];
+      var SOUL_TABS = ['now', 'growth', 'memory', 'world', 'char', 'depth'];
       var SOUL_XP = [0, 12, 35, 70, 120, 190, 280, 400, 560];
-      var GROWTH_ICONS = { study: '📖', insight: '💡', question: '❓', lesson: '🧭', goal: '🎯', map: '🗺️', 'goal-new': '🌱', 'goal-done': '🏆', sleep: '🌙', reflection: '💭' };
+      var GROWTH_ICONS = { nudge: '🌧️', character: '🦊', principle: '📜', skill: '🛠️', proposal: '🪞', review: '🔍', study: '📖', insight: '💡', question: '❓', lesson: '🧭', goal: '🎯', map: '🗺️', 'goal-new': '🌱', 'goal-done': '🏆', sleep: '🌙', reflection: '💭' };
       var GROWTH_RAN = {
         study: 'разобрала ваш разговор', lessons: 'вывела уроки из поправок', goals: 'обновила учебные цели', wonder: 'задумалась о вас',
-        ratings: 'разобрала ваши оценки ответов', maintenance: 'навела порядок в памяти', opinions: 'пересмотрела свои мнения', sleep: 'уснула и пересобрала воспоминания', reflection: 'подумала о разговорах'
+        ratings: 'разобрала ваши оценки ответов', review: 'перечитала свои ответы', character: 'чуть-чуть выросла характером', principles: 'подумала о своих принципах', skills: 'подумала о новом навыке', maintenance: 'навела порядок в памяти', opinions: 'пересмотрела свои мнения', sleep: 'уснула и пересобрала воспоминания', reflection: 'подумала о разговорах'
       };
       var INTENSITY_NOTE = {
         off: 'Только разговоры, сон и размышления. Собственного любопытства и учебных целей нет.',
@@ -3445,6 +3549,7 @@
         });
         try { localStorage.setItem('yaeri-soul-tab', name); } catch (e) { /* без запоминания вкладки */ }
         if (name === 'growth') renderGrowth();
+        if (name === 'depth' && typeof renderDepth === 'function') renderDepth();
       }
       each(document.querySelectorAll('.stab'), function (b) {
         b.addEventListener('click', function () { showSoulTab(b.getAttribute('data-sp')); });
@@ -4144,6 +4249,309 @@
         if (online && currentView === 'soul' && !document.hidden) loadSoul3();
       }, 60000);
 
+
+      /* ---------- Глубина: предчувствие, варианты будущего, свой характер, философия, навыки, самоулучшение ---------- */
+      var depthData = null;
+      var DEPTH_FLAGS = [
+        ['rhythm', 'Предчувствие', 'Замечает выгорание и застревание по ритму сообщений'],
+        ['foresight', 'Варианты будущего', 'Перед советом прогоняет варианты развития (1 запрос «умной» модели)'],
+        ['character', 'Свой характер', 'Вкусы, привычки и причуды растут в фоне'],
+        ['philosophy', 'Философия', 'Формулирует свои принципы и помнит, откуда они'],
+        ['skills', 'Самописные навыки', 'Пишет себе сценарии; работают только после одобрения'],
+        ['review', 'Самоулучшение', 'Оценивает свои ответы и предлагает правки души']
+      ];
+      var OWN_KINDS = [['taste', 'Вкусы'], ['habit', 'Привычки'], ['quirk', 'Причуды']];
+      var PROP_TYPES = { lesson: 'урок общения', rule: 'правило стиля', self: 'кем себя считает', trait: 'черта характера' };
+      var DEPTH_EVERY = { off: 'Фоновое обучение выключено: глубина думает только по кнопкам ниже.', quiet: 'Тихо: самооценка раз в сутки, характер раз в двое суток, принципы и навыки раз в трое.', normal: 'Обычно: самооценка раз в 8 часов, характер раз в сутки, принципы и навыки раз в полтора дня.', active: 'Активно: самооценка раз в 3 часа, характер раз в 8 часов, принципы и навыки раз в 12 часов.' };
+      function futList(f) {
+        var wrap = el('div');
+        var ul = el('ul', 'fut');
+        arr(f.options).forEach(function (o, i) {
+          var li = el('li');
+          li.appendChild(el('b', '', (i + 1) + '. ' + o.path));
+          li.appendChild(el('span', '', '→ ' + o.outcome));
+          var extra = [];
+          if (o.chance) extra.push('вероятность: ' + o.chance);
+          if (o.good) extra.push('плюс: ' + o.good);
+          if (o.risk) extra.push('риск: ' + o.risk);
+          if (extra.length) li.appendChild(el('small', '', extra.join(' · ')));
+          ul.appendChild(li);
+        });
+        wrap.appendChild(ul);
+        if (f.lean) wrap.appendChild(el('p', 'fut-lean', 'Я бы выбрала: ' + f.lean));
+        return wrap;
+      }
+      function depthError(e) { $('d-ctl-status').textContent = e && e.message ? e.message : 'Не получилось.'; }
+      function setDepth(d) {
+        if (!d || !d.settings) return;
+        depthData = d;
+        renderDepth();
+      }
+      function loadDepth() {
+        if (!online) return Promise.resolve();
+        return api('soul/depth').then(setDepth).catch(function () { /* Покажем при следующем обновлении. */ });
+      }
+      function depthPost(path, payload) {
+        return api('soul/depth/' + path, payload).then(setDepth).catch(depthError);
+      }
+      function renderDepth() {
+        if (currentView !== 'soul' || $('sp-depth').hidden) return;
+        renderRhythm();
+        renderSims();
+        renderOwn();
+        renderPhil();
+        renderSkills();
+        renderReview();
+        renderDepthFlags();
+      }
+      function emptyLi(ul, text) { ul.appendChild(el('li', 'empty soul-small', text)); }
+      function renderRhythm() {
+        var box = $('d-meters'), sig = $('d-signals');
+        box.textContent = '';
+        sig.textContent = '';
+        var r = depthData && depthData.rhythm;
+        if (!depthData) { box.appendChild(el('p', 'soul-small', online ? 'Загружаю…' : 'Предчувствие заработает, когда Яэри подключится к серверу.')); $('d-nudge').hidden = true; return; }
+        if (!depthData.settings.rhythm) box.appendChild(el('p', 'soul-small', 'Предчувствие выключено в настройках глубины.'));
+        [['burnout', 'Выгорание'], ['stuck', 'Застревание']].forEach(function (k) {
+          var v = r && typeof r[k[0]] === 'number' ? r[k[0]] : 0;
+          var row = el('div', 'meter' + (v >= 60 ? ' hot' : ''));
+          row.appendChild(el('span', '', k[1]));
+          var bar = el('div', 'soul-bond');
+          var fill = el('i');
+          fill.style.width = Math.max(v ? 3 : 0, v) + '%';
+          bar.appendChild(fill);
+          row.appendChild(bar);
+          row.appendChild(el('b', '', String(v)));
+          box.appendChild(row);
+        });
+        var list = r ? arr(r.signals) : [];
+        if (!list.length) emptyLi(sig, 'Тревожных признаков не видно.');
+        list.forEach(function (x) { sig.appendChild(el('li', '', x)); });
+        $('d-rhythm-meta').textContent = r && r.t ? ago(r.t) : '';
+        var n = depthData.nudge;
+        var open = n && (n.status === 'new' || n.status === 'shown');
+        $('d-nudge').hidden = !open;
+        if (open) $('d-nudge-text').textContent = 'Яэри заметила: ' + n.text;
+      }
+      function renderSims() {
+        var ul = $('d-sims');
+        ul.textContent = '';
+        var items = depthData ? arr(depthData.simulations).slice().reverse() : [];
+        $('d-sims-meta').textContent = items.length ? String(items.length) : '';
+        if (!items.length) emptyLi(ul, 'Попросите совета («стоит ли…», «что лучше…»), и здесь появятся варианты, которые она прогнала.');
+        items.forEach(function (s) {
+          var li = el('li');
+          li.appendChild(el('div', 'iq', dmy(s.t) + ' ' + hhmm(s.t)));
+          li.appendChild(el('p', '', s.question));
+          li.appendChild(futList(s));
+          ul.appendChild(li);
+        });
+      }
+      function strengthDots(n) { var s = ''; for (var i = 0; i < 5; i++) s += i < n ? '●' : '○'; return s; }
+      function renderOwn() {
+        var box = $('d-own'), log = $('d-charlog');
+        box.textContent = '';
+        log.textContent = '';
+        var own = depthData ? arr(depthData.own) : [];
+        $('d-own-meta').textContent = own.length ? String(own.length) : '';
+        OWN_KINDS.forEach(function (k) {
+          var items = own.filter(function (x) { return x.kind === k[0]; });
+          var g = el('div', 'own-group');
+          g.appendChild(el('span', 'soul-lbl', k[1]));
+          var ul = el('ul', 'soul-simple');
+          if (!items.length) emptyLi(ul, 'Пока не сложилось.');
+          items.forEach(function (x) {
+            var li = el('li');
+            li.appendChild(document.createTextNode(x.text));
+            var d = el('span', 'own-dots', strengthDots(x.strength));
+            d.title = 'Сила: ' + x.strength + ' из 5';
+            li.appendChild(d);
+            if (x.why) li.title = 'Откуда: ' + x.why;
+            if (online) li.appendChild(smallBtn('×', 'Убрать: ' + x.text, function () { depthPost('remove', { list: 'traitsOwn', id: x.id }); }, 'mini-btn'));
+            ul.appendChild(li);
+          });
+          g.appendChild(ul);
+          box.appendChild(g);
+        });
+        var l = depthData ? arr(depthData.charLog).slice().reverse() : [];
+        if (!l.length) emptyLi(log, 'Изменений пока не было.');
+        l.forEach(function (x) { log.appendChild(el('li', '', dmy(x.t) + ' — ' + x.text)); });
+      }
+      function renderPhil() {
+        var ul = $('d-phil');
+        ul.textContent = '';
+        var items = depthData ? arr(depthData.principles) : [];
+        $('d-phil-meta').textContent = items.length ? items.length + ' ' + plural(items.length, 'принцип', 'принципа', 'принципов') : '';
+        if (!items.length) emptyLi(ul, 'Принципы появятся, когда у неё накопится опыт: уроки, моменты, мнения.');
+        items.forEach(function (p) {
+          var li = el('li');
+          li.appendChild(el('p', '', '«' + p.text + '»'));
+          li.appendChild(el('div', 'iq', 'Откуда: ' + p.origin));
+          var src = el('div', 'd-src');
+          arr(p.sources).forEach(function (s) { var b = el('span', 'badge', s.code); b.title = s.text; src.appendChild(b); });
+          if (arr(p.revisions).length) src.appendChild(el('span', 'badge', 'уточнялся ' + arr(p.revisions).length + ' р.'));
+          if (online) src.appendChild(smallBtn('Убрать', 'Убрать принцип', function () { depthPost('remove', { list: 'principles', id: p.id }); }, 'mini-btn'));
+          li.appendChild(src);
+          ul.appendChild(li);
+        });
+      }
+      var SKILL_STATUS = { proposed: 'ждёт одобрения', active: 'работает', off: 'выключен' };
+      function renderSkills() {
+        var ul = $('d-skills');
+        ul.textContent = '';
+        var items = depthData ? arr(depthData.skills).slice().reverse() : [];
+        var waiting = items.filter(function (x) { return x.status === 'proposed'; }).length;
+        $('d-skills-meta').textContent = waiting ? waiting + ' ждут одобрения' : (items.length ? String(items.length) : '');
+        if (!items.length) emptyLi(ul, 'Когда Яэри заметит повторяющиеся просьбы, она напишет себе навык и покажет его здесь.');
+        items.forEach(function (sk) {
+          var li = el('li');
+          li.appendChild(el('div', 'iq', '/' + sk.command + (sk.triggers && sk.triggers.length ? ' · включается на: ' + sk.triggers.join(', ') : '')));
+          li.appendChild(el('p', '', sk.name + ': ' + sk.instruction));
+          if (arr(sk.steps).length) {
+            var st = el('ul', 'soul-simple');
+            sk.steps.forEach(function (x) { st.appendChild(el('li', '', x)); });
+            li.appendChild(st);
+          }
+          if (sk.why) li.appendChild(el('div', 'iq', 'Зачем: ' + sk.why));
+          var act = el('div', 'ia');
+          act.appendChild(el('span', 'badge' + (sk.status === 'active' ? ' ok' : ''), SKILL_STATUS[sk.status] || sk.status));
+          if (sk.uses) act.appendChild(el('span', 'badge', 'использован ' + sk.uses + ' р.'));
+          if (online) {
+            if (sk.status !== 'active') act.appendChild(smallBtn(sk.status === 'off' ? 'Включить' : 'Одобрить', 'Одобрить навык', function () { depthPost('skill', { id: sk.id, action: 'approve' }); }, 'mini-btn solid'));
+            if (sk.status === 'proposed') act.appendChild(smallBtn('Отклонить', 'Отклонить навык', function () { depthPost('skill', { id: sk.id, action: 'reject' }); }, 'mini-btn'));
+            if (sk.status === 'active') act.appendChild(smallBtn('Выключить', 'Выключить навык', function () { depthPost('skill', { id: sk.id, action: 'disable' }); }, 'mini-btn'));
+            act.appendChild(smallBtn('Удалить', 'Удалить навык', function () { depthPost('skill', { id: sk.id, action: 'delete' }); }, 'mini-btn'));
+          }
+          li.appendChild(act);
+          if (online) {
+            var t = el('div', 'd-test');
+            var inp = el('input', 'field');
+            inp.type = 'text';
+            inp.maxLength = 1000;
+            inp.placeholder = sk.example || 'Пример запроса для проверки';
+            inp.setAttribute('aria-label', 'Пример запроса для навыка ' + sk.name);
+            var go = smallBtn('Проверить в песочнице', 'Проверить навык без памяти и доступа к данным', function () {
+              go.disabled = true;
+              go.textContent = 'Проверяю…';
+              depthPost('skill/test', { id: sk.id, text: inp.value }).then(function () { go.disabled = false; });
+            }, 'mini-btn');
+            t.appendChild(inp);
+            t.appendChild(go);
+            if (sk.test && sk.test.output) {
+              t.appendChild(el('div', 'iq', 'Песочница, ' + ago(sk.test.t) + ': «' + sk.test.input + '»'));
+              t.appendChild(el('pre', '', sk.test.output));
+            }
+            li.appendChild(t);
+          }
+          ul.appendChild(li);
+        });
+      }
+      function renderEvalChart() {
+        var box = $('d-eval-chart');
+        var ser = depthData ? arr(depthData.evalSeries) : [];
+        if (!ser.length) { chartEmpty(box, 'Здесь будет видно, как она сама оценивает свои ответы (1–10) по дням.'); return; }
+        var W = Math.max(300, Math.round(box.clientWidth) || 640), H = 170, L = 26, R = 10, T = 12, B = 24, slot = (W - L - R) / ser.length, bw = Math.min(34, slot * 0.62);
+        function Y(v) { return T + (10 - v) * (H - T - B) / 10; }
+        var s = '<svg viewBox="0 0 ' + W + ' ' + H + '">';
+        [0, 5, 10].forEach(function (v) { s += '<line class="grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '"/><text x="' + (L - 6) + '" y="' + (Y(v) + 3).toFixed(1) + '" text-anchor="end">' + v + '</text>'; });
+        ser.forEach(function (p, i) {
+          var x = L + slot * i + (slot - bw) / 2, h = (H - T - B) * p.avg / 10;
+          s += '<rect class="bar" x="' + x.toFixed(1) + '" y="' + (H - B - h).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="3" style="fill:' + (p.avg >= 7 ? 'var(--a)' : 'var(--warn)') + '"><title>' + dayLabel(p.day) + ': ' + p.avg + ' (' + p.n + ' ' + plural(p.n, 'ответ', 'ответа', 'ответов') + ')</title></rect>';
+        });
+        s += '<text x="' + L + '" y="' + (H - 7) + '">' + dayLabel(ser[0].day) + '</text>';
+        if (ser.length > 1) s += '<text x="' + (W - R) + '" y="' + (H - 7) + '" text-anchor="end">' + dayLabel(ser[ser.length - 1].day) + '</text>';
+        box.innerHTML = s + '</svg>';
+      }
+      function renderReview() {
+        renderEvalChart();
+        var ul = $('d-props');
+        ul.textContent = '';
+        var items = depthData ? arr(depthData.proposals).slice().reverse() : [];
+        var waiting = items.filter(function (x) { return x.status === 'proposed'; }).length;
+        $('d-review-meta').textContent = waiting ? waiting + ' ' + plural(waiting, 'правка ждёт', 'правки ждут', 'правок ждут') : '';
+        if (!items.length) emptyLi(ul, 'Пока она довольна собой или ещё не перечитывала ответы.');
+        items.forEach(function (p) {
+          var li = el('li');
+          li.appendChild(el('div', 'iq', PROP_TYPES[p.type] || p.type));
+          if (p.type === 'self' && p.before) {
+            var d = el('p', 'd-diff');
+            d.appendChild(el('s', '', p.before));
+            li.appendChild(d);
+          }
+          if (p.type === 'trait' && p.before) li.appendChild(el('p', 'd-diff', 'Было ' + p.before + (p.status === 'applied' ? ', стало ' : ', станет ') + Math.max(0, Math.min(100, Number(p.before) + Number(p.delta)))));
+          li.appendChild(el('p', '', p.text));
+          if (p.why) li.appendChild(el('div', 'iq', 'Почему: ' + p.why));
+          var act = el('div', 'ia');
+          act.appendChild(el('span', 'badge' + (p.status === 'applied' ? ' ok' : ''), p.status === 'proposed' ? 'предложено' : (p.status === 'applied' ? 'применено' : 'отклонено')));
+          if (online && p.status === 'proposed') {
+            act.appendChild(smallBtn('Применить', 'Применить правку души', function () { depthPost('proposal', { id: p.id, action: 'approve' }).then(loadSoul); }, 'mini-btn solid'));
+            act.appendChild(smallBtn('Отклонить', 'Отклонить правку', function () { depthPost('proposal', { id: p.id, action: 'reject' }); }, 'mini-btn'));
+          }
+          li.appendChild(act);
+          ul.appendChild(li);
+        });
+        var rl = $('d-rules');
+        rl.textContent = '';
+        var rules = depthData ? arr(depthData.rules) : [];
+        if (!rules.length) emptyLi(rl, 'Пока нет.');
+        rules.forEach(function (r) {
+          var li = el('li', '', r.text);
+          if (online) li.appendChild(smallBtn('×', 'Убрать правило', function () { depthPost('remove', { list: 'rules', id: r.id }); }, 'mini-btn'));
+          rl.appendChild(li);
+        });
+        var ev = $('d-evals');
+        ev.textContent = '';
+        var evals = depthData ? arr(depthData.evals).slice().reverse() : [];
+        if (!evals.length) emptyLi(ev, 'Самооценок пока нет.');
+        evals.forEach(function (x) { ev.appendChild(el('li', '', x.score + '/10 · «' + x.q + '» — ' + (x.note || 'без замечаний'))); });
+      }
+      function renderDepthFlags() {
+        var box = $('d-flags');
+        box.textContent = '';
+        DEPTH_FLAGS.forEach(function (f) {
+          var lab = el('label', 'toggle');
+          var t = el('span', 't-text');
+          t.appendChild(el('span', 't-name', f[1]));
+          t.appendChild(el('span', 't-desc', f[2]));
+          lab.appendChild(t);
+          var inp = el('input', 'vh');
+          inp.type = 'checkbox';
+          inp.setAttribute('role', 'switch');
+          inp.checked = !!(depthData && depthData.settings[f[0]]);
+          inp.disabled = !online || !depthData;
+          inp.addEventListener('change', function () { var o = {}; o[f[0]] = inp.checked; depthPost('settings', o); });
+          lab.appendChild(inp);
+          var tr = el('span', 'track');
+          tr.setAttribute('aria-hidden', 'true');
+          lab.appendChild(tr);
+          box.appendChild(lab);
+        });
+        var note = depthData ? (DEPTH_EVERY[depthData.intensity] || '') : 'Настройки появятся, когда Яэри подключится к серверу.';
+        if (depthData && !depthData.smartModel) note += ' «Умная» модель не выбрана — думает основной.';
+        if (depthData && depthData.dailyLimit > 0) note += ' Сегодня потрачено ' + depthData.usedToday + ' из ' + depthData.dailyLimit + ' запросов.';
+        $('d-ctl-note').textContent = note;
+      }
+      each(document.querySelectorAll('#d-nudge [data-nudge]'), function (b) {
+        b.addEventListener('click', function () { depthPost('nudge', { action: b.getAttribute('data-nudge') }); });
+      });
+      each(document.querySelectorAll('[data-drun]'), function (b) {
+        b.addEventListener('click', function () {
+          b.disabled = true;
+          $('d-ctl-status').textContent = 'Яэри думает…';
+          api('soul/depth/run', { task: b.getAttribute('data-drun') }).then(function (d) {
+            setDepth(d);
+            $('d-ctl-status').textContent = 'Готово.';
+          }).catch(depthError).then(function () { b.disabled = false; });
+        });
+      });
+      $('d-clear').addEventListener('click', function () {
+        if (!window.confirm('Очистить глубину: её характер, принципы, навыки, правки и предчувствия? Остальная душа сохранится.')) return;
+        depthPost('clear', {});
+      });
+      setInterval(function () {
+        if (online && currentView === 'soul' && !document.hidden && !$('sp-depth').hidden) loadDepth();
+      }, 60000);
+
       function loadSoul() {
         return api('soul').then(function (data) {
           setSoul(data);
@@ -4151,6 +4559,7 @@
           loadGrowth();
           loadUnderstanding();
           loadSoul3();
+          loadDepth();
         });
       }
       function shareThought() {
