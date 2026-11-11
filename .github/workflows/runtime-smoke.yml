@@ -13,6 +13,7 @@ jobs:
           node --check node/server.js
           node --check node/runtime-check.js
           node node/runtime-check.js
+          node --test node/server.test.js
       - name: Check Python syntax and bootstrap unit tests
         run: |
           python -m compileall -q python
