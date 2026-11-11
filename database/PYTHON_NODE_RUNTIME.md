@@ -11,3 +11,11 @@ Next implementation steps: connect Python local embedding inference (model and t
 After Python 3.9+ and Node.js 18+ are installed and on PATH, `Yaeri.bat` automatically runs `python/bootstrap.py`. It installs missing `sentence-transformers` dependencies and downloads the default `intfloat/multilingual-e5-small` model to `python/models/multilingual-e5-small` on first launch. Later launches reuse these files. The model folder is excluded from Git.
 
 The first launch needs internet access, enough disk space, and Python package installation permission. If setup fails, the launcher stops with an error rather than silently switching to a cloud embedding service. Local inference remains offline. The current launcher does **not** automatically install the Python or Node.js runtimes themselves, and Node.js is not yet the HTTP server.
+
+## Automated runtime stack (2026-11)
+
+`Yaeri.bat` now runs `launcher/bootstrap-runtimes.ps1` before starting. If Python 3.9+ or Node.js 18+ is missing, the installer attempts to install Python 3.11 and Node.js LTS through Windows `winget`. Windows App Installer/winget and internet access are needed for first-run provisioning. Windows may still prompt for elevation; installation is not guaranteed on locked-down machines.
+
+The launcher starts a persistent, loopback-only Python embedding service and a Node.js HTTP frontend. Node receives browser traffic and proxies existing API and static routes to the private PowerShell HTTP backend, preserving current behavior. **API business logic is still implemented in PowerShell**; this is an HTTP frontend migration, not a complete rewrite. The Python service loads the local model on first inference, keeps it in memory, and stores embedding results in `data/local-embeddings.sqlite3`. It restarts automatically if the process exits. The database is a **vector cache** for queried passages, not yet a full precomputed corpus-wide ANN index. Current semantic reranking is still limited to a lexical shortlist of 32 results.
+
+No Ollama, external embedding API, or agents are involved in the local semantic path. The first installation requires network access to obtain runtimes, Python packages, and model weights. Subsequent inference works offline once installed.
