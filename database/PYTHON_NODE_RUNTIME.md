@@ -35,3 +35,7 @@ Node now validates browser-facing API requests before forwarding them to PowerSh
 ## Private Node-to-PowerShell API channel
 
 On each launch, PowerShell generates a fresh cryptographically random 256-bit token. The Node frontend receives it through its inherited environment and injects it into backend API requests. Node strips any browser-supplied copy of that header. The PowerShell API rejects requests without the correct token, preventing direct access to its separately bound loopback port. The token is not stored in the repository or persisted on disk. This hardens the staged migration; existing stateful routes still execute in PowerShell. This is process-local access control, not isolation against malicious software running as the same OS user.
+
+## Native Node storage inspection
+
+`GET /api/storage/health` and `HEAD /api/storage/health` inspect the on-disk JSON envelopes for notes, memory, history and documents without returning record contents. The response contains per-file `status` (`ok`, `missing`, `invalid`, or `unavailable`), record `count` when structurally valid, and format `version`. This endpoint is read-only: it never modifies files or bypasses PowerShell's in-memory state. Existing user-facing memory and settings APIs remain on PowerShell pending an atomic state migration. The diagnostic endpoint reflects disk snapshots and can briefly differ from in-memory state.
