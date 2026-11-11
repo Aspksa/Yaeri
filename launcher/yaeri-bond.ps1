@@ -18,7 +18,7 @@ function Add-Y3Repair([string]$Mistake, [string]$Correction, [string]$Quote, [st
     [void]$script:Y3.repairs.Add(@{
         id = (New-YId); t = (Get-YNow); text = $correction
         mistake = (Get-YCleanLine $Mistake 240); quote = (Get-YCleanLine $Quote 320)
-        source = $Source; status = 'learned'
+        source = $Source; status = 'learned'; evidence = (New-YEvidence 'user_quote' $Source $Quote 0)
     })
     Add-Y3Growth 'repair' ('Приняла исправление: ' + $correction) $Source
 }
