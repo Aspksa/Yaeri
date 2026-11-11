@@ -1,4 +1,5 @@
 import json
+from contextlib import closing
 import sqlite3
 import tempfile
 import unittest
@@ -16,7 +17,7 @@ class ServiceTests(unittest.TestCase):
                 self.assertEqual(service.embedding("query: hello"), "fake-base64")
                 self.assertEqual(service.embedding("query: hello"), "fake-base64")
                 encode.assert_called_once()
-                with sqlite3.connect(str(service.DB)) as db:
+                with closing(sqlite3.connect(str(service.DB))) as db:
                     self.assertEqual(db.execute("SELECT COUNT(*) FROM embeddings").fetchone()[0], 1)
 
     def test_model_constant(self):
