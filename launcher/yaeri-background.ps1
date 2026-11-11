@@ -36,8 +36,9 @@ function Test-YAsyncApiRoute([string]$Method, [string]$Path) {
 function Start-YBackground([string]$Method = '', [string]$Path = '', [string]$Body = '') {
     if ($null -ne $script:YBgJob) { return $false }
     $isApi = [bool]$Method
-    if (-not $isApi -and [bool]$script:YLife.offline) { return $false }
-    if (-not $isApi -and -not (Test-YConfigured) -and -not [bool]$script:Y3.initiative) { return $false }
+    $localCycle=[bool]($script:YE5.enabled -and $script:YE5.periodic)
+    if (-not $isApi -and [bool]$script:YLife.offline -and -not $localCycle) { return $false }
+    if (-not $isApi -and -not (Test-YConfigured) -and -not [bool]$script:Y3.initiative -and -not $localCycle) { return $false }
     $base = Join-Path $script:DataDir ('.bg-work-' + [guid]::NewGuid().ToString('N'))
     $snapshot = Join-Path $base 'snapshot'
     [void][System.IO.Directory]::CreateDirectory($snapshot)
