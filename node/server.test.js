@@ -11,7 +11,7 @@ function close(server) { return new Promise(resolve => server.close(resolve)); }
 function request(port, path, method = "GET", body = "", host = null) {
   return new Promise((resolve, reject) => {
     const req = http.request({ hostname: "127.0.0.1", port, path, method,
-      headers: { host: host || "127.0.0.1:" + port, "content-length": Buffer.byteLength(body) } },
+      headers: { host: host || "127.0.0.1:" + port, "content-length": Buffer.byteLength(body), "content-type": "application/json" } },
     res => {
       let data = "";
       res.setEncoding("utf8");
