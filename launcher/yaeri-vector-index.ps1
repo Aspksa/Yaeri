@@ -290,13 +290,22 @@ function Get-YLocalEmbedding([string]$Text, [string]$Model = 'intfloat/multiling
     if ($Model -notmatch '^[a-zA-Z0-9_./-]{1,100}$' -or $Model.Contains('..')) { throw 'Invalid local embedding model.' }
     $key = $Model + ':' + (Get-YVectorFingerprint $Text)
     if ($script:YLocalEmbeddingCache.ContainsKey($key)) { return ,$script:YLocalEmbeddingCache[$key] }
-    $worker = Join-Path $PSScriptRoot '..\python\local_embeddings.py'
-    if (-not (Test-Path -LiteralPath $worker)) { throw 'Python local embeddings worker is missing.' }
-    $request = @{ model = $Model; text = $Text } | ConvertTo-Json -Compress
-    # stdin prevents user content from appearing in process command lines.
-    $output = $request | & python $worker 2>&1
-    if ($LASTEXITCODE -ne 0) { throw ('Local Python embedding failed: ' + ($output | Out-String)) }
-    $reply = ($output | Out-String | ConvertFrom-Json)
+    if (-not $script:YEmbeddingPort) { throw 'Python embedding service is not running.' }
+    $payload = (@{ model = $Model; text = $Text } | ConvertTo-Json -Compress) + "`n"
+    $client = [System.Net.Sockets.TcpClient]::new()
+    try {
+        $client.Connect('127.0.0.1', [int]$script:YEmbeddingPort)
+        $client.ReceiveTimeout = 120000
+        $client.SendTimeout = 10000
+        $stream = $client.GetStream()
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($payload)
+        $stream.Write($bytes, 0, $bytes.Length)
+        $reader = [System.IO.StreamReader]::new($stream, [System.Text.Encoding]::UTF8)
+        $line = $reader.ReadLine()
+        if (-not $line) { throw 'Empty Python embedding service response.' }
+        $reply = ConvertFrom-Json $line
+        if ($reply.error) { throw ([string]$reply.error) }
+    } finally { $client.Dispose() }
     $vector = [YaeriVec]::Decode([string]$reply.vector)
     if ($vector.Length -lt 8) { throw 'Invalid local embedding.' }
     if ($script:YLocalEmbeddingCache.Count -ge 512) { $script:YLocalEmbeddingCache.Clear() }

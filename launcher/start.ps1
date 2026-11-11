@@ -140,7 +140,36 @@ try {
     )
     $listener.Start()
     $port = ([System.Net.IPEndPoint]$listener.LocalEndpoint).Port
-    $address = 'http://127.0.0.1:' + $port + '/'
+    # Reserve a loopback port for the persistent Python embedding worker.
+    $reserve = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
+    $reserve.Start()
+    $script:YEmbeddingPort = ([System.Net.IPEndPoint]$reserve.LocalEndpoint).Port
+    $reserve.Stop()
+    $pythonService = Start-Process -FilePath (Get-Command python).Source -ArgumentList @(
+        ('"' + (Join-Path $PSScriptRoot '..\python\embedding_service.py') + '"'),
+        '--port', [string]$script:YEmbeddingPort
+    ) -PassThru -WindowStyle Hidden
+    Start-Sleep -Milliseconds 500
+    if ($pythonService.HasExited) { throw 'Python embedding service terminated at startup.' }
+
+    # Node.js owns the browser-facing port; PowerShell remains a private API backend.
+    $nodePortFile = Join-Path ([System.IO.Path]::GetTempPath()) ('yaeri-node-' + [guid]::NewGuid().ToString('N') + '.port')
+    $nodeService = Start-Process -FilePath (Get-Command node).Source -ArgumentList @(
+        ('"' + (Join-Path $PSScriptRoot '..\node\server.js') + '"'),
+        [string]$port,
+        ('"' + $nodePortFile + '"')
+    ) -PassThru -WindowStyle Hidden
+    $nodePort = 0
+    for ($attempt = 0; $attempt -lt 60; $attempt++) {
+        if ($nodeService.HasExited) { throw 'Node HTTP frontend terminated at startup.' }
+        if (Test-Path -LiteralPath $nodePortFile) {
+            $rawPort = [System.IO.File]::ReadAllText($nodePortFile)
+            if ([int]::TryParse($rawPort, [ref]$nodePort) -and $nodePort -gt 0) { break }
+        }
+        Start-Sleep -Milliseconds 100
+    }
+    if ($nodePort -le 0) { throw 'Node HTTP frontend did not report its port.' }
+    $address = 'http://127.0.0.1:' + $nodePort + '/'
 
     Write-Host ''
     Write-Host 'Яэри запущена!' -ForegroundColor Magenta
@@ -165,6 +194,16 @@ try {
     # responsive. The main loop alone commits validated JSON snapshots.
     $lastEvolutionPoll = 0L
     while ($true) {
+        if ($pythonService.HasExited) {
+            Write-Host 'Перезапускаю Python embeddings service...' -ForegroundColor Yellow
+            $pythonService = Start-Process -FilePath (Get-Command python).Source -ArgumentList @(
+                ('"' + (Join-Path $PSScriptRoot '..\python\embedding_service.py') + '"'),
+                '--port', [string]$script:YEmbeddingPort
+            ) -PassThru -WindowStyle Hidden
+            Start-Sleep -Milliseconds 500
+            if ($pythonService.HasExited) { throw 'Python embedding service restart failed.' }
+        }
+        if ($nodeService.HasExited) { throw 'Node.js HTTP frontend stopped unexpectedly.' }
         if ($null -ne $script:YBgJob) { [void](Complete-YBackground) }
         if (-not $listener.Pending()) {
             $clock = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
@@ -297,5 +336,8 @@ try {
     exit 1
 } finally {
     Stop-YBackground
+    if ($null -ne $nodeService -and -not $nodeService.HasExited) { Stop-Process -Id $nodeService.Id -Force -ErrorAction SilentlyContinue }
+    if ($null -ne $pythonService -and -not $pythonService.HasExited) { Stop-Process -Id $pythonService.Id -Force -ErrorAction SilentlyContinue }
+    if ($nodePortFile -and (Test-Path -LiteralPath $nodePortFile)) { Remove-Item -LiteralPath $nodePortFile -Force -ErrorAction SilentlyContinue }
     if ($null -ne $listener) { $listener.Stop() }
 }
