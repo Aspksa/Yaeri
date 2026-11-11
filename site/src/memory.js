@@ -339,7 +339,13 @@
         $('pc-next').disabled = y === PC_LAST && m === 11;
         var now = new Date();
         var sel = pcState.sel || (now.getFullYear() === y && now.getMonth() === m ? now.getDate() : 0);
-        pcFillGrid($('pc-grid'), y, m, { buttons: true, sel: pcState.sel, onPick: function (x) { pcState.sel = pcState.sel === x.d ? 0 : x.d; tasksPickDay(x); renderProdCalendar(true); } });
+        pcFillGrid($('pc-grid'), y, m, { buttons: true, sel: pcState.sel, onPick: function (x) {
+          pcState.sel = pcState.sel === x.d ? 0 : x.d;
+          tasksPickDay(x);
+          renderProdCalendar(true);
+          // Подробности дня под сеткой: прокручиваем карточку, чтобы их было видно.
+          if (pcState.sel) $('pc-detail').scrollIntoView({ block: 'nearest', behavior: settings.motion ? 'smooth' : 'auto' });
+        } });
         // Подпись под сеткой: выбранный день, иначе ближайший праздник месяца.
         var detail = $('pc-detail');
         if (sel) { detail.innerHTML = pcDayText(pcDay(y, m, sel)); tasksDayDetail(detail, y, m, sel); }

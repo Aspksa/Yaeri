@@ -406,6 +406,8 @@
     .now-meta span { padding: 3px 8px; border: 1px solid hsl(40 35% 24%); border-radius: 99px; color: var(--muted); font: 600 .64rem/1.3 var(--mono); letter-spacing: .06em; }
     .now-meta b { color: var(--a); }
     .pc-body { gap: 12px; }
+    /* Карточка календаря прокручивается целиком: блоки не сжимаются и не наезжают друг на друга. */
+    .pc-body > * { flex-shrink: 0; }
     .pc-years button { padding: 5px 11px; font-size: .74rem; }
     .pc-nav { grid-template-columns: 38px 1fr 38px; }
     .pc-arrow { height: 36px; font-size: 1.3rem; border-radius: 10px; }
