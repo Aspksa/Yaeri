@@ -6,7 +6,7 @@ function Import-YVector {
     $raw = $null
     try { $raw = Read-YJsonFile $script:YVectorFile } catch { $raw = $null }
     $script:YVector = @{
-        version = 2
+        version = 3
         enabled = [bool](Get-YValue $raw 'enabled' $true)
         rerank = [bool](Get-YValue $raw 'rerank' $true)
         associations = [bool](Get-YValue $raw 'associations' $true)
@@ -63,8 +63,22 @@ function Get-YVectorEmotionTag($Evidence) {
     if ($quote -match '(?i)тревог|волную|пережива') { return 'тревога' }
     return ''
 }
+function Test-YMemory3Eligible($Item, [long]$Now) {
+    $status = [string](Get-YValue $Item 'status' 'active')
+    if (@('deleted','retracted','superseded','archived','rejected','expired') -contains $status) { return $false }
+    $expires = [long](Get-YNum (Get-YValue $Item 'expiresAt' 0) 0)
+    if ($expires -gt 0 -and $expires -le $Now) { return $false }
+    return $true
+}
+function Get-YMemory3EvidenceWeight($Evidence) {
+    $score = Get-YVectorEvidenceScore $Evidence
+    $confidence = [double](Get-YNum (Get-YValue $Evidence 'confidence' 0) 0)
+    # Legacy confidence=0 means unknown, not a negative fact.
+    if ($confidence -gt 0) { $score = $score * (0.7 + 0.3 * [Math]::Min(1,$confidence)) }
+    return $score
+}
 function New-YVectorCandidate([string]$Space, $Ref, [string]$Text, [string]$Vec = '', [long]$Stamp = 0, [double]$Importance = 0.5) {
-    if (-not $Text) { return $null }
+    if (-not $Text -or -not (Test-YMemory3Eligible $Ref (Get-YNow))) { return $null }
     $id = [string](Get-YValue $Ref 'id' '')
     if (-not $id) { return $null }
     if ((Get-Command Test-YTopicVisible -ErrorAction SilentlyContinue) -and -not (Test-YTopicVisible $Text)) { return $null }
@@ -196,7 +210,7 @@ function Find-YVectorMatches([string]$Query, $QueryVec, [int]$Top = 10, [long]$B
         if (-not $c.vec -and $lex -lt 0.14) { continue }
         $ageDays = $(if ([long]$c.t -gt 0) { [Math]::Max(0, ($now - [long]$c.t) / 86400000.0) } else { 365 })
         $freshness = [Math]::Exp(-$ageDays / 365)
-        $evidence = Get-YVectorEvidenceScore $c.evidence
+        $evidence = Get-YMemory3EvidenceWeight $c.evidence
         $personal = $(if (@('attachment','preference','episode','owner','soul') -contains [string]$c.space) { 1.0 } else { 0.3 })
         $rank = 0.49 * $semantic + 0.25 * $lex
         if ($script:YVector.rerank) {
