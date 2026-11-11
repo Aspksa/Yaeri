@@ -256,13 +256,15 @@
           keyField.value = '';
           keyField.type = 'password';
           $('key-eye').setAttribute('aria-pressed', 'false');
-          var check = st.check || {};
-          return applyConfig(st).then(function () {
-            if (check.ok) {
-              keyMsg('Готово: ключ сохранён, Cloud.ru ответил (' + check.models + ' ' + plural(check.models, 'модель', 'модели', 'моделей') + '). Выберите модель ниже.', 'ok');
-              showModelPick();
-            }
-            else keyMsg('Ключ сохранён, но Cloud.ru его не принял: ' + (check.error || 'нет ответа') + '. Проверьте ключ и сохраните ещё раз.', 'err');
+          return api('config/test', {}).then(function (check) {
+            return applyConfig(st).then(function () {
+              if (check.ok) {
+                keyMsg('Готово: ключ сохранён, Cloud.ru ответил (' + check.models + ' ' + plural(check.models, 'модель', 'модели', 'моделей') + '). Выберите модель ниже.', 'ok');
+                showModelPick();
+              } else {
+                keyMsg('Ключ сохранён, но Cloud.ru его не принял: ' + (check.error || 'нет ответа') + '. Проверьте ключ и сохраните ещё раз.', 'err');
+              }
+            });
           });
         }).catch(function (error) { keyMsg(error.message, 'err'); })
           .then(function () { busyKey(false); });
