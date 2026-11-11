@@ -22,6 +22,8 @@ function Assert-YRuntime([string]$Name, [string[]]$Arguments, [int]$MinimumMajor
 }
 Assert-YRuntime 'python' @('--version') 3
 Assert-YRuntime 'node' @('--version') 18
+& python (Join-Path $PSScriptRoot '..\python\bootstrap.py')
+if ($LASTEXITCODE -ne 0) { throw 'Automatic Python model setup failed. Check internet access and disk space.' }
 & node (Join-Path $PSScriptRoot '..\node\runtime-check.js')
 if ($LASTEXITCODE -ne 0) { throw 'Node.js runtime self-check failed.' }
 
