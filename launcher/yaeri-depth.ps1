@@ -265,7 +265,7 @@ function Invoke-YDepthForesight([string]$Text) {
     $sim = @{
         id = (New-YId); t = (Get-YNow)
         question = (Get-YCleanLine ([string](Get-YValue $json 'question' $Text)) 240)
-        options = $opts.ToArray(); lean = (Get-YCleanLine ([string](Get-YValue $json 'lean' '')) 260)
+        options = $opts.ToArray(); lean = (Get-YCleanLine ([string](Get-YValue $json 'lean' '')) 260); evidence = (New-YEvidence 'assistant_hypothesis' '' '' 0)
     }
     [void]$script:Dep.simulations.Add($sim)
     Save-YDepth
@@ -323,7 +323,7 @@ function Invoke-YDepthCharacter {
         if ($dup -or @(Get-YDepOwn $kind).Count -ge [int]$script:DepKindMax[$kind]) { continue }
         $kinds[$kind] = $true
         $why = Get-YCleanLine ([string](Get-YValue $x 'why' '')) 240
-        [void]$script:Dep.traitsOwn.Add(@{ id = (New-YId); t = (Get-YNow); kind = $kind; text = $text; why = $why; strength = 2 })
+        [void]$script:Dep.traitsOwn.Add(@{ id = (New-YId); t = (Get-YNow); kind = $kind; text = $text; why = $why; strength = 2; evidence = (New-YEvidence 'assistant_generated' '' '' 0) })
         [void]$script:Dep.charLog.Add(@{ t = (Get-YNow); text = ('Появилось: ' + $text + $(if ($why) { ' (' + $why + ')' } else { '' })) })
         $changes++
     }
@@ -398,7 +398,7 @@ function Invoke-YDepthPrinciples {
         foreach ($p in $script:Dep.principles) { if (Test-YCurSame ([string]$p.text) $text) { $dup = $true } }
         # Принцип без настоящего источника не принимаем: философия должна вырастать из опыта.
         if ($text -and $origin -and $src.Count -gt 0 -and -not $dup) {
-            [void]$script:Dep.principles.Add(@{ id = (New-YId); t = (Get-YNow); updated = (Get-YNow); text = $text; origin = $origin; sources = $src.ToArray(); revisions = @() })
+            [void]$script:Dep.principles.Add(@{ id = (New-YId); t = (Get-YNow); updated = (Get-YNow); text = $text; origin = $origin; sources = $src.ToArray(); revisions = @(); evidence = (New-YEvidence 'assistant_generated' '' '' 0) })
             [void]$script:Soul.journal.Add((New-YSoulEntry 'milestone' ('Я сформулировала для себя принцип: «' + $text + '». ' + $origin) ([string]$script:Soul.mood.name)))
             Add-YFeed 'principle' ('Новый принцип: ' + $text)
             $changed++
@@ -458,7 +458,7 @@ function ConvertTo-YDepSkill($x) {
         skill = @{
             id = (New-YId); t = (Get-YNow); name = $name; command = $command; why = $why
             triggers = $triggers.ToArray(); instruction = $instruction; steps = $steps.ToArray(); example = $example
-            status = 'proposed'; uses = 0; lastUsed = 0L; test = $null
+            status = 'proposed'; uses = 0; lastUsed = 0L; test = $null; evidence = (New-YEvidence 'assistant_generated' '' '' 0)
         }
     }
 }
@@ -603,7 +603,7 @@ function Invoke-YDepthReview {
         [void]$script:Dep.evals.Add(@{
             id = (New-YId); t = (Get-YNow); msgId = [string]$todo[$i].id
             score = [int](Limit-YNum (Get-YNum (Get-YValue $x 'score' 5) 5) 1 10)
-            note = (Get-YCleanLine ([string](Get-YValue $x 'note' '')) 240); q = (Get-YCleanLine ([string]$todo[$i].q) 120)
+            note = (Get-YCleanLine ([string](Get-YValue $x 'note' '')) 240); q = (Get-YCleanLine ([string]$todo[$i].q) 120); evidence = (New-YEvidence 'assistant_generated' ([string]$todo[$i].id) '' 0)
         })
     }
     $pending = @($script:Dep.proposals | Where-Object { [string]$_.status -eq 'proposed' }).Count
@@ -613,7 +613,7 @@ function Invoke-YDepthReview {
         $type = [string](Get-YValue $x 'type' '')
         if (@('lesson', 'rule', 'self', 'trait') -notcontains $type) { continue }
         $text = Get-YCleanLine ([string](Get-YValue $x 'text' '')) $(if ($type -eq 'self') { 500 } else { 240 })
-        $p = @{ id = (New-YId); t = (Get-YNow); type = $type; text = $text; why = (Get-YCleanLine ([string](Get-YValue $x 'why' '')) 300); status = 'proposed' }
+        $p = @{ id = (New-YId); t = (Get-YNow); type = $type; text = $text; why = (Get-YCleanLine ([string](Get-YValue $x 'why' '')) 300); status = 'proposed'; evidence = (New-YEvidence 'assistant_generated' '' '' 0) }
         if ($type -eq 'trait') {
             $trait = [string](Get-YValue $x 'trait' '')
             if (@($script:SoulTraits | Where-Object { $_.id -eq $trait }).Count -eq 0) { continue }
@@ -654,7 +654,7 @@ function Set-YDepthProposal($Req) {
     $s = $script:Soul
     switch ([string]$p.type) {
         'lesson' { $s.lessons = Get-YStrList (@(@($s.lessons) | Select-Object -Last 15) + @([string]$p.text)) 16 300 }
-        'rule' { [void]$script:Dep.rules.Add(@{ id = (New-YId); t = (Get-YNow); text = [string]$p.text }) }
+        'rule' { [void]$script:Dep.rules.Add(@{ id = (New-YId); t = (Get-YNow); text = [string]$p.text; evidence = (New-YEvidence 'user_manual' 'user' '' 1) }) }
         'self' { $p.before = [string]$s.self; $s.self = Get-YCleanLine ([string]$p.text) 500 }
         'trait' {
             $p.before = [string]$s.traits[[string]$p.trait]
