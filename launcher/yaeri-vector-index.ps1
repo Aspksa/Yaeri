@@ -132,6 +132,40 @@ function Get-YVectorConflicts {
     }
     return $conflicts.ToArray()
 }
+function Get-YMemory3ConflictGroups($Facts, [int]$Limit = 30) {
+    # Group all active competing values for a key without deciding which is true.
+    $byKey = @{}
+    foreach ($fact in @($Facts)) {
+        if (@('active','unverified','needs-review') -notcontains [string](Get-YValue $fact 'status' '')) { continue }
+        if (-not (Test-YMemory3Eligible $fact (Get-YNow))) { continue }
+        $key = Get-YMemory3NormalizedFact ([string](Get-YValue $fact 'key' ''))
+        $value = Get-YMemory3NormalizedFact ([string](Get-YValue $fact 'value' ''))
+        if (-not $key -or -not $value) { continue }
+        if (-not $byKey.ContainsKey($key)) { $byKey[$key] = @{} }
+        if (-not $byKey[$key].ContainsKey($value)) {
+            $byKey[$key][$value] = New-Object System.Collections.Generic.List[object]
+        }
+        $evidence = Get-YEvidence $fact
+        $byKey[$key][$value].Add(@{
+            id = [string](Get-YValue $fact 'id' '')
+            value = [string](Get-YValue $fact 'value' '')
+            origin = [string](Get-YValue $evidence 'origin' '')
+            sourceId = [string](Get-YValue $evidence 'sourceId' '')
+        })
+    }
+    $groups = New-Object System.Collections.Generic.List[object]
+    foreach ($key in @($byKey.Keys | Sort-Object)) {
+        $values = $byKey[$key]
+        if ($values.Count -lt 2) { continue }
+        $alternatives = New-Object System.Collections.Generic.List[object]
+        foreach ($value in @($values.Keys | Sort-Object)) {
+            $alternatives.Add(@{ normalizedValue = $value; records = $values[$value].ToArray() })
+        }
+        $groups.Add(@{ key = $key; alternatives = $alternatives.ToArray(); action = 'review-only' })
+        if ($groups.Count -ge $Limit) { break }
+    }
+    return $groups.ToArray()
+}
 function Get-YMemory3ConsolidationReview($Candidates, [int]$Limit = 30) {
     # Non-destructive: preserve every original record and its provenance.
     $groups = @{}
@@ -226,6 +260,7 @@ function Get-YVectorQuality {
     }
     $conflicts = @(Get-YVectorConflicts)
     $consolidation = @(Get-YMemory3ConsolidationReview $items)
+    $conflictGroups = @(Get-YMemory3ConflictGroups $script:Evo.facts)
     return @{
         total = $items.Count; vectorized = $vectorized
         lexicalOnly = $items.Count - $vectorized
@@ -233,6 +268,7 @@ function Get-YVectorQuality {
         duplicates = $clusters.ToArray(); duplicateCount = $clusters.Count
         nearDuplicates = $near.ToArray(); nearDuplicateCount = $near.Count
         conflicts = $conflicts; conflictCount = $conflicts.Count
+        conflictGroups = $conflictGroups; conflictGroupCount = $conflictGroups.Count
         consolidation = $consolidation; consolidationCount = $consolidation.Count
         old = $stale; status = 'informational-no-automatic-deletion'; memoryVersion = 3
         savedEmbeddings = [long]$script:YVector.reused

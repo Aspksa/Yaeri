@@ -36,4 +36,16 @@ Assert-Y ($review[0].count -eq 2) 'Duplicate group must contain both records'
 Assert-Y ($review[0].distinctOrigins.Count -eq 2) 'Provenance must be retained'
 Assert-Y ($review[0].action -eq 'review-only') 'Consolidation must not auto-delete'
 Assert-Y ($candidates.Count -eq 3) 'Original records must remain intact'
+$groups = @(Get-YMemory3ConflictGroups @(
+    @{ id='a'; key=' Город '; value='Москва'; status='active'; evidence=@{origin='user_manual';sourceId='owner'} },
+    @{ id='b'; key='город'; value='Казань'; status='active'; evidence=@{origin='document';sourceId='doc-1'} },
+    @{ id='c'; key='ГОРОД'; value='москва'; status='active'; evidence=@{origin='conversation';sourceId='chat-1'} },
+    @{ id='d'; key='город'; value='Тула'; status='retracted' }
+))
+Assert-Y ($groups.Count -eq 1) 'Expected one conflict group'
+Assert-Y ($groups[0].alternatives.Count -eq 2) 'Expected two distinct active values'
+Assert-Y ($groups[0].action -eq 'review-only') 'Must not auto-resolve conflict'
+$records = @($groups[0].alternatives | ForEach-Object { $_.records } | ForEach-Object { $_ })
+Assert-Y ($records.Count -eq 3) 'All active sources must be preserved'
+Assert-Y (@($records | Where-Object { $_.sourceId -eq 'doc-1' }).Count -eq 1) 'Document source lost'
 Write-Host 'Memory 3 smoke tests passed.' -ForegroundColor Green

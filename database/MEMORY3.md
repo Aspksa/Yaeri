@@ -22,3 +22,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tests/memory3-smoke.ps1
 The existing Vector quality endpoint now exposes `quality.consolidation` and `quality.consolidationCount`. Groups are exact duplicates after case/whitespace normalization; each group retains the IDs, memory spaces, evidence origins, and source IDs of all originals. All groups are marked `review-only`.
 
 No records are merged, deleted, promoted to verified facts, or changed automatically. Near-duplicates and contradictions remain separate review signals. This is an inspection capability, **not** automatic semantic consolidation.
+
+## Multi-value conflict groups (increment 3)
+
+The Vector quality endpoint additionally exposes `quality.conflictGroups` and `quality.conflictGroupCount`. Each group lists all distinct active normalized values for the same fact key, with the individual record IDs, source IDs, and evidence origins retained. Case/whitespace variants of the same value are not treated as conflicts. Withdrawn and expired records are excluded. Results are capped at 30 groups, sorted by key, and are review-only. The existing `quality.conflicts` field remains available for backward compatibility.
