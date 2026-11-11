@@ -34,9 +34,9 @@ if ($null -eq $git) { throw 'Windows CI requires Git for updater tests.' }
 $repo = Join-Path ([System.IO.Path]::GetTempPath()) ('yaeri-update-check-' + [guid]::NewGuid().ToString('N'))
 [void][System.IO.Directory]::CreateDirectory($repo)
 try {
-    function Run-TestGit([string]$Args) {
-        $r = Invoke-YAutoGit $Args 10000 $repo ([string]$git.Source)
-        if ($r.code -ne 0) { throw ('Git failed: ' + $Args + ' (' + $r.stderr + ')') }
+    function Run-TestGit([string]$CommandLine) {
+        $r = Invoke-YAutoGit $CommandLine 10000 $repo ([string]$git.Source)
+        if ($r.code -ne 0) { throw ('Git failed: ' + $CommandLine + ' (' + $r.stderr + ')') }
         return $r.stdout
     }
     [void](Run-TestGit 'init -b main')
