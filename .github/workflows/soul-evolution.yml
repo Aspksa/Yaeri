@@ -21,6 +21,9 @@ jobs:
       - name: Soul Understanding logic tests
         shell: cmd
         run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\test-soul-understanding.ps1
+      - name: Soul Depth logic tests
+        shell: cmd
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\test-soul-depth.ps1
       - name: Local API request guard tests
         shell: cmd
         run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\test-local-request.ps1

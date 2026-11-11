@@ -389,6 +389,8 @@ function Invoke-YEvolutionTick([bool]$Force = $false) {
     }
     $script:Cur.ran = ''
     $task = ''
+    $depthTask = ''
+    try { $depthTask = Get-YDepthDue $now $Force } catch { $depthTask = '' }
     try {
         # Очередь приоритетов: разговоры хозяина, уроки, затем сон/раздумья/порядок в памяти и в последнюю очередь собственное любопытство.
         if ($script:Evo.queue.Count -gt 0) {
@@ -419,6 +421,10 @@ function Invoke-YEvolutionTick([bool]$Force = $false) {
             [void](Invoke-YEvolutionReflect @{ mode = 'auto' })
             $script:Evo.lastReflect = Get-YNow
             Add-YFeed 'reflection' 'Подумала о разговорах и о вас.'
+        } elseif ($depthTask) {
+            # Глубина души: самооценка, характер, философия, навыки — только пока хозяина нет рядом.
+            $task = $depthTask
+            Invoke-YDepthTask $depthTask
         } elseif (Test-YCurDue 'goals' $now $Force) {
             $task = 'goals'
             Invoke-YCuriosityGoals
