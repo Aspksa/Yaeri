@@ -294,11 +294,12 @@ function Get-YLocalEmbedding([string]$Text, [string]$Model = 'nomic-embed-text')
     # localOnly is an explicit privacy guarantee: never call the cloud embedding API.
     # Without a local embedding model, use the existing BM25 lexical retrieval.
     $localOnly = [bool](Get-YValue $Req 'localOnly' $true)
+    $localSemantic = [bool](Get-YValue $Req 'localSemantic' $false)
+    if ($localSemantic -and -not $localOnly) { throw (New-YError 400 'Local semantic search requires localOnly=true.') }
     $vec = $null
     if (-not $localOnly -and (Test-YConfigured)) {
         try { $vec = [YaeriVec]::Decode((Get-YEmbeddings @($text))[0]) } catch { }
     }
-    $localSemantic = [bool](Get-YValue $Req 'localSemantic' $false)
     $mode = 'local-lexical-bm25'
     if ($localSemantic) {
         if (-not $localOnly) { throw (New-YError 400 'Local semantic search requires localOnly=true.') }
