@@ -1086,7 +1086,11 @@ function Invoke-YChat($Req) {
         temperature = [double]$script:Config.temperature
         max_tokens  = [int]$script:Config.maxTokens
     }
-    $resp = $(if ($script:YLife.offline) { Invoke-YLocalChat $messages.ToArray() } else { Invoke-CloudRu 'POST' '/chat/completions' $body })
+    $resp = $(if ($script:YLife.offline) { Invoke-YLocalChat ($messages.ToArray()) } else { Invoke-CloudRu 'POST' '/chat/completions' $body })
+    if ($script:YLife.offline -and $script:YLocalLastBackend -eq 'memory-only') {
+        $model = 'memory-only'
+        $route = 'local-memory'
+    }
     $choice = @(Get-YValue $resp 'choices' @())
     $content = ''
     if ($choice.Count -gt 0) { $content = [string](Get-YValue (Get-YValue $choice[0] 'message' @{}) 'content' '') }
@@ -1258,7 +1262,7 @@ function Invoke-YApi([string]$Method, [string]$Path, [string]$BodyText) {
         'GET /api/vector'           { return Get-YVectorView }
         'GET /api/life'             { return Get-YLifeView }
         'POST /api/life/settings'   { return Set-YLifeSettings $req }
-        'POST /api/life/local/test' { return Test-YLocalOllama }
+        'POST /api/life/local/test' { return Test-YLocalEngine }
         'POST /api/life/forecast'   { return Set-YLifeForecast $req }
         'POST /api/life/tools/propose' { return (Add-YLifeToolProposal ([string](Get-YValue $req 'kind' '')) ([string](Get-YValue $req 'name' '')) ([string](Get-YValue $req 'why' '')) 'owner') }
         'POST /api/life/tools/decide'  { return Set-YLifeTool $req }
