@@ -120,7 +120,6 @@ try {
     $listener.Start()
     $port = ([System.Net.IPEndPoint]$listener.LocalEndpoint).Port
     $address = 'http://127.0.0.1:' + $port + '/'
-    $allowedHosts = @('127.0.0.1:' + $port, 'localhost:' + $port)
 
     Write-Host ''
     Write-Host 'Яэри запущена!' -ForegroundColor Magenta
@@ -192,16 +191,12 @@ try {
 
             # ---------- API ----------
             if ($pathPart.StartsWith('/api/')) {
-                # Защита: только запросы со страницы самой Яэри.
-                # Host отсекает DNS rebinding, Origin и JSON — запросы с чужих сайтов.
-                $hostHeader = [string]$request.Headers['host']
-                $origin = [string]$request.Headers['origin']
-                $contentType = [string]$request.Headers['content-type']
-                $okHost = $allowedHosts -contains $hostHeader.ToLowerInvariant()
-                $okOrigin = (-not $origin) -or ($allowedHosts | Where-Object { $origin -eq ('http://' + $_) })
-                $okType = ($method -ne 'POST') -or $contentType.StartsWith('application/json', [System.StringComparison]::OrdinalIgnoreCase)
-                if (-not ($okHost -and $okOrigin -and $okType)) {
-                    Send-Json $stream 403 @{ error = 'Запрос отклонён.' }
+                # Защита: только запросы со страницы самой Яэри (подробности в Get-YRequestBlockReason).
+                $blockReason = Get-YRequestBlockReason $method $request.Headers
+                if ($blockReason) {
+                    Write-Host ('Отклонён запрос ' + $method + ' ' + $pathPart + ': ' + $blockReason +
+                        ' (Host: ' + [string]$request.Headers['host'] + ', Origin: ' + [string]$request.Headers['origin'] + ')') -ForegroundColor Yellow
+                    Send-Json $stream 403 @{ error = ('Запрос отклонён: ' + $blockReason + '. Откройте Яэри по адресу ' + $address) }
                     continue
                 }
                 if ($method -eq 'HEAD') {
